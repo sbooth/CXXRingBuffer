@@ -121,6 +121,9 @@ uint32_t SFB::RingBuffer::CapacityBytes() const noexcept
 
 uint32_t SFB::RingBuffer::BytesAvailableToRead() const noexcept
 {
+	if(capacity_ == 0)
+		return 0;
+
 	const auto writePosition = writePosition_.load(std::memory_order_acquire);
 	const auto readPosition = readPosition_.load(std::memory_order_acquire);
 
@@ -132,6 +135,9 @@ uint32_t SFB::RingBuffer::BytesAvailableToRead() const noexcept
 
 uint32_t SFB::RingBuffer::BytesAvailableToWrite() const noexcept
 {
+	if(capacity_ == 0)
+		return 0;
+
 	const auto writePosition = writePosition_.load(std::memory_order_acquire);
 	const auto readPosition = readPosition_.load(std::memory_order_acquire);
 
@@ -147,7 +153,7 @@ uint32_t SFB::RingBuffer::BytesAvailableToWrite() const noexcept
 
 uint32_t SFB::RingBuffer::Read(void * const destination, uint32_t count, bool allowPartial) noexcept
 {
-	if(!destination || count == 0)
+	if(!destination || count == 0 || capacity_ == 0)
 		return 0;
 
 	const auto writePosition = writePosition_.load(std::memory_order_acquire);
@@ -182,7 +188,7 @@ uint32_t SFB::RingBuffer::Read(void * const destination, uint32_t count, bool al
 
 uint32_t SFB::RingBuffer::Peek(void * const destination, uint32_t count, bool allowPartial) const noexcept
 {
-	if(!destination || count == 0)
+	if(!destination || count == 0 || capacity_ == 0)
 		return 0;
 
 	const auto writePosition = writePosition_.load(std::memory_order_acquire);
@@ -215,7 +221,7 @@ uint32_t SFB::RingBuffer::Peek(void * const destination, uint32_t count, bool al
 
 uint32_t SFB::RingBuffer::Write(const void * const source, uint32_t count, bool allowPartial) noexcept
 {
-	if(!source || count == 0)
+	if(!source || count == 0 || capacity_ == 0)
 		return 0;
 
 	const auto writePosition = writePosition_.load(std::memory_order_acquire);
