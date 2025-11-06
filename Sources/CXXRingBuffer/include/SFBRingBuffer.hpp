@@ -53,9 +53,9 @@ public:
 	/// Allocates space for data.
 	/// - attention: This method is not thread safe.
 	/// - note: Capacities from 2 to 2,147,483,648 (0x80000000) bytes are supported
-	/// - parameter byteCount: The desired capacity, in bytes
+	/// - parameter capacity: The desired capacity, in bytes
 	/// - returns: `true` on success, `false` on error
-	bool Allocate(uint32_t byteCount) noexcept;
+	bool Allocate(uint32_t capacity) noexcept;
 
 	/// Frees the resources used by this `RingBuffer`.
 	/// - attention: This method is not thread safe.
@@ -67,7 +67,7 @@ public:
 
 	// MARK: Buffer Information
 
-	/// Returns the capacity of this RingBuffer in bytes.
+	/// Returns the capacity of this `RingBuffer` in bytes.
 	uint32_t CapacityBytes() const noexcept;
 
 	/// Returns the number of bytes available for reading.
@@ -79,25 +79,25 @@ public:
 	// MARK: Reading and Writing Data
 
 	/// Reads data from the `RingBuffer` and advances the read pointer.
-	/// - parameter destinationBuffer: An address to receive the data
-	/// - parameter byteCount: The desired number of bytes to read
-	/// - parameter allowPartial: Whether any bytes should be read if the number of bytes available for reading is less than `byteCount`
+	/// - parameter destination: An address to receive the data
+	/// - parameter count: The desired number of bytes to read
+	/// - parameter allowPartial: Whether any bytes should be read if the number of bytes available for reading is less than `count`
 	/// - returns: The number of bytes actually read
-	uint32_t Read(void * const _Nonnull destinationBuffer, uint32_t byteCount, bool allowPartial = true) noexcept;
+	uint32_t Read(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) noexcept;
 
 	/// Reads data from the `RingBuffer` without advancing the read pointer.
-	/// - parameter destinationBuffer: An address to receive the data
-	/// - parameter byteCount: The desired number of bytes to read
-	/// - parameter allowPartial: Whether any bytes should be read if the number of bytes available for reading is less than `byteCount`
+	/// - parameter destination: An address to receive the data
+	/// - parameter count: The desired number of bytes to read
+	/// - parameter allowPartial: Whether any bytes should be read if the number of bytes available for reading is less than `count`
 	/// - returns: The number of bytes actually read
-	uint32_t Peek(void * const _Nonnull destinationBuffer, uint32_t byteCount, bool allowPartial = true) const noexcept;
+	uint32_t Peek(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) const noexcept;
 
 	/// Writes data to the `RingBuffer` and advances the write pointer.
-	/// - parameter sourceBuffer: An address containing the data to copy
-	/// - parameter byteCount: The desired number of bytes to write
-	/// - parameter allowPartial: Whether any bytes should be written if the free space available for writing is less than `byteCount`
+	/// - parameter source: An address containing the data to copy
+	/// - parameter count: The desired number of bytes to write
+	/// - parameter allowPartial: Whether any bytes should be written if the free space available for writing is less than `count`
 	/// - returns: The number of bytes actually written
-	uint32_t Write(const void * const _Nonnull sourceBuffer, uint32_t byteCount, bool allowPartial = true) noexcept;
+	uint32_t Write(const void * const _Nonnull source, uint32_t count, bool allowPartial = true) noexcept;
 
 	// MARK: Reading and Writing Types
 
@@ -125,7 +125,7 @@ public:
 		const auto rvec = ReadVector();
 
 		// Don't read anything if there is insufficient data
-		if(rvec.first.mBufferSize + rvec.second.mBufferSize < totalSize)
+		if(rvec.first.length_ + rvec.second.length_ < totalSize)
 			return false;
 
 		uint32_t bytesRead = 0;
@@ -135,10 +135,10 @@ public:
 			auto bytesRemaining = static_cast<uint32_t>(sizeof(args));
 
 			// Read from rvec.first if data is available
-			if(rvec.first.mBufferSize > bytesRead) {
-				const auto n = std::min(bytesRemaining, rvec.first.mBufferSize - bytesRead);
+			if(rvec.first.length_ > bytesRead) {
+				const auto n = std::min(bytesRemaining, rvec.first.length_ - bytesRead);
 				std::memcpy(static_cast<void *>(&args),
-							reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(rvec.first.mBuffer) + bytesRead),
+							reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(rvec.first.buffer_) + bytesRead),
 							n);
 				bytesRemaining -= n;
 				bytesRead += n;
@@ -147,7 +147,7 @@ public:
 			if(bytesRemaining > 0) {
 				const auto n = bytesRemaining;
 				std::memcpy(static_cast<void *>(&args),
-							reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(rvec.second.mBuffer) + (bytesRead - rvec.first.mBufferSize)),
+							reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(rvec.second.buffer_) + (bytesRead - rvec.first.length_)),
 							n);
 				bytesRead += n;
 			}
@@ -218,7 +218,7 @@ public:
 		auto wvec = WriteVector();
 
 		// Don't write anything if there is insufficient space
-		if(wvec.first.mBufferCapacity + wvec.second.mBufferCapacity < totalSize)
+		if(wvec.first.capacity_ + wvec.second.capacity_ < totalSize)
 			return false;
 
 		uint32_t bytesWritten = 0;
@@ -228,9 +228,9 @@ public:
 			auto bytesRemaining = static_cast<uint32_t>(sizeof(args));
 
 			// Write to wvec.first if space is available
-			if(wvec.first.mBufferCapacity > bytesWritten) {
-				const auto n = std::min(bytesRemaining, wvec.first.mBufferCapacity - bytesWritten);
-				std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(wvec.first.mBuffer) + bytesWritten),
+			if(wvec.first.capacity_ > bytesWritten) {
+				const auto n = std::min(bytesRemaining, wvec.first.capacity_ - bytesWritten);
+				std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(wvec.first.buffer_) + bytesWritten),
 							static_cast<const void *>(&args),
 							n);
 				bytesRemaining -= n;
@@ -239,7 +239,7 @@ public:
 			// Write to wvec.second
 			if(bytesRemaining > 0) {
 				const auto n = bytesRemaining;
-				std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(wvec.second.mBuffer) + (bytesWritten - wvec.first.mBufferCapacity)),
+				std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(wvec.second.buffer_) + (bytesWritten - wvec.first.capacity_)),
 							static_cast<const void *>(&args),
 							n);
 				bytesWritten += n;
@@ -254,17 +254,17 @@ public:
 	// MARK: Advanced Reading and Writing
 
 	/// Advances the read position by the specified number of bytes.
-	void AdvanceReadPosition(uint32_t byteCount) noexcept;
+	void AdvanceReadPosition(uint32_t count) noexcept;
 
 	/// Advances the write position by the specified number of bytes.
-	void AdvanceWritePosition(uint32_t byteCount) noexcept;
+	void AdvanceWritePosition(uint32_t count) noexcept;
 
 	/// A read-only memory buffer.
 	struct ReadBuffer {
 		/// The memory buffer location
-		const void * const _Nullable mBuffer{nullptr};
-		/// The number of bytes of valid data in `mBuffer`
-		const uint32_t mBufferSize{0};
+		const void * const _Nullable buffer_{nullptr};
+		/// The number of bytes of valid data in `buffer_`
+		const uint32_t length_{0};
 
 	private:
 		friend class RingBuffer;
@@ -274,9 +274,9 @@ public:
 
 		/// Constructs a `ReadBuffer` with the specified location and size.
 		/// - parameter buffer: The memory buffer location
-		/// - parameter bufferSize: The number of bytes of valid data in `buffer`
-		ReadBuffer(const void * const _Nullable buffer, uint32_t bufferSize) noexcept
-		: mBuffer{buffer}, mBufferSize{bufferSize}
+		/// - parameter length: The number of bytes of valid data in `buffer`
+		ReadBuffer(const void * const _Nullable buffer, uint32_t length) noexcept
+		: buffer_{buffer}, length_{length}
 		{}
 	};
 
@@ -289,9 +289,9 @@ public:
 	/// A write-only memory buffer.
 	struct WriteBuffer {
 		/// The memory buffer location
-		void * const _Nullable mBuffer{nullptr};
-		/// The capacity of `mBuffer` in bytes
-		const uint32_t mBufferCapacity{0};
+		void * const _Nullable buffer_{nullptr};
+		/// The capacity of `buffer_` in bytes
+		const uint32_t capacity_{0};
 
 	private:
 		friend class RingBuffer;
@@ -301,9 +301,9 @@ public:
 
 		/// Constructs a `WriteBuffer` with the specified location and capacity.
 		/// - parameter buffer: The memory buffer location
-		/// - parameter bufferCapacity: The capacity of `buffer` in bytes
-		WriteBuffer(void * const _Nullable buffer, uint32_t bufferCapacity) noexcept
-		: mBuffer{buffer}, mBufferCapacity{bufferCapacity}
+		/// - parameter capacity: The capacity of `buffer` in bytes
+		WriteBuffer(void * const _Nullable buffer, uint32_t capacity) noexcept
+		: buffer_{buffer}, capacity_{capacity}
 		{}
 	};
 
@@ -316,17 +316,17 @@ public:
 private:
 
 	/// The memory buffer holding the data
-	void * _Nullable mBuffer{nullptr};
+	void * _Nullable buffer_{nullptr};
 
-	/// The capacity of `mBuffer` in bytes
-	uint32_t mCapacityBytes{0};
-	/// The capacity of `mBuffer` in bytes minus one
-	uint32_t mCapacityBytesMask{0};
+	/// The capacity of `buffer_` in bytes
+	uint32_t capacity_{0};
+	/// The capacity of `buffer_` in bytes minus one
+	uint32_t capacityMask_{0};
 
-	/// The offset into `mBuffer` of the write location
-	std::atomic_uint32_t mWritePosition{0};
-	/// The offset into `mBuffer` of the read location
-	std::atomic_uint32_t mReadPosition{0};
+	/// The offset into `buffer_` of the write location
+	std::atomic_uint32_t writePosition_{0};
+	/// The offset into `buffer_` of the read location
+	std::atomic_uint32_t readPosition_{0};
 
 	static_assert(std::atomic_uint32_t::is_always_lock_free, "Lock-free std::atomic_uint32_t required");
 
