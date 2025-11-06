@@ -1,6 +1,6 @@
 # CXXRingBuffer
 
-A generic ring buffer in C++.
+A lock-free ring buffer.
 
 This class is thread safe when used from one reader thread and one writer thread (single producer, single consumer model).
 
