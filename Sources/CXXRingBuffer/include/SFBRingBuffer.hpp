@@ -15,7 +15,7 @@
 
 namespace SFB {
 
-/// A generic ring buffer.
+/// A lock-free ring buffer.
 ///
 /// This class is thread safe when used from one reader thread and one writer thread (single producer, single consumer model).
 class RingBuffer final
