@@ -1,10 +1,35 @@
 import Testing
+import Foundation
 @testable import CXXRingBuffer
 
-@MainActor @Test func ringBufferTest() throws {
-	var rb = CXXRingBuffer.SFB.RingBuffer()
-	rb.Allocate(1024)
-	#expect(rb.CapacityBytes() == 1024)
-	#expect(rb.BytesAvailableToRead() == 0)
-	#expect(rb.BytesAvailableToWrite() == 1023)
+@MainActor
+@Suite struct CXXRingBufferTests {
+	@Test func empty() {
+		var rb = CXXRingBuffer.SFB.RingBuffer()
+
+		#expect(rb.CapacityBytes() == 0)
+		#expect(rb.BytesAvailableToRead() == 0)
+		#expect(rb.BytesAvailableToWrite() == 0)
+
+		var d = Data(capacity: 1024)
+		d.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) in
+			#expect(rb.Read(ptr.baseAddress!, 1024) == 0)
+			#expect(rb.Write(ptr.baseAddress!, 1024) == 0)
+		}
+	}
+
+	@Test func capacity() {
+		var rb = CXXRingBuffer.SFB.RingBuffer()
+
+		#expect(rb.Allocate(1) == false)
+		#expect(rb.Allocate(0x80000000) == false)
+
+		#expect(rb.Allocate(2) == true)
+		#expect(rb.Allocate(0x7FFFFFFF) == true)
+
+		rb.Allocate(1024)
+		#expect(rb.CapacityBytes() >= 1024)
+		#expect(rb.BytesAvailableToRead() == 0)
+		#expect(rb.BytesAvailableToWrite() >= 1024)
+	}
 }
