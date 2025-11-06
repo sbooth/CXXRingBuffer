@@ -52,8 +52,8 @@ public:
 
 	/// Allocates space for data.
 	/// - attention: This method is not thread safe.
-	/// - note: Capacities from 2 to 2,147,483,648 (0x80000000) bytes are supported
-	/// - parameter capacity: The desired capacity, in bytes
+	/// - note: Capacities from 2 to 2,147,483,647 (0x7FFFFFFF) bytes are supported.
+	/// - parameter capacity: The desired minimum capacity, in bytes
 	/// - returns: `true` on success, `false` on error
 	bool Allocate(uint32_t capacity) noexcept;
 

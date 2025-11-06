@@ -4,25 +4,12 @@
 // MIT license
 //
 
+#import <bit>
 #import <cassert>
 #import <cstdlib>
 #import <limits>
 
 #import "SFBRingBuffer.hpp"
-
-namespace {
-
-/// Returns the smallest power of two value greater than `x`.
-/// - parameter x: A value in the interval [2, 2147483648]
-/// - returns: The smallest power of two greater than `x`
-constexpr uint32_t NextPowerOfTwo(uint32_t x) noexcept
-{
-	assert(x > 1);
-	assert(x <= ((std::numeric_limits<uint32_t>::max() / 2) + 1));
-	return static_cast<uint32_t>(1 << (32 - __builtin_clz(x - 1)));
-}
-
-} /* namespace */
 
 SFB::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
 : buffer_{other.buffer_}, capacity_{other.capacity_}, capacityMask_{other.capacityMask_}, writePosition_{other.writePosition_.load(std::memory_order_acquire)}, readPosition_{other.readPosition_.load(std::memory_order_acquire)}
@@ -71,13 +58,13 @@ SFB::RingBuffer::~RingBuffer() noexcept
 
 bool SFB::RingBuffer::Allocate(uint32_t capacity) noexcept
 {
-	if(capacity < 2 || capacity > 0x80000000)
+	if(capacity < 2 || capacity > 0x7FFFFFFF)
 		return false;
 
 	Deallocate();
 
 	// Round up to the next power of two
-	capacity = NextPowerOfTwo(capacity);
+	capacity = std::bit_ceil(capacity + 1);
 
 	buffer_ = std::malloc(capacity);
 	if(!buffer_)
