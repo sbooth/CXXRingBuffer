@@ -12,9 +12,9 @@
 
 namespace {
 
-/// Returns the smallest power of two value greater than @c x
-/// @param x A value in the range [2..2147483648]
-/// @return The smallest power of two greater than @c x
+/// Returns the smallest power of two value greater than `x`.
+/// - parameter x: A value in the interval [2, 2147483648]
+/// - returns: The smallest power of two greater than `x`
 constexpr uint32_t NextPowerOfTwo(uint32_t x) noexcept
 {
 	assert(x > 1);
