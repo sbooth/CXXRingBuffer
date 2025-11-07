@@ -81,21 +81,21 @@ public:
 
 	// MARK: Reading and Writing Data
 
-	/// Reads data and advances the read pointer.
+	/// Reads data and advances the read position.
 	/// @param destination An address to receive the data.
 	/// @param count The desired number of bytes to read.
 	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than `count`.
 	/// @return The number of bytes actually read.
 	uint32_t Read(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) noexcept;
 
-	/// Reads data without advancing the read pointer.
+	/// Reads data without advancing the read position.
 	/// @param destination An address to receive the data.
 	/// @param count The desired number of bytes to read.
 	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than `count`.
 	/// @return The number of bytes actually read.
 	uint32_t Peek(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) const noexcept;
 
-	/// Writes data and advances the write pointer.
+	/// Writes data and advances the write position.
 	/// @param source An address containing the data to copy.
 	/// @param count The desired number of bytes to write.
 	/// @param allowPartial Whether any bytes should be written if the free space available for writing is less than `count`.
@@ -104,7 +104,7 @@ public:
 
 	// MARK: Reading and Writing Types
 
-	/// Reads a value and advances the read pointer.
+	/// Reads a value and advances the read position.
 	/// @tparam T The type to read.
 	/// @param value The destination value.
 	/// @return `true` on success, `false` otherwise.
@@ -116,7 +116,7 @@ public:
 		return bytesRead == size;
 	}
 
-	/// Reads values and advances the read pointer.
+	/// Reads values and advances the read position.
 	/// @tparam Args The types to read.
 	/// @param args The destination values.
 	/// @return `true` if the values were successfully read.
@@ -161,7 +161,7 @@ public:
 		return true;
 	}
 
-	/// Reads a value and advances the read pointer.
+	/// Reads a value and advances the read position.
 	/// @tparam T The type to read.
 	/// @return A `std::optional` containing an instance of `T` if sufficient bytes were available for reading.
 	template <typename T> requires std::is_default_constructible_v<T>
@@ -173,7 +173,7 @@ public:
 		return value;
 	}
 
-	/// Reads a value without advancing the read pointer.
+	/// Reads a value without advancing the read position.
 	/// @tparam T The type to read.
 	/// @param value The destination value.
 	/// @return `true` on success, `false` otherwise.
@@ -185,7 +185,7 @@ public:
 		return bytesRead == size;
 	}
 
-	/// Reads a value without advancing the read pointer.
+	/// Reads a value without advancing the read position.
 	/// @tparam T The type to read.
 	/// @return A `std::optional` containing an instance of `T` if sufficient bytes were available for reading.
 	template <typename T> requires std::is_default_constructible_v<T>
@@ -197,7 +197,7 @@ public:
 		return value;
 	}
 
-	/// Writes a value and advances the write pointer.
+	/// Writes a value and advances the write position.
 	/// @tparam T The type to write.
 	/// @param value The value to write.
 	/// @return `true` if `value` was successfully written.
@@ -209,7 +209,7 @@ public:
 		return bytesWritten == size;
 	}
 
-	/// Writes values and advances the write pointer.
+	/// Writes values and advances the write position.
 	/// @tparam Args The types to write.
 	/// @param args The values to write.
 	/// @return `true` if the values were successfully written.
