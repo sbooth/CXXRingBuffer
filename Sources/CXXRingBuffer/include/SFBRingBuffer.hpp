@@ -57,42 +57,45 @@ public:
 	/// - returns: `true` on success, `false` on error
 	bool Allocate(uint32_t capacity) noexcept;
 
-	/// Frees the resources used by this `RingBuffer`.
+	/// Frees any space allocated for data.
 	/// - attention: This method is not thread safe.
 	void Deallocate() noexcept;
 
-	/// Resets this `RingBuffer` to its default state.
+	/// Resets the read and write positions to their default state.
 	/// - attention: This method is not thread safe.
 	void Reset() noexcept;
 
 	// MARK: Buffer Information
 
-	/// Returns the capacity of this `RingBuffer` in bytes.
+	/// Returns the buffer capacity in bytes.
+	/// - returns: The buffer capacity in bytes
 	uint32_t CapacityBytes() const noexcept;
 
 	/// Returns the number of bytes available for reading.
+	/// - returns: The number of bytes available for reading
 	uint32_t BytesAvailableToRead() const noexcept;
 
 	/// Returns the free space available for writing in bytes.
+	/// - returns: The number of bytes of free space
 	uint32_t BytesAvailableToWrite() const noexcept;
 
 	// MARK: Reading and Writing Data
 
-	/// Reads data from the `RingBuffer` and advances the read pointer.
+	/// Reads data and advances the read pointer.
 	/// - parameter destination: An address to receive the data
 	/// - parameter count: The desired number of bytes to read
 	/// - parameter allowPartial: Whether any bytes should be read if the number of bytes available for reading is less than `count`
 	/// - returns: The number of bytes actually read
 	uint32_t Read(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) noexcept;
 
-	/// Reads data from the `RingBuffer` without advancing the read pointer.
+	/// Reads data without advancing the read pointer.
 	/// - parameter destination: An address to receive the data
 	/// - parameter count: The desired number of bytes to read
 	/// - parameter allowPartial: Whether any bytes should be read if the number of bytes available for reading is less than `count`
 	/// - returns: The number of bytes actually read
 	uint32_t Peek(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) const noexcept;
 
-	/// Writes data to the `RingBuffer` and advances the write pointer.
+	/// Writes data and advances the write pointer.
 	/// - parameter source: An address containing the data to copy
 	/// - parameter count: The desired number of bytes to write
 	/// - parameter allowPartial: Whether any bytes should be written if the free space available for writing is less than `count`
@@ -101,7 +104,7 @@ public:
 
 	// MARK: Reading and Writing Types
 
-	/// Reads a value from the `RingBuffer` and advances the read pointer.
+	/// Reads a value and advances the read pointer.
 	/// - parameter T: The type to read
 	/// - parameter value: The destination value
 	/// - returns: `true` on success, `false` otherwise
@@ -113,7 +116,7 @@ public:
 		return bytesRead == size;
 	}
 
-	/// Reads values from the `RingBuffer` and advances the read pointer.
+	/// Reads values and advances the read pointer.
 	/// - parameter Args: The types to read
 	/// - parameter args: The destination values
 	/// - returns: `true` if the values were successfully read
@@ -158,7 +161,7 @@ public:
 		return true;
 	}
 
-	/// Reads a value from the `RingBuffer` and advances the read pointer.
+	/// Reads a value and advances the read pointer.
 	/// - parameter T: The type to read
 	/// - returns: A `std::optional` containing an instance of `T` if sufficient bytes were available for reading
 	template <typename T> requires std::is_default_constructible_v<T>
@@ -170,7 +173,7 @@ public:
 		return value;
 	}
 
-	/// Reads a value from the `RingBuffer` without advancing the read pointer.
+	/// Reads a value without advancing the read pointer.
 	/// - parameter T: The type to read
 	/// - parameter value: The destination value
 	/// - returns: `true` on success, `false` otherwise
@@ -182,7 +185,7 @@ public:
 		return bytesRead == size;
 	}
 
-	/// Reads a value from the `RingBuffer` without advancing the read pointer.
+	/// Reads a value without advancing the read pointer.
 	/// - parameter T: The type to read
 	/// - returns: A `std::optional` containing an instance of `T` if sufficient bytes were available for reading
 	template <typename T> requires std::is_default_constructible_v<T>
@@ -194,7 +197,7 @@ public:
 		return value;
 	}
 
-	/// Writes a value to the `RingBuffer` and advances the write pointer.
+	/// Writes a value and advances the write pointer.
 	/// - parameter T: The type to write
 	/// - parameter value: The value to write
 	/// - returns: `true` if `value` was successfully written
@@ -206,7 +209,7 @@ public:
 		return bytesWritten == size;
 	}
 
-	/// Writes values to the `RingBuffer` and advances the write pointer.
+	/// Writes values and advances the write pointer.
 	/// - parameter Args: The types to write
 	/// - parameter args: The values to write
 	/// - returns: `true` if the values were successfully written
