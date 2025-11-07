@@ -254,9 +254,11 @@ public:
 	// MARK: Advanced Reading and Writing
 
 	/// Advances the read position by the specified number of bytes.
+	/// - parameter count: The number of bytes to advance the read position
 	void AdvanceReadPosition(uint32_t count) noexcept;
 
 	/// Advances the write position by the specified number of bytes.
+	/// - parameter count: The number of bytes to advance the write position
 	void AdvanceWritePosition(uint32_t count) noexcept;
 
 	/// A read-only memory buffer.
@@ -284,6 +286,7 @@ public:
 	using ReadBufferPair = std::pair<const ReadBuffer, const ReadBuffer>;
 
 	/// Returns the read vector containing the current readable data.
+	/// - returns: A `ReadBufferPair` containing the current readable data
 	const ReadBufferPair ReadVector() const noexcept;
 
 	/// A write-only memory buffer.
@@ -311,6 +314,7 @@ public:
 	using WriteBufferPair = std::pair<const WriteBuffer, const WriteBuffer>;
 
 	/// Returns the write vector containing the current writable space.
+	/// - returns: A `WriteBufferPair` containing the current writable space
 	const WriteBufferPair WriteVector() const noexcept;
 
 private:
