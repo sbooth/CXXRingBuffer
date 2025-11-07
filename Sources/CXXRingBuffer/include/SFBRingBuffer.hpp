@@ -13,6 +13,10 @@
 #import <type_traits>
 #import <utility>
 
+#ifdef __OBJC__
+#import <Foundation/NSData.h>
+#endif /* __OBJC__ */
+
 namespace SFB {
 
 /// A lock-free ring buffer.
@@ -319,6 +323,35 @@ public:
 	/// Returns a write vector containing the current writable space.
 	/// @return A `WriteBufferPair` containing the current writable space.
 	const WriteBufferPair WriteVector() const noexcept;
+
+#ifdef __OBJC__
+	// MARK: Objective-C Extensions
+
+	/// Reads data and advances the read position.
+	/// @param count The desired number of bytes to read.
+	/// @return An `NSData` object or `nil` if fewer than `count` bytes are available to read or an error occurred.
+	NSData * _Nullable ReadData(uint32_t count) noexcept
+	{
+		NSMutableData *data = [NSMutableData dataWithLength:count];
+		if(!data)
+			return nil;
+		const auto length = Read([data mutableBytes], count, false);
+		if(length != count)
+			return nil;
+		return data;
+	}
+
+	/// Writes data and advances the write position.
+	/// @param data The data to copy.
+	/// @return `true` if `data` was successfully written.
+	bool WriteData(NSData * _Nonnull data) noexcept
+	{
+		if(!data)
+			return false;
+		const auto length = [data length];
+		return Write([data bytes], length, false) == length;
+	}
+#endif /* __OBJC__ */
 
 private:
 
