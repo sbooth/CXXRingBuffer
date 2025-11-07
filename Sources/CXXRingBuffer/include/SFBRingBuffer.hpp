@@ -25,27 +25,27 @@ public:
 
 	// MARK: Creation and Destruction
 
-	/// Creates a new @c RingBuffer.
-	/// @note @c Allocate() must be called before the object may be used.
+	/// Creates an empty ring buffer.
+	/// @note ``Allocate`` must be called before the object may be used.
 	RingBuffer() noexcept = default;
 
 	// This class is non-copyable
 	RingBuffer(const RingBuffer&) = delete;
 
-	/// Creates a new @c RingBuffer by moving the contents of @c other.
-	/// @note This method is not thread safe for @c other.
-	/// @param other The @c RingBuffer to move.
+	/// Creates a new ring buffer by moving the contents of another ring buffer.
+	/// @note This method is not thread safe for the ring buffer being moved.
+	/// @param other The ring buffer to move.
 	RingBuffer(RingBuffer&& other) noexcept;
 
 	// This class is non-assignable
 	RingBuffer& operator=(const RingBuffer&) = delete;
 
-	/// Moves the contents of @c other into this @c RingBuffer.
+	/// Moves the contents of another ring buffer into this ring buffer.
 	/// @note This method is not thread safe.
-	/// @param other The @c RingBuffer to move.
+	/// @param other The ring buffer to move.
 	RingBuffer& operator=(RingBuffer&& other) noexcept;
 
-	/// Destroys the @c RingBuffer and releases all associated resources.
+	/// Destroys the ring buffer and releases all associated resources.
 	~RingBuffer() noexcept;
 
 	// MARK: Buffer Management
@@ -274,10 +274,10 @@ public:
 	private:
 		friend class RingBuffer;
 
-		/// Constructs an empty @c ReadBuffer.
+		/// Constructs an empty read buffer.
 		ReadBuffer() noexcept = default;
 
-		/// Constructs a @c ReadBuffer with the specified location and size.
+		/// Constructs a read buffer with the specified location and size.
 		/// @param buffer The memory buffer location.
 		/// @param length The number of bytes of valid data in @c buffer.
 		ReadBuffer(const void * const _Nullable buffer, uint32_t length) noexcept
@@ -285,11 +285,11 @@ public:
 		{}
 	};
 
-	/// A pair of @c ReadBuffer objects.
+	/// A pair of read buffers.
 	using ReadBufferPair = std::pair<const ReadBuffer, const ReadBuffer>;
 
 	/// Returns a read vector containing the current readable data.
-	/// @return A @c ReadBufferPair containing the current readable data.
+	/// @return A pair of read buffers containing the current readable data.
 	const ReadBufferPair ReadVector() const noexcept;
 
 	/// A write-only memory buffer.
@@ -302,10 +302,10 @@ public:
 	private:
 		friend class RingBuffer;
 
-		/// Constructs an empty @c WriteBuffer.
+		/// Constructs an empty write buffer.
 		WriteBuffer() noexcept = default;
 
-		/// Constructs a @c WriteBuffer with the specified location and capacity.
+		/// Constructs a write buffer with the specified location and capacity.
 		/// @param buffer The memory buffer location.
 		/// @param capacity The capacity of @c buffer in bytes.
 		WriteBuffer(void * const _Nullable buffer, uint32_t capacity) noexcept
@@ -313,11 +313,11 @@ public:
 		{}
 	};
 
-	/// A pair of @c WriteBuffer objects.
+	/// A pair of write buffers.
 	using WriteBufferPair = std::pair<const WriteBuffer, const WriteBuffer>;
 
 	/// Returns a write vector containing the current writable space.
-	/// @return A @c WriteBufferPair containing the current writable space.
+	/// @return A pair of write buffers containing the current writable space.
 	const WriteBufferPair WriteVector() const noexcept;
 
 private:
