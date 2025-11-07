@@ -19,8 +19,8 @@ SFB::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
 	other.capacity_ = 0;
 	other.capacityMask_ = 0;
 
-	other.readPosition_ = 0;
 	other.writePosition_ = 0;
+	other.readPosition_ = 0;
 }
 
 SFB::RingBuffer& SFB::RingBuffer::operator=(RingBuffer&& other) noexcept
@@ -35,16 +35,16 @@ SFB::RingBuffer& SFB::RingBuffer::operator=(RingBuffer&& other) noexcept
 	capacity_ = other.capacity_;
 	capacityMask_ = other.capacityMask_;
 
-	readPosition_.store(other.readPosition_.load(std::memory_order_acquire), std::memory_order_release);
 	writePosition_.store(other.writePosition_.load(std::memory_order_acquire), std::memory_order_release);
+	readPosition_.store(other.readPosition_.load(std::memory_order_acquire), std::memory_order_release);
 
 	other.buffer_ = nullptr;
 
 	other.capacity_ = 0;
 	other.capacityMask_ = 0;
 
-	other.readPosition_ = 0;
 	other.writePosition_ = 0;
+	other.readPosition_ = 0;
 
 	return *this;
 }
@@ -73,8 +73,8 @@ bool SFB::RingBuffer::Allocate(uint32_t capacity) noexcept
 	capacity_ = capacity;
 	capacityMask_ = capacity - 1;
 
-	readPosition_ = 0;
 	writePosition_ = 0;
+	readPosition_ = 0;
 
 	return true;
 }
@@ -88,15 +88,15 @@ void SFB::RingBuffer::Deallocate() noexcept
 		capacity_ = 0;
 		capacityMask_ = 0;
 
-		readPosition_ = 0;
 		writePosition_ = 0;
+		readPosition_ = 0;
 	}
 }
 
 void SFB::RingBuffer::Reset() noexcept
 {
-	readPosition_ = 0;
 	writePosition_ = 0;
+	readPosition_ = 0;
 }
 
 #pragma mark Buffer Information
