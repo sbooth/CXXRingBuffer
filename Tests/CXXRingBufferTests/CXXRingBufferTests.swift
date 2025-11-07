@@ -52,4 +52,19 @@ import Foundation
 		#expect(read == written)
 		#expect(rb.BytesAvailableToRead() == 0)
 	}
+
+	@Test func data() {
+		var rb = CXXRingBuffer.SFB.RingBuffer()
+
+		#expect(rb.Allocate(128) == true)
+
+		let written = Data(stride(from: 0, through: 15, by: 1))
+		#expect(rb.WriteData(written) == true)
+		#expect(rb.BytesAvailableToRead() == written.count)
+
+		let read = rb.ReadData(UInt32(written.count))
+
+		#expect(read == written)
+		#expect(rb.BytesAvailableToRead() == 0)
+	}
 }
