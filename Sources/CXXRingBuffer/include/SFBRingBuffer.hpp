@@ -329,7 +329,7 @@ public:
 
 	/// Reads data and advances the read position.
 	/// @param count The desired number of bytes to read.
-	/// @return An `NSData` object or `nil` if fewer than `count` bytes are available to read or an error occurred.
+	/// @return An @c NSData object or @c nil if fewer than @c count bytes are available to read or an error occurred.
 	NSData * _Nullable ReadData(uint32_t count) noexcept
 	{
 		NSMutableData *data = [NSMutableData dataWithLength:count];
@@ -343,7 +343,7 @@ public:
 
 	/// Writes data and advances the write position.
 	/// @param data The data to copy.
-	/// @return `true` if `data` was successfully written.
+	/// @return @c true if @c data was successfully written.
 	bool WriteData(NSData * _Nonnull data) noexcept
 	{
 		if(!data)
