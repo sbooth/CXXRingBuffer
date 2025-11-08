@@ -55,21 +55,19 @@ import Foundation
 	@Test func spsc() {
 		var rb = CXXRingBuffer.SFB.RingBuffer()
 
-		let size = 8192
-		#expect(rb.Allocate(UInt32(size / 4)) == true)
+		let data_size: UInt32 = 8192
 
-		let producer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: size)
-		let consumer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: size)
-
-		arc4random_buf(producer_buf.baseAddress, size);
-
-		let producer = DispatchQueue(label: "producer")
-		let consumer = DispatchQueue(label: "consumer")
+		let buf_size = data_size / 4
+		#expect(rb.Allocate(buf_size) == true)
 
 		let group = DispatchGroup()
 
+		let producer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
+		arc4random_buf(producer_buf.baseAddress, Int(data_size))
+
+		let producer = DispatchQueue(label: "producer")
 		producer.async(group: group) {
-			var remaining = UInt32(size)
+			var remaining = data_size
 			var written: UInt32 = 0
 
 			while remaining > 0 {
@@ -82,8 +80,11 @@ import Foundation
 			}
 		}
 
+		let consumer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
+
+		let consumer = DispatchQueue(label: "consumer")
 		consumer.async(group: group) {
-			var remaining = UInt32(size)
+			var remaining = data_size
 			var read: UInt32 = 0
 
 			while remaining > 0 {
@@ -98,7 +99,7 @@ import Foundation
 
 		group.wait()
 
-		#expect(memcmp(producer_buf.baseAddress, consumer_buf.baseAddress, size) == 0)
+		#expect(memcmp(producer_buf.baseAddress, consumer_buf.baseAddress, Int(data_size)) == 0)
 
 		producer_buf.deallocate()
 		consumer_buf.deallocate()
