@@ -29,6 +29,12 @@ public:
 	/// @note ``Allocate`` must be called before the object may be used.
 	RingBuffer() noexcept = default;
 
+	/// Creates a ring buffer with the specified minimum capacity.
+	/// @note Capacities from 2 to 2,147,483,647 (0x7FFFFFFF) bytes are supported.
+	/// @param capacity The desired minimum capacity, in bytes.
+	/// @throw @c std::bad_alloc if memory could not be allocated or @c std::invalid_argument if the capacity is not supported.
+	explicit RingBuffer(uint32_t capacity);
+
 	// This class is non-copyable
 	RingBuffer(const RingBuffer&) = delete;
 
