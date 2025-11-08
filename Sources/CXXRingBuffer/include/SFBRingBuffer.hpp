@@ -125,7 +125,7 @@ public:
 	{
 		const auto totalSize = static_cast<uint32_t>((sizeof(args) + ...));
 
-		const auto rvec = ReadVector();
+		const auto rvec = GetReadVector();
 
 		// Don't read anything if there is insufficient data
 		if(rvec.first.length_ + rvec.second.length_ < totalSize)
@@ -218,7 +218,7 @@ public:
 	{
 		const auto totalSize = static_cast<uint32_t>((sizeof(args) + ...));
 
-		auto wvec = WriteVector();
+		auto wvec = GetWriteVector();
 
 		// Don't write anything if there is insufficient space
 		if(wvec.first.capacity_ + wvec.second.capacity_ < totalSize)
@@ -290,7 +290,7 @@ public:
 
 	/// Returns a read vector containing the current readable data.
 	/// @return A pair of read buffers containing the current readable data.
-	const ReadBufferPair ReadVector() const noexcept;
+	const ReadBufferPair GetReadVector() const noexcept;
 
 	/// A write-only memory buffer.
 	struct WriteBuffer {
@@ -318,7 +318,7 @@ public:
 
 	/// Returns a write vector containing the current writable space.
 	/// @return A pair of write buffers containing the current writable space.
-	const WriteBufferPair WriteVector() const noexcept;
+	const WriteBufferPair GetWriteVector() const noexcept;
 
 private:
 
