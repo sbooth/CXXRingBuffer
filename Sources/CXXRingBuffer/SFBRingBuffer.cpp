@@ -265,7 +265,7 @@ void SFB::RingBuffer::AdvanceWritePosition(uint32_t count) noexcept
 	writePosition_.store((writePosition_.load(std::memory_order_acquire) + count) & capacityMask_, std::memory_order_release);
 }
 
-const SFB::RingBuffer::ReadBufferPair SFB::RingBuffer::ReadVector() const noexcept
+const SFB::RingBuffer::ReadBufferPair SFB::RingBuffer::GetReadVector() const noexcept
 {
 	const auto writePosition = writePosition_.load(std::memory_order_acquire);
 	const auto readPosition = readPosition_.load(std::memory_order_acquire);
@@ -290,7 +290,7 @@ const SFB::RingBuffer::ReadBufferPair SFB::RingBuffer::ReadVector() const noexce
 		};
 }
 
-const SFB::RingBuffer::WriteBufferPair SFB::RingBuffer::WriteVector() const noexcept
+const SFB::RingBuffer::WriteBufferPair SFB::RingBuffer::GetWriteVector() const noexcept
 {
 	const auto writePosition = writePosition_.load(std::memory_order_acquire);
 	const auto readPosition = readPosition_.load(std::memory_order_acquire);
