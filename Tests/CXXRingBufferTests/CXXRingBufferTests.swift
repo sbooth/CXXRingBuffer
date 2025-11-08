@@ -58,11 +58,14 @@ import Foundation
 
 		#expect(rb.Allocate(128) == true)
 
+		var read = rb.ReadData(1024)
+		#expect(read?.count == 0)
+
 		let written = Data(stride(from: 0, through: 15, by: 1))
 		#expect(rb.WriteData(written) == true)
 		#expect(rb.BytesAvailableToRead() == written.count)
 
-		let read = rb.ReadData(UInt32(written.count))
+		read = rb.ReadData(UInt32(written.count))
 
 		#expect(read == written)
 		#expect(rb.BytesAvailableToRead() == 0)
