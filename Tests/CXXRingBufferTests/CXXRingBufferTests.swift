@@ -2,9 +2,8 @@ import Testing
 import Foundation
 @testable import CXXRingBuffer
 
-@MainActor
 @Suite struct CXXRingBufferTests {
-	@Test func empty() {
+	@Test func empty() async {
 		var rb = CXXRingBuffer.SFB.RingBuffer()
 
 		#expect(rb.CapacityBytes() == 0)
@@ -18,7 +17,7 @@ import Foundation
 		}
 	}
 
-	@Test func capacity() {
+	@Test func capacity() async {
 		var rb = CXXRingBuffer.SFB.RingBuffer()
 
 		#expect(rb.Allocate(1) == false)
@@ -33,7 +32,7 @@ import Foundation
 		#expect(rb.BytesAvailableToWrite() >= 1024)
 	}
 
-	@Test func basic() {
+	@Test func basic() async {
 		var rb = CXXRingBuffer.SFB.RingBuffer()
 
 		#expect(rb.Allocate(128) == true)
