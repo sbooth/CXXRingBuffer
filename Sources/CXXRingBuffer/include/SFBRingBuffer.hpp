@@ -341,7 +341,8 @@ public:
 			return;
 		CFDataSetLength(data, count);
 		const auto length = Read(CFDataGetMutableBytePtr(data), count, false);
-		CFDataSetLength(data, length);
+		if(length != count)
+			CFDataSetLength(data, length);
 	}
 
 	/// Writes data and advances the write position.
