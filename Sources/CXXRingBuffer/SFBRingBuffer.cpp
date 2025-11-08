@@ -8,8 +8,18 @@
 #import <cassert>
 #import <cstdlib>
 #import <limits>
+#import <new>
+#import <stdexcept>
 
 #import "SFBRingBuffer.hpp"
+
+SFB::RingBuffer::RingBuffer(uint32_t capacity)
+{
+	if(capacity < 2 || capacity > 0x7FFFFFFF)
+		throw std::invalid_argument("capacity out of range");
+	if(!Allocate(capacity))
+		throw std::bad_alloc();
+}
 
 SFB::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
 : buffer_{other.buffer_}, capacity_{other.capacity_}, capacityMask_{other.capacityMask_}, writePosition_{other.writePosition_.load(std::memory_order_acquire)}, readPosition_{other.readPosition_.load(std::memory_order_acquire)}
