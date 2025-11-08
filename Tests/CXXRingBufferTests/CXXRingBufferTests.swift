@@ -2,9 +2,8 @@ import Testing
 import Foundation
 @testable import CXXRingBuffer
 
-@MainActor
 @Suite struct CXXRingBufferTests {
-	@Test func empty() {
+	@Test func empty() async {
 		var rb = CXXRingBuffer.SFB.RingBuffer()
 
 		#expect(rb.CapacityBytes() == 0)
@@ -18,7 +17,7 @@ import Foundation
 		}
 	}
 
-	@Test func capacity() {
+	@Test func capacity() async {
 		var rb = CXXRingBuffer.SFB.RingBuffer()
 
 		#expect(rb.Allocate(1) == false)
@@ -33,7 +32,7 @@ import Foundation
 		#expect(rb.BytesAvailableToWrite() >= 1024)
 	}
 
-	@Test func basic() {
+	@Test func basic() async {
 		var rb = CXXRingBuffer.SFB.RingBuffer()
 
 		#expect(rb.Allocate(128) == true)
@@ -51,5 +50,58 @@ import Foundation
 
 		#expect(read == written)
 		#expect(rb.BytesAvailableToRead() == 0)
+	}
+
+	@Test func spsc() {
+		var rb = CXXRingBuffer.SFB.RingBuffer()
+
+		let data_size: UInt32 = 8192
+
+		let buf_size = data_size / 4
+		#expect(rb.Allocate(buf_size) == true)
+
+		let group = DispatchGroup()
+
+		let producer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
+		arc4random_buf(producer_buf.baseAddress, Int(data_size))
+
+		let producer = DispatchQueue(label: "producer")
+		producer.async(group: group) {
+			var remaining = data_size
+			var written: UInt32 = 0
+
+			while remaining > 0 {
+				let n = UInt32.random(in: 0...remaining)
+				let addr = producer_buf.baseAddress?.advanced(by: Int(written))
+				let length = rb.Write(addr!, n)
+				remaining -= length
+				written += length
+				usleep(useconds_t.random(in: 0..<10))
+			}
+		}
+
+		let consumer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
+
+		let consumer = DispatchQueue(label: "consumer")
+		consumer.async(group: group) {
+			var remaining = data_size
+			var read: UInt32 = 0
+
+			while remaining > 0 {
+				let n = UInt32.random(in: 0...remaining)
+				let addr = consumer_buf.baseAddress?.advanced(by: Int(read))
+				let length = rb.Read(addr!, n)
+				remaining -= length
+				read += length
+				usleep(useconds_t.random(in: 0..<10))
+			}
+		}
+
+		group.wait()
+
+		#expect(memcmp(producer_buf.baseAddress, consumer_buf.baseAddress, Int(data_size)) == 0)
+
+		producer_buf.deallocate()
+		consumer_buf.deallocate()
 	}
 }
