@@ -13,11 +13,11 @@
 
 #import "SFBRingBuffer.hpp"
 
-SFB::RingBuffer::RingBuffer(uint32_t capacity)
+SFB::RingBuffer::RingBuffer(uint32_t size)
 {
-	if(capacity < 2 || capacity > 0x7FFFFFFF)
+	if(size < 2 || size > 0x80000000)
 		throw std::invalid_argument("capacity out of range");
-	if(!Allocate(capacity))
+	if(!Allocate(size))
 		throw std::bad_alloc();
 }
 
@@ -66,22 +66,21 @@ SFB::RingBuffer::~RingBuffer() noexcept
 
 #pragma mark Buffer Management
 
-bool SFB::RingBuffer::Allocate(uint32_t capacity) noexcept
+bool SFB::RingBuffer::Allocate(uint32_t size) noexcept
 {
-	if(capacity < 2 || capacity > 0x7FFFFFFF)
+	if(size < 2 || size > 0x80000000)
 		return false;
 
 	Deallocate();
 
-	// Round up to the next power of two
-	capacity = std::bit_ceil(capacity + 1);
+	size = std::bit_ceil(size);
 
-	buffer_ = std::malloc(capacity);
+	buffer_ = std::malloc(size);
 	if(!buffer_)
 		return false;
 
-	capacity_ = capacity;
-	capacityMask_ = capacity - 1;
+	capacity_ = size;
+	capacityMask_ = size - 1;
 
 	writePosition_ = 0;
 	readPosition_ = 0;
@@ -113,7 +112,9 @@ void SFB::RingBuffer::Reset() noexcept
 
 uint32_t SFB::RingBuffer::CapacityBytes() const noexcept
 {
-	return capacity_;
+	if(capacity_ == 0)
+		return 0;
+	return capacity_ - 1;
 }
 
 uint32_t SFB::RingBuffer::BytesAvailableToRead() const noexcept
