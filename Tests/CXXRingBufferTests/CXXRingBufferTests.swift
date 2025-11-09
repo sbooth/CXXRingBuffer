@@ -21,15 +21,14 @@ import Foundation
 		var rb = CXXRingBuffer.SFB.RingBuffer()
 
 		#expect(rb.Allocate(1) == false)
-		#expect(rb.Allocate(0x80000000) == false)
-
 		#expect(rb.Allocate(2) == true)
-		#expect(rb.Allocate(0x7FFFFFFF) == true)
+		#expect(rb.Allocate(0x80000000) == true)
+		#expect(rb.Allocate(0x80000001) == false)
 
 		#expect(rb.Allocate(1024) == true)
-		#expect(rb.CapacityBytes() >= 1024)
+		#expect(rb.CapacityBytes() == 1023)
 		#expect(rb.BytesAvailableToRead() == 0)
-		#expect(rb.BytesAvailableToWrite() >= 1024)
+		#expect(rb.BytesAvailableToWrite() == rb.CapacityBytes())
 	}
 
 	@Test func basic() async {
@@ -50,6 +49,71 @@ import Foundation
 
 		#expect(read == written)
 		#expect(rb.BytesAvailableToRead() == 0)
+	}
+
+	@Test func multi() async {
+		var rb = CXXRingBuffer.SFB.RingBuffer()
+
+		let data_size: UInt32 = 255
+		let buf_size: UInt32 = 128
+		#expect(rb.Allocate(buf_size) == true)
+
+		let producer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
+		let consumer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
+
+		arc4random_buf(producer_buf.baseAddress, Int(data_size))
+
+		var written: UInt32 = 0
+		var read: UInt32 = 0
+
+		var addr = producer_buf.baseAddress
+		var length = rb.Write(addr!, 64)
+		written += length
+		#expect(length == 64)
+		#expect(rb.BytesAvailableToRead() == 64)
+		#expect(rb.BytesAvailableToWrite() == rb.CapacityBytes() - 64)
+
+		addr = consumer_buf.baseAddress
+		length = rb.Read(addr!, 64)
+		read += length
+		#expect(length == 64)
+		#expect(rb.BytesAvailableToRead() == 0)
+		#expect(rb.BytesAvailableToWrite() == rb.CapacityBytes())
+
+		addr = producer_buf.baseAddress?.advanced(by: Int(written))
+		length = rb.Write(addr!, 64)
+		written += length
+		#expect(length == 64)
+		#expect(rb.BytesAvailableToRead() == 64)
+		#expect(rb.BytesAvailableToWrite() == rb.CapacityBytes() - 64)
+
+		addr = consumer_buf.baseAddress?.advanced(by: Int(read))
+		length = rb.Read(addr!, 64)
+		read += length
+		#expect(length == 64)
+		#expect(rb.BytesAvailableToRead() == 0)
+		#expect(rb.BytesAvailableToWrite() == rb.CapacityBytes())
+
+		addr = producer_buf.baseAddress?.advanced(by: Int(written))
+		length = rb.Write(addr!, 127)
+		written += length
+		#expect(length == 127)
+		#expect(rb.BytesAvailableToRead() == 127)
+		#expect(rb.BytesAvailableToWrite() == rb.CapacityBytes() - 127)
+
+		addr = consumer_buf.baseAddress?.advanced(by: Int(read))
+		length = rb.Read(addr!, 127)
+		read += length
+		#expect(length == 127)
+		#expect(rb.BytesAvailableToRead() == 0)
+		#expect(rb.BytesAvailableToWrite() == rb.CapacityBytes())
+
+		#expect(written == data_size)
+		#expect(read == data_size)
+		#expect(memcmp(producer_buf.baseAddress, consumer_buf.baseAddress, 255) == 0)
+
+		producer_buf.deallocate()
+		consumer_buf.deallocate()
 	}
 
 	@Test func spsc() {

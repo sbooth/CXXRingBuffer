@@ -38,11 +38,12 @@ public:
 	/// @note ``Allocate`` must be called before the object may be used.
 	RingBuffer() noexcept = default;
 
-	/// Creates a ring buffer with the specified minimum capacity.
-	/// @note Capacities from 2 to 2,147,483,647 (0x7FFFFFFF) bytes are supported.
-	/// @param capacity The desired minimum capacity, in bytes.
-	/// @throw @c std::bad_alloc if memory could not be allocated or @c std::invalid_argument if the capacity is not supported.
-	explicit RingBuffer(uint32_t capacity);
+	/// Creates a ring buffer with the specified buffer size.
+	/// @note Buffer sizes from 2 to 2,147,483,648 (0x80000000) bytes are supported.
+	/// @note The usable ring buffer capacity will be one less than the smallest integral power of two that is not less than the specified size.
+	/// @param size The desired buffer size, in bytes.
+	/// @throw @c std::bad_alloc if memory could not be allocated or @c std::invalid_argument if the buffer size is not supported.
+	explicit RingBuffer(uint32_t size);
 
 	// This class is non-copyable
 	RingBuffer(const RingBuffer&) = delete;
@@ -67,10 +68,11 @@ public:
 
 	/// Allocates space for data.
 	/// @note This method is not thread safe.
-	/// @note Capacities from 2 to 2,147,483,647 (0x7FFFFFFF) bytes are supported.
-	/// @param capacity The desired minimum capacity, in bytes.
-	/// @return @c true on success, @c false on error.
-	bool Allocate(uint32_t capacity) noexcept;
+	/// @note Buffer sizes from 2 to 2,147,483,648 (0x80000000) bytes are supported.
+	/// @note The usable ring buffer capacity will be one less than the smallest integral power of two that is not less than the specified size.
+	/// @param size The desired buffer size, in bytes.
+	/// @return @c true on success, @c false if memory could not be allocated or the buffer size is not supported.
+	bool Allocate(uint32_t size) noexcept;
 
 	/// Frees any space allocated for data.
 	/// @note This method is not thread safe.
@@ -82,8 +84,8 @@ public:
 
 	// MARK: Buffer Information
 
-	/// Returns the buffer capacity in bytes.
-	/// @return The buffer capacity in bytes.
+	/// Returns the usable ring buffer capacity in bytes.
+	/// @return The usable ring buffer capacity in bytes.
 	uint32_t CapacityBytes() const noexcept;
 
 	/// Returns the number of bytes available for reading.
