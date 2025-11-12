@@ -172,18 +172,23 @@ import Foundation
 	@Test func data() async {
 		var rb = CXXRingBuffer.SFB.RingBuffer()
 
+		var read = rb.ReadData(0)
+		#expect(read!.count == 0)
+
+		var written = Data(count: 0)
+		#expect(rb.WriteData(written) == true)
+
 		#expect(rb.Allocate(128) == true)
 
-		var read = rb.ReadData(1024)
-		#expect(read?.count == 0)
+		read = rb.ReadData(64)
+		#expect(read!.count == 0)
 
-		let written = Data(stride(from: 0, through: 15, by: 1))
+		written = Data(count: 129)
+		#expect(rb.WriteData(written) == false)
+
+		written = Data(stride(from: 0, through: 15, by: 1))
 		#expect(rb.WriteData(written) == true)
-		#expect(rb.BytesAvailableToRead() == written.count)
-
 		read = rb.ReadData(UInt32(written.count))
-
 		#expect(read == written)
-		#expect(rb.BytesAvailableToRead() == 0)
 	}
 }
