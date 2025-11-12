@@ -21,6 +21,16 @@ SFB::RingBuffer::RingBuffer(uint32_t size)
 		throw std::bad_alloc();
 }
 
+SFB::RingBuffer::RingBuffer(const RingBuffer& other)
+{
+	if(!Allocate(other.capacity_))
+		throw std::bad_alloc();
+	const auto count = other.BytesAvailableToRead();
+	if(other.Peek(buffer_, count) != count)
+		throw std::runtime_error("missing ring buffer data");
+	writePosition_.store(count, std::memory_order_release);
+}
+
 SFB::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
 : buffer_{other.buffer_}, capacity_{other.capacity_}, capacityMask_{other.capacityMask_}, writePosition_{other.writePosition_.load(std::memory_order_acquire)}, readPosition_{other.readPosition_.load(std::memory_order_acquire)}
 {

@@ -36,8 +36,11 @@ public:
 	/// @throw @c std::bad_alloc if memory could not be allocated or @c std::invalid_argument if the buffer size is not supported.
 	explicit RingBuffer(uint32_t size);
 
-	// This class is non-copyable
-	RingBuffer(const RingBuffer&) = delete;
+	/// Creates a ring buffer by copying the contents of another ring buffer.
+	/// @note This method is not thread safe for the ring buffer being copied unless called from the consumer thread.
+	/// @param other The ring buffer to copy.
+	/// @throw @c std::bad_alloc if memory could not be allocated or @c std::runtime_error if data is unexpectedly consumed from the ring buffer being copied.
+	RingBuffer(const RingBuffer& other);
 
 	/// Creates a new ring buffer by moving the contents of another ring buffer.
 	/// @note This method is not thread safe for the ring buffer being moved.
