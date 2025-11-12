@@ -25,7 +25,7 @@ SFB::RingBuffer::RingBuffer(const RingBuffer& other)
 {
 	if(!Allocate(other.capacity_))
 		throw std::bad_alloc();
-	const auto count = other.BytesAvailableToRead();
+	const auto count = other.AvailableReadCount();
 	if(other.Peek(buffer_, count) != count)
 		throw std::runtime_error("missing ring buffer data");
 	writePosition_.store(count, std::memory_order_release);
@@ -47,7 +47,7 @@ SFB::RingBuffer& SFB::RingBuffer::operator=(const RingBuffer& other)
 {
 	if(this == &other)
 		return *this;
-	const auto count = other.BytesAvailableToRead();
+	const auto count = other.AvailableReadCount();
 	if(capacity_ < count && !Allocate(count))
 		throw std::bad_alloc();
 	if(other.Peek(buffer_, count) != count)
