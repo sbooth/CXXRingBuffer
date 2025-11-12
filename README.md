@@ -1,8 +1,8 @@
 # CXXRingBuffer
 
-A lock-free ring buffer.
+A lock-free SPSC ring buffer.
 
-This class is thread safe when used from one reader thread and one writer thread (single producer, single consumer model).
+This class is thread safe when used from one reader thread and one writer thread.
 
 > [!NOTE]
 > C++20 is required.
