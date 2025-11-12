@@ -24,9 +24,9 @@
 
 namespace SFB {
 
-/// A lock-free ring buffer.
+/// A lock-free SPSC ring buffer.
 ///
-/// This class is thread safe when used from one reader thread and one writer thread (single producer, single consumer model).
+/// This class is thread safe when used from one reader thread and one writer thread.
 class RingBuffer final
 {
 
@@ -48,7 +48,7 @@ public:
 	// This class is non-copyable
 	RingBuffer(const RingBuffer&) = delete;
 
-	/// Creates a new ring buffer by moving the contents of another ring buffer.
+	/// Creates a ring buffer by moving the contents of another ring buffer.
 	/// @note This method is not thread safe for the ring buffer being moved.
 	/// @param other The ring buffer to move.
 	RingBuffer(RingBuffer&& other) noexcept;
@@ -78,23 +78,23 @@ public:
 	/// @note This method is not thread safe.
 	void Deallocate() noexcept;
 
-	/// Resets the read and write positions to their default state.
+	/// Resets the read and write positions to their default state, emptying the buffer.
 	/// @note This method is not thread safe.
 	void Reset() noexcept;
 
 	// MARK: Buffer Information
 
-	/// Returns the usable ring buffer capacity in bytes.
+	/// Returns the usable capacity of the ring buffer in bytes.
 	/// @return The usable ring buffer capacity in bytes.
-	uint32_t CapacityBytes() const noexcept;
+	uint32_t Capacity() const noexcept;
 
-	/// Returns the number of bytes available for reading.
-	/// @return The number of bytes available for reading.
-	uint32_t BytesAvailableToRead() const noexcept;
+	/// Returns the number of bytes of data available for reading.
+	/// @return The number of bytes available to read.
+	uint32_t AvailableReadCount() const noexcept;
 
-	/// Returns the free space available for writing in bytes.
-	/// @return The number of bytes of free space.
-	uint32_t BytesAvailableToWrite() const noexcept;
+	/// Returns the number of bytes of free space available for writing.
+	/// @return The number of bytes available to write.
+	uint32_t AvailableWriteCount() const noexcept;
 
 	// MARK: Reading and Writing Data
 
@@ -141,10 +141,7 @@ public:
 	bool ReadValues(Args&... args) noexcept
 	{
 		const auto totalSize = static_cast<uint32_t>((sizeof(args) + ...));
-
 		const auto rvec = GetReadVector();
-
-		// Don't read anything if there is insufficient data
 		if(rvec.first.length_ + rvec.second.length_ < totalSize)
 			return false;
 
@@ -174,13 +171,13 @@ public:
 		}(), ...);
 
 		AdvanceReadPosition(bytesRead);
-
 		return true;
 	}
 
 	/// Reads a value and advances the read position.
 	/// @tparam T The type to read.
 	/// @return A @c std::optional containing an instance of @c T if sufficient bytes were available for reading.
+	/// @throw Any exceptions thrown by the default constructor of @c T.
 	template <typename T> requires std::is_default_constructible_v<T>
 	std::optional<T> ReadValue() noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
@@ -205,6 +202,7 @@ public:
 	/// Reads a value without advancing the read position.
 	/// @tparam T The type to read.
 	/// @return A @c std::optional containing an instance of @c T if sufficient bytes were available for reading.
+	/// @throw Any exceptions thrown by the default constructor of @c T.
 	template <typename T> requires std::is_default_constructible_v<T>
 	std::optional<T> PeekValue() const noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
@@ -234,10 +232,7 @@ public:
 	bool WriteValues(const Args&... args) noexcept
 	{
 		const auto totalSize = static_cast<uint32_t>((sizeof(args) + ...));
-
 		auto wvec = GetWriteVector();
-
-		// Don't write anything if there is insufficient space
 		if(wvec.first.capacity_ + wvec.second.capacity_ < totalSize)
 			return false;
 
@@ -267,7 +262,6 @@ public:
 		}(), ...);
 
 		AdvanceWritePosition(bytesWritten);
-
 		return true;
 	}
 
@@ -413,7 +407,6 @@ private:
 	std::atomic_uint32_t readPosition_{0};
 
 	static_assert(std::atomic_uint32_t::is_always_lock_free, "Lock-free std::atomic_uint32_t required");
-
 };
 
 } /* namespace SFB */

@@ -110,14 +110,14 @@ void SFB::RingBuffer::Reset() noexcept
 
 #pragma mark Buffer Information
 
-uint32_t SFB::RingBuffer::CapacityBytes() const noexcept
+uint32_t SFB::RingBuffer::Capacity() const noexcept
 {
 	if(capacity_ == 0)
 		return 0;
 	return capacity_ - 1;
 }
 
-uint32_t SFB::RingBuffer::BytesAvailableToRead() const noexcept
+uint32_t SFB::RingBuffer::AvailableReadCount() const noexcept
 {
 	if(capacity_ == 0)
 		return 0;
@@ -131,7 +131,7 @@ uint32_t SFB::RingBuffer::BytesAvailableToRead() const noexcept
 		return (writePosition - readPosition + capacity_) & capacityMask_;
 }
 
-uint32_t SFB::RingBuffer::BytesAvailableToWrite() const noexcept
+uint32_t SFB::RingBuffer::AvailableWriteCount() const noexcept
 {
 	if(capacity_ == 0)
 		return 0;
