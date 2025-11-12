@@ -131,7 +131,7 @@ uint32_t SFB::RingBuffer::AvailableReadCount() const noexcept
 		return (writePosition - readPosition + capacity_) & capacityMask_;
 }
 
-uint32_t SFB::RingBuffer::AvailableWriteSpace() const noexcept
+uint32_t SFB::RingBuffer::AvailableWriteCount() const noexcept
 {
 	if(capacity_ == 0)
 		return 0;

@@ -8,7 +8,7 @@ import Foundation
 
 		#expect(rb.Capacity() == 0)
 		#expect(rb.AvailableReadCount() == 0)
-		#expect(rb.AvailableWriteSpace() == 0)
+		#expect(rb.AvailableWriteCount() == 0)
 
 		var d = Data(capacity: 1024)
 		d.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) in
@@ -28,7 +28,7 @@ import Foundation
 		#expect(rb.Allocate(1024) == true)
 		#expect(rb.Capacity() == 1023)
 		#expect(rb.AvailableReadCount() == 0)
-		#expect(rb.AvailableWriteSpace() == rb.Capacity())
+		#expect(rb.AvailableWriteCount() == rb.Capacity())
 	}
 
 	@Test func basic() async {
@@ -71,42 +71,42 @@ import Foundation
 		written += length
 		#expect(length == 64)
 		#expect(rb.AvailableReadCount() == 64)
-		#expect(rb.AvailableWriteSpace() == rb.Capacity() - 64)
+		#expect(rb.AvailableWriteCount() == rb.Capacity() - 64)
 
 		addr = consumer_buf.baseAddress
 		length = rb.Read(addr!, 64)
 		read += length
 		#expect(length == 64)
 		#expect(rb.AvailableReadCount() == 0)
-		#expect(rb.AvailableWriteSpace() == rb.Capacity())
+		#expect(rb.AvailableWriteCount() == rb.Capacity())
 
 		addr = producer_buf.baseAddress?.advanced(by: Int(written))
 		length = rb.Write(addr!, 64)
 		written += length
 		#expect(length == 64)
 		#expect(rb.AvailableReadCount() == 64)
-		#expect(rb.AvailableWriteSpace() == rb.Capacity() - 64)
+		#expect(rb.AvailableWriteCount() == rb.Capacity() - 64)
 
 		addr = consumer_buf.baseAddress?.advanced(by: Int(read))
 		length = rb.Read(addr!, 64)
 		read += length
 		#expect(length == 64)
 		#expect(rb.AvailableReadCount() == 0)
-		#expect(rb.AvailableWriteSpace() == rb.Capacity())
+		#expect(rb.AvailableWriteCount() == rb.Capacity())
 
 		addr = producer_buf.baseAddress?.advanced(by: Int(written))
 		length = rb.Write(addr!, 127)
 		written += length
 		#expect(length == 127)
 		#expect(rb.AvailableReadCount() == 127)
-		#expect(rb.AvailableWriteSpace() == rb.Capacity() - 127)
+		#expect(rb.AvailableWriteCount() == rb.Capacity() - 127)
 
 		addr = consumer_buf.baseAddress?.advanced(by: Int(read))
 		length = rb.Read(addr!, 127)
 		read += length
 		#expect(length == 127)
 		#expect(rb.AvailableReadCount() == 0)
-		#expect(rb.AvailableWriteSpace() == rb.Capacity())
+		#expect(rb.AvailableWriteCount() == rb.Capacity())
 
 		#expect(written == data_size)
 		#expect(read == data_size)
