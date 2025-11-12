@@ -36,7 +36,9 @@ public:
 	/// @throw @c std::bad_alloc if memory could not be allocated or @c std::invalid_argument if the buffer size is not supported.
 	explicit RingBuffer(uint32_t size);
 
-	/// Creates a ring buffer by copying the contents of another ring buffer.
+	/// Creates a ring buffer by copying the data from another ring buffer.
+	///
+	/// The size of this ring buffer is set to the size of the ring buffer being copied.
 	/// @note This method is not thread safe for the ring buffer being copied unless called from the consumer thread.
 	/// @param other The ring buffer to copy.
 	/// @throw @c std::bad_alloc if memory could not be allocated or @c std::runtime_error if data is unexpectedly consumed from the ring buffer being copied.
@@ -47,8 +49,14 @@ public:
 	/// @param other The ring buffer to move.
 	RingBuffer(RingBuffer&& other) noexcept;
 
-	// This class is non-assignable
-	RingBuffer& operator=(const RingBuffer&) = delete;
+	/// Replaces the data in this ring buffer with a copy of the data from another ring buffer.
+	///
+	/// The size of this ring buffer is enlarged if needed to accommodate the size of the data being copied.
+	/// @note This method is not thread safe for this ring buffer.
+	/// @note This method is not thread safe for the ring buffer being copied unless called from the consumer thread.
+	/// @param other The ring buffer to copy.
+	/// @throw @c std::bad_alloc if memory could not be allocated or @c std::runtime_error if data is unexpectedly consumed from the ring buffer being copied.
+	RingBuffer& operator=(const RingBuffer& other);
 
 	/// Moves the contents of another ring buffer into this ring buffer.
 	/// @note This method is not thread safe.
