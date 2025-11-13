@@ -18,9 +18,7 @@ namespace SFB {
 /// A lock-free SPSC ring buffer.
 ///
 /// This class is thread safe when used from one reader thread and one writer thread.
-class RingBuffer final
-{
-
+class RingBuffer final {
 public:
 
 	// MARK: Creation and Destruction
@@ -267,7 +265,7 @@ public:
 	void AdvanceWritePosition(uint32_t count) noexcept;
 
 	/// A read-only memory buffer.
-	struct ReadBuffer {
+	struct ReadBuffer final {
 		/// The memory buffer location.
 		const void * const _Nullable buffer_{nullptr};
 		/// The number of bytes of valid data in @c buffer_.
@@ -295,7 +293,7 @@ public:
 	const ReadBufferPair GetReadVector() const noexcept;
 
 	/// A write-only memory buffer.
-	struct WriteBuffer {
+	struct WriteBuffer final {
 		/// The memory buffer location.
 		void * const _Nullable buffer_{nullptr};
 		/// The capacity of @c buffer_ in bytes.
@@ -323,7 +321,6 @@ public:
 	const WriteBufferPair GetWriteVector() const noexcept;
 
 private:
-
 	/// The memory buffer holding the data.
 	void * _Nullable buffer_{nullptr};
 
