@@ -13,6 +13,8 @@
 
 #import "SFBRingBuffer.hpp"
 
+// MARK: Creation and Destruction
+
 SFB::RingBuffer::RingBuffer(uint32_t size)
 {
 	if(size < 2 || size > 0x80000000)
@@ -64,7 +66,7 @@ SFB::RingBuffer::~RingBuffer() noexcept
 	std::free(buffer_);
 }
 
-#pragma mark Buffer Management
+// MARK: Buffer Management
 
 bool SFB::RingBuffer::Allocate(uint32_t size) noexcept
 {
@@ -108,7 +110,7 @@ void SFB::RingBuffer::Reset() noexcept
 	readPosition_ = 0;
 }
 
-#pragma mark Buffer Information
+// MARK: Buffer Information
 
 uint32_t SFB::RingBuffer::Capacity() const noexcept
 {
@@ -147,7 +149,7 @@ uint32_t SFB::RingBuffer::AvailableWriteCount() const noexcept
 		return capacity_ - 1;
 }
 
-#pragma mark Reading and Writing Data
+// MARK: Reading and Writing Data
 
 uint32_t SFB::RingBuffer::Read(void * const destination, uint32_t count, bool allowPartial) noexcept
 {
@@ -254,7 +256,7 @@ uint32_t SFB::RingBuffer::Write(const void * const source, uint32_t count, bool 
 	return bytesToWrite;
 }
 
-#pragma mark Advanced Reading and Writing
+// MARK: Advanced Reading and Writing
 
 void SFB::RingBuffer::AdvanceReadPosition(uint32_t count) noexcept
 {
