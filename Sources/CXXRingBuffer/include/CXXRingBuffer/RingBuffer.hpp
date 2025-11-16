@@ -13,7 +13,7 @@
 #import <type_traits>
 #import <utility>
 
-namespace SFB {
+namespace CXXRingBuffer {
 
 /// A lock-free SPSC ring buffer.
 ///
@@ -337,4 +337,4 @@ private:
 	static_assert(std::atomic_uint32_t::is_always_lock_free, "Lock-free std::atomic_uint32_t required");
 };
 
-} /* namespace SFB */
+} /* namespace CXXRingBuffer */

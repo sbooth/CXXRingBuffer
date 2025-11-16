@@ -4,7 +4,7 @@ import Foundation
 
 @Suite struct CXXRingBufferTests {
 	@Test func empty() async {
-		var rb = CXXRingBuffer.SFB.RingBuffer()
+		var rb = CXXRingBuffer.RingBuffer()
 
 		#expect(rb.Capacity() == 0)
 		#expect(rb.AvailableReadCount() == 0)
@@ -18,7 +18,7 @@ import Foundation
 	}
 
 	@Test func capacity() async {
-		var rb = CXXRingBuffer.SFB.RingBuffer()
+		var rb = CXXRingBuffer.RingBuffer()
 
 		#expect(rb.Allocate(1) == false)
 		#expect(rb.Allocate(2) == true)
@@ -32,7 +32,7 @@ import Foundation
 	}
 
 	@Test func basic() async {
-		var rb = CXXRingBuffer.SFB.RingBuffer()
+		var rb = CXXRingBuffer.RingBuffer()
 
 		#expect(rb.Allocate(128) == true)
 
@@ -52,7 +52,7 @@ import Foundation
 	}
 
 	@Test func multi() async {
-		var rb = CXXRingBuffer.SFB.RingBuffer()
+		var rb = CXXRingBuffer.RingBuffer()
 
 		let data_size: UInt32 = 255
 		let buf_size: UInt32 = 128
@@ -117,7 +117,7 @@ import Foundation
 	}
 
 	@Test func spsc() {
-		var rb = CXXRingBuffer.SFB.RingBuffer()
+		var rb = CXXRingBuffer.RingBuffer()
 
 		let data_size: UInt32 = 8192
 

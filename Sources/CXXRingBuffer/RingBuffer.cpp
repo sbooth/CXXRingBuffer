@@ -11,11 +11,11 @@
 #import <new>
 #import <stdexcept>
 
-#import "SFBRingBuffer.hpp"
+#import "RingBuffer.hpp"
 
 // MARK: Creation and Destruction
 
-SFB::RingBuffer::RingBuffer(uint32_t size)
+CXXRingBuffer::RingBuffer::RingBuffer(uint32_t size)
 {
 	if(size < 2 || size > 0x80000000)
 		throw std::invalid_argument("capacity out of range");
@@ -23,11 +23,11 @@ SFB::RingBuffer::RingBuffer(uint32_t size)
 		throw std::bad_alloc();
 }
 
-SFB::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
+CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
 : buffer_{std::exchange(other.buffer_, nullptr)}, capacity_{std::exchange(other.capacity_, 0)}, capacityMask_{std::exchange(other.capacityMask_, 0)}, writePosition_{std::atomic_exchange(&other.writePosition_, 0)}, readPosition_{std::atomic_exchange(&other.readPosition_, 0)}
 {}
 
-SFB::RingBuffer& SFB::RingBuffer::operator=(RingBuffer&& other) noexcept
+CXXRingBuffer::RingBuffer& CXXRingBuffer::RingBuffer::operator=(RingBuffer&& other) noexcept
 {
 	if(this != &other) {
 		std::free(buffer_);
@@ -40,14 +40,14 @@ SFB::RingBuffer& SFB::RingBuffer::operator=(RingBuffer&& other) noexcept
 	return *this;
 }
 
-SFB::RingBuffer::~RingBuffer() noexcept
+CXXRingBuffer::RingBuffer::~RingBuffer() noexcept
 {
 	std::free(buffer_);
 }
 
 // MARK: Buffer Management
 
-bool SFB::RingBuffer::Allocate(uint32_t size) noexcept
+bool CXXRingBuffer::RingBuffer::Allocate(uint32_t size) noexcept
 {
 	if(size < 2 || size > 0x80000000)
 		return false;
@@ -69,7 +69,7 @@ bool SFB::RingBuffer::Allocate(uint32_t size) noexcept
 	return true;
 }
 
-void SFB::RingBuffer::Deallocate() noexcept
+void CXXRingBuffer::RingBuffer::Deallocate() noexcept
 {
 	if(buffer_) {
 		std::free(buffer_);
@@ -83,7 +83,7 @@ void SFB::RingBuffer::Deallocate() noexcept
 	}
 }
 
-void SFB::RingBuffer::Reset() noexcept
+void CXXRingBuffer::RingBuffer::Reset() noexcept
 {
 	writePosition_ = 0;
 	readPosition_ = 0;
@@ -91,14 +91,14 @@ void SFB::RingBuffer::Reset() noexcept
 
 // MARK: Buffer Information
 
-uint32_t SFB::RingBuffer::Capacity() const noexcept
+uint32_t CXXRingBuffer::RingBuffer::Capacity() const noexcept
 {
 	if(capacity_ == 0)
 		return 0;
 	return capacity_ - 1;
 }
 
-uint32_t SFB::RingBuffer::AvailableReadCount() const noexcept
+uint32_t CXXRingBuffer::RingBuffer::AvailableReadCount() const noexcept
 {
 	if(capacity_ == 0)
 		return 0;
@@ -112,7 +112,7 @@ uint32_t SFB::RingBuffer::AvailableReadCount() const noexcept
 		return (writePosition - readPosition + capacity_) & capacityMask_;
 }
 
-uint32_t SFB::RingBuffer::AvailableWriteCount() const noexcept
+uint32_t CXXRingBuffer::RingBuffer::AvailableWriteCount() const noexcept
 {
 	if(capacity_ == 0)
 		return 0;
@@ -130,7 +130,7 @@ uint32_t SFB::RingBuffer::AvailableWriteCount() const noexcept
 
 // MARK: Reading and Writing Data
 
-uint32_t SFB::RingBuffer::Read(void * const destination, uint32_t count, bool allowPartial) noexcept
+uint32_t CXXRingBuffer::RingBuffer::Read(void * const destination, uint32_t count, bool allowPartial) noexcept
 {
 	if(!destination || count == 0 || capacity_ == 0)
 		return 0;
@@ -165,7 +165,7 @@ uint32_t SFB::RingBuffer::Read(void * const destination, uint32_t count, bool al
 	return bytesToRead;
 }
 
-uint32_t SFB::RingBuffer::Peek(void * const destination, uint32_t count, bool allowPartial) const noexcept
+uint32_t CXXRingBuffer::RingBuffer::Peek(void * const destination, uint32_t count, bool allowPartial) const noexcept
 {
 	if(!destination || count == 0 || capacity_ == 0)
 		return 0;
@@ -198,7 +198,7 @@ uint32_t SFB::RingBuffer::Peek(void * const destination, uint32_t count, bool al
 	return bytesToRead;
 }
 
-uint32_t SFB::RingBuffer::Write(const void * const source, uint32_t count, bool allowPartial) noexcept
+uint32_t CXXRingBuffer::RingBuffer::Write(const void * const source, uint32_t count, bool allowPartial) noexcept
 {
 	if(!source || count == 0 || capacity_ == 0)
 		return 0;
@@ -237,17 +237,17 @@ uint32_t SFB::RingBuffer::Write(const void * const source, uint32_t count, bool 
 
 // MARK: Advanced Reading and Writing
 
-void SFB::RingBuffer::AdvanceReadPosition(uint32_t count) noexcept
+void CXXRingBuffer::RingBuffer::AdvanceReadPosition(uint32_t count) noexcept
 {
 	readPosition_.store((readPosition_.load(std::memory_order_acquire) + count) & capacityMask_, std::memory_order_release);
 }
 
-void SFB::RingBuffer::AdvanceWritePosition(uint32_t count) noexcept
+void CXXRingBuffer::RingBuffer::AdvanceWritePosition(uint32_t count) noexcept
 {
 	writePosition_.store((writePosition_.load(std::memory_order_acquire) + count) & capacityMask_, std::memory_order_release);
 }
 
-const SFB::RingBuffer::ReadBufferPair SFB::RingBuffer::GetReadVector() const noexcept
+const CXXRingBuffer::RingBuffer::ReadBufferPair CXXRingBuffer::RingBuffer::GetReadVector() const noexcept
 {
 	const auto writePosition = writePosition_.load(std::memory_order_acquire);
 	const auto readPosition = readPosition_.load(std::memory_order_acquire);
@@ -272,7 +272,7 @@ const SFB::RingBuffer::ReadBufferPair SFB::RingBuffer::GetReadVector() const noe
 		};
 }
 
-const SFB::RingBuffer::WriteBufferPair SFB::RingBuffer::GetWriteVector() const noexcept
+const CXXRingBuffer::RingBuffer::WriteBufferPair CXXRingBuffer::RingBuffer::GetWriteVector() const noexcept
 {
 	const auto writePosition = writePosition_.load(std::memory_order_acquire);
 	const auto readPosition = readPosition_.load(std::memory_order_acquire);
