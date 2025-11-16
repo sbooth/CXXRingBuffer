@@ -1,5 +1,5 @@
 module CXXRingBuffer {
 	requires cplusplus20
-	header "SFBRingBuffer.hpp"
+	header "CXXRingBuffer/RingBuffer.hpp"
 	export *
 }
