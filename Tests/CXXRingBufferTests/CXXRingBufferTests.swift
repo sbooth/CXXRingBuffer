@@ -168,4 +168,27 @@ import Foundation
 		producer_buf.deallocate()
 		consumer_buf.deallocate()
 	}
+
+	@Test func data() async {
+		var rb = CXXRingBuffer.SFB.RingBuffer()
+
+		var read = rb.ReadData(0)
+		#expect(read!.count == 0)
+
+		var written = Data(count: 0)
+		#expect(rb.WriteData(written) == true)
+
+		#expect(rb.Allocate(128) == true)
+
+		read = rb.ReadData(64)
+		#expect(read!.count == 0)
+
+		written = Data(count: 129)
+		#expect(rb.WriteData(written) == false)
+
+		written = Data(stride(from: 0, through: 15, by: 1))
+		#expect(rb.WriteData(written) == true)
+		read = rb.ReadData(UInt32(written.count))
+		#expect(read == written)
+	}
 }

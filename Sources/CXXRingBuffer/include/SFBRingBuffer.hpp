@@ -13,6 +13,15 @@
 #import <type_traits>
 #import <utility>
 
+#if defined(__has_include) && __has_include(<CoreFoundation/CFData.h>)
+#import <CoreFoundation/CFData.h>
+
+#if defined(__OBJC__)
+#import <Foundation/NSData.h>
+#endif /* defined(__OBJC__) */
+
+#endif /* defined(__has_include) && __has_include(<CoreFoundation/CFData.h>) */
+
 namespace SFB {
 
 /// A lock-free SPSC ring buffer.
@@ -319,6 +328,66 @@ public:
 	/// Returns a write vector containing the current writable space.
 	/// @return A pair of write buffers containing the current writable space.
 	const WriteBufferPair GetWriteVector() const noexcept;
+
+	// MARK: Extensions
+
+#if defined(__has_include) && __has_include(<CoreFoundation/CFData.h>)
+	/// Reads data and advances the read position.
+	/// @param data The destination data object.
+	/// @param count The desired number of bytes to read.
+	void ReadData(CFMutableDataRef _Nonnull data, uint32_t count) noexcept
+	{
+		if(!data)
+			return;
+		CFDataSetLength(data, count);
+		const auto length = Read(CFDataGetMutableBytePtr(data), count, false);
+		if(length != count)
+			CFDataSetLength(data, length);
+	}
+
+	/// Writes data and advances the write position.
+	/// @param data The data to copy to the ring buffer.
+	/// @return @c true if the data was successfully written or @c false if there is insufficient write space available.
+	bool WriteData(CFDataRef _Nonnull data) noexcept
+	{
+		if(!data)
+			return false;
+		const auto length = CFDataGetLength(data);
+		if(length < 0 || length > std::numeric_limits<uint32_t>::max())
+			return false;
+		const auto count = static_cast<uint32_t>(length);
+		return Write(CFDataGetBytePtr(data), count, false) == count;
+	}
+
+#if defined(__OBJC__)
+	/// Reads data and advances the read position.
+	/// @param data The destination data object.
+	/// @param count The desired number of bytes to read.
+	void ReadData(NSMutableData * _Nonnull data, uint32_t count) noexcept
+	{
+		ReadData((__bridge CFMutableDataRef)data, count);
+	}
+
+	/// Reads data and advances the read position.
+	/// @param count The desired number of bytes to read.
+	/// @return An @c NSData object or @c nil if an error occurred.
+	NSData * _Nullable ReadData(uint32_t count) noexcept
+	{
+		NSMutableData *data = [NSMutableData dataWithCapacity:count];
+		ReadData((__bridge CFMutableDataRef)data, count);
+		return data;
+	}
+
+	/// Writes data and advances the write position.
+	/// @param data The data to copy to the ring buffer.
+	/// @return @c true if the data was successfully written or @c false if there is insufficient write space available.
+	bool WriteData(NSData * _Nonnull data) noexcept
+	{
+		return WriteData((__bridge CFDataRef)data);
+	}
+#endif /* defined(__OBJC__) */
+
+#endif /* defined(__has_include) && __has_include(<CoreFoundation/CFData.h>) */
 
 private:
 	/// The memory buffer holding the data.
