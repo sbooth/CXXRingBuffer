@@ -24,40 +24,19 @@ SFB::RingBuffer::RingBuffer(uint32_t size)
 }
 
 SFB::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
-: buffer_{other.buffer_}, capacity_{other.capacity_}, capacityMask_{other.capacityMask_}, writePosition_{other.writePosition_.load(std::memory_order_acquire)}, readPosition_{other.readPosition_.load(std::memory_order_acquire)}
-{
-	other.buffer_ = nullptr;
-
-	other.capacity_ = 0;
-	other.capacityMask_ = 0;
-
-	other.writePosition_ = 0;
-	other.readPosition_ = 0;
-}
+: buffer_{std::exchange(other.buffer_, nullptr)}, capacity_{std::exchange(other.capacity_, 0)}, capacityMask_{std::exchange(other.capacityMask_, 0)}, writePosition_{std::atomic_exchange(&other.writePosition_, 0)}, readPosition_{std::atomic_exchange(&other.readPosition_, 0)}
+{}
 
 SFB::RingBuffer& SFB::RingBuffer::operator=(RingBuffer&& other) noexcept
 {
-	if(this == &other)
-		return *this;
-
-	std::free(buffer_);
-
-	buffer_ = other.buffer_;
-
-	capacity_ = other.capacity_;
-	capacityMask_ = other.capacityMask_;
-
-	writePosition_.store(other.writePosition_.load(std::memory_order_acquire), std::memory_order_release);
-	readPosition_.store(other.readPosition_.load(std::memory_order_acquire), std::memory_order_release);
-
-	other.buffer_ = nullptr;
-
-	other.capacity_ = 0;
-	other.capacityMask_ = 0;
-
-	other.writePosition_ = 0;
-	other.readPosition_ = 0;
-
+	if(this != &other) {
+		std::free(buffer_);
+		buffer_ = std::exchange(other.buffer_, nullptr);
+		capacity_ = std::exchange(other.capacity_, 0);
+		capacityMask_ = std::exchange(other.capacityMask_, 0);
+		writePosition_ = std::atomic_exchange(&other.writePosition_, 0);
+		readPosition_ = std::atomic_exchange(&other.readPosition_, 0);
+	}
 	return *this;
 }
 
