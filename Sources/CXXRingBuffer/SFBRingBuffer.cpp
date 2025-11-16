@@ -13,6 +13,8 @@
 
 #import "SFBRingBuffer.hpp"
 
+// MARK: Creation and Destruction
+
 SFB::RingBuffer::RingBuffer(uint32_t size)
 {
 	if(size < 2 || size > 0x80000000)
@@ -32,16 +34,8 @@ SFB::RingBuffer::RingBuffer(const RingBuffer& other)
 }
 
 SFB::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
-: buffer_{other.buffer_}, capacity_{other.capacity_}, capacityMask_{other.capacityMask_}, writePosition_{other.writePosition_.load(std::memory_order_acquire)}, readPosition_{other.readPosition_.load(std::memory_order_acquire)}
-{
-	other.buffer_ = nullptr;
-
-	other.capacity_ = 0;
-	other.capacityMask_ = 0;
-
-	other.writePosition_ = 0;
-	other.readPosition_ = 0;
-}
+: buffer_{std::exchange(other.buffer_, nullptr)}, capacity_{std::exchange(other.capacity_, 0)}, capacityMask_{std::exchange(other.capacityMask_, 0)}, writePosition_{std::atomic_exchange(&other.writePosition_, 0)}, readPosition_{std::atomic_exchange(&other.readPosition_, 0)}
+{}
 
 SFB::RingBuffer& SFB::RingBuffer::operator=(const RingBuffer& other)
 {
@@ -59,27 +53,14 @@ SFB::RingBuffer& SFB::RingBuffer::operator=(const RingBuffer& other)
 
 SFB::RingBuffer& SFB::RingBuffer::operator=(RingBuffer&& other) noexcept
 {
-	if(this == &other)
-		return *this;
-
-	std::free(buffer_);
-
-	buffer_ = other.buffer_;
-
-	capacity_ = other.capacity_;
-	capacityMask_ = other.capacityMask_;
-
-	writePosition_.store(other.writePosition_.load(std::memory_order_acquire), std::memory_order_release);
-	readPosition_.store(other.readPosition_.load(std::memory_order_acquire), std::memory_order_release);
-
-	other.buffer_ = nullptr;
-
-	other.capacity_ = 0;
-	other.capacityMask_ = 0;
-
-	other.writePosition_ = 0;
-	other.readPosition_ = 0;
-
+	if(this != &other) {
+		std::free(buffer_);
+		buffer_ = std::exchange(other.buffer_, nullptr);
+		capacity_ = std::exchange(other.capacity_, 0);
+		capacityMask_ = std::exchange(other.capacityMask_, 0);
+		writePosition_ = std::atomic_exchange(&other.writePosition_, 0);
+		readPosition_ = std::atomic_exchange(&other.readPosition_, 0);
+	}
 	return *this;
 }
 
@@ -88,7 +69,7 @@ SFB::RingBuffer::~RingBuffer() noexcept
 	std::free(buffer_);
 }
 
-#pragma mark Buffer Management
+// MARK: Buffer Management
 
 bool SFB::RingBuffer::Allocate(uint32_t size) noexcept
 {
@@ -132,7 +113,7 @@ void SFB::RingBuffer::Reset() noexcept
 	readPosition_ = 0;
 }
 
-#pragma mark Buffer Information
+// MARK: Buffer Information
 
 uint32_t SFB::RingBuffer::Capacity() const noexcept
 {
@@ -171,7 +152,7 @@ uint32_t SFB::RingBuffer::AvailableWriteCount() const noexcept
 		return capacity_ - 1;
 }
 
-#pragma mark Reading and Writing Data
+// MARK: Reading and Writing Data
 
 uint32_t SFB::RingBuffer::Read(void * const destination, uint32_t count, bool allowPartial) noexcept
 {
@@ -278,7 +259,7 @@ uint32_t SFB::RingBuffer::Write(const void * const source, uint32_t count, bool 
 	return bytesToWrite;
 }
 
-#pragma mark Advanced Reading and Writing
+// MARK: Advanced Reading and Writing
 
 void SFB::RingBuffer::AdvanceReadPosition(uint32_t count) noexcept
 {
