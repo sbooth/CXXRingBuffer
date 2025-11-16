@@ -27,9 +27,7 @@ namespace SFB {
 /// A lock-free SPSC ring buffer.
 ///
 /// This class is thread safe when used from one reader thread and one writer thread.
-class RingBuffer final
-{
-
+class RingBuffer final {
 public:
 
 	// MARK: Creation and Destruction
@@ -42,7 +40,7 @@ public:
 	/// @note Buffer sizes from 2 to 2,147,483,648 (0x80000000) bytes are supported.
 	/// @note The usable ring buffer capacity will be one less than the smallest integral power of two that is not less than the specified size.
 	/// @param size The desired buffer size, in bytes.
-	/// @throw @c std::bad_alloc if memory could not be allocated or @c std::invalid_argument if the buffer size is not supported.
+	/// @throw std::bad_alloc if memory could not be allocated or std::invalid_argument if the buffer size is not supported.
 	explicit RingBuffer(uint32_t size);
 
 	// This class is non-copyable
@@ -71,7 +69,7 @@ public:
 	/// @note Buffer sizes from 2 to 2,147,483,648 (0x80000000) bytes are supported.
 	/// @note The usable ring buffer capacity will be one less than the smallest integral power of two that is not less than the specified size.
 	/// @param size The desired buffer size, in bytes.
-	/// @return @c true on success, @c false if memory could not be allocated or the buffer size is not supported.
+	/// @return true on success, false if memory could not be allocated or the buffer size is not supported.
 	bool Allocate(uint32_t size) noexcept;
 
 	/// Frees any space allocated for data.
@@ -101,21 +99,21 @@ public:
 	/// Reads data and advances the read position.
 	/// @param destination An address to receive the data.
 	/// @param count The desired number of bytes to read.
-	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than @c count.
+	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than count.
 	/// @return The number of bytes actually read.
 	uint32_t Read(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) noexcept;
 
 	/// Reads data without advancing the read position.
 	/// @param destination An address to receive the data.
 	/// @param count The desired number of bytes to read.
-	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than @c count.
+	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than count.
 	/// @return The number of bytes actually read.
 	uint32_t Peek(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) const noexcept;
 
 	/// Writes data and advances the write position.
 	/// @param source An address containing the data to copy.
 	/// @param count The desired number of bytes to write.
-	/// @param allowPartial Whether any bytes should be written if the free space available for writing is less than @c count.
+	/// @param allowPartial Whether any bytes should be written if the free space available for writing is less than count.
 	/// @return The number of bytes actually written.
 	uint32_t Write(const void * const _Nonnull source, uint32_t count, bool allowPartial = true) noexcept;
 
@@ -124,7 +122,7 @@ public:
 	/// Reads a value and advances the read position.
 	/// @tparam T The type to read.
 	/// @param value The destination value.
-	/// @return @c true on success, @c false otherwise.
+	/// @return true on success, false otherwise.
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool ReadValue(T& value) noexcept
 	{
@@ -136,7 +134,7 @@ public:
 	/// Reads values and advances the read position.
 	/// @tparam Args The types to read.
 	/// @param args The destination values.
-	/// @return @c true if the values were successfully read.
+	/// @return true if the values were successfully read.
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
 	bool ReadValues(Args&... args) noexcept
 	{
@@ -176,8 +174,8 @@ public:
 
 	/// Reads a value and advances the read position.
 	/// @tparam T The type to read.
-	/// @return A @c std::optional containing an instance of @c T if sufficient bytes were available for reading.
-	/// @throw Any exceptions thrown by the default constructor of @c T.
+	/// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
+	/// @throw Any exceptions thrown by the default constructor of T.
 	template <typename T> requires std::is_default_constructible_v<T>
 	std::optional<T> ReadValue() noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
@@ -190,7 +188,7 @@ public:
 	/// Reads a value without advancing the read position.
 	/// @tparam T The type to read.
 	/// @param value The destination value.
-	/// @return @c true on success, @c false otherwise.
+	/// @return true on success, false otherwise.
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool PeekValue(T& value) const noexcept
 	{
@@ -201,8 +199,8 @@ public:
 
 	/// Reads a value without advancing the read position.
 	/// @tparam T The type to read.
-	/// @return A @c std::optional containing an instance of @c T if sufficient bytes were available for reading.
-	/// @throw Any exceptions thrown by the default constructor of @c T.
+	/// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
+	/// @throw Any exceptions thrown by the default constructor of T.
 	template <typename T> requires std::is_default_constructible_v<T>
 	std::optional<T> PeekValue() const noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
@@ -215,7 +213,7 @@ public:
 	/// Writes a value and advances the write position.
 	/// @tparam T The type to write.
 	/// @param value The value to write.
-	/// @return @c true if @c value was successfully written.
+	/// @return true if value was successfully written.
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool WriteValue(const T& value) noexcept
 	{
@@ -227,7 +225,7 @@ public:
 	/// Writes values and advances the write position.
 	/// @tparam Args The types to write.
 	/// @param args The values to write.
-	/// @return @c true if the values were successfully written.
+	/// @return true if the values were successfully written.
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
 	bool WriteValues(const Args&... args) noexcept
 	{
@@ -276,10 +274,10 @@ public:
 	void AdvanceWritePosition(uint32_t count) noexcept;
 
 	/// A read-only memory buffer.
-	struct ReadBuffer {
+	struct ReadBuffer final {
 		/// The memory buffer location.
 		const void * const _Nullable buffer_{nullptr};
-		/// The number of bytes of valid data in @c buffer_.
+		/// The number of bytes of valid data in buffer_.
 		const uint32_t length_{0};
 
 	private:
@@ -290,7 +288,7 @@ public:
 
 		/// Constructs a read buffer with the specified location and size.
 		/// @param buffer The memory buffer location.
-		/// @param length The number of bytes of valid data in @c buffer.
+		/// @param length The number of bytes of valid data in buffer.
 		ReadBuffer(const void * const _Nullable buffer, uint32_t length) noexcept
 		: buffer_{buffer}, length_{length}
 		{}
@@ -304,10 +302,10 @@ public:
 	const ReadBufferPair GetReadVector() const noexcept;
 
 	/// A write-only memory buffer.
-	struct WriteBuffer {
+	struct WriteBuffer final {
 		/// The memory buffer location.
 		void * const _Nullable buffer_{nullptr};
-		/// The capacity of @c buffer_ in bytes.
+		/// The capacity of buffer_ in bytes.
 		const uint32_t capacity_{0};
 
 	private:
@@ -318,7 +316,7 @@ public:
 
 		/// Constructs a write buffer with the specified location and capacity.
 		/// @param buffer The memory buffer location.
-		/// @param capacity The capacity of @c buffer in bytes.
+		/// @param capacity The capacity of buffer in bytes.
 		WriteBuffer(void * const _Nullable buffer, uint32_t capacity) noexcept
 		: buffer_{buffer}, capacity_{capacity}
 		{}
@@ -392,18 +390,17 @@ public:
 #endif /* defined(__has_include) && __has_include(<CoreFoundation/CFData.h>) */
 
 private:
-
 	/// The memory buffer holding the data.
 	void * _Nullable buffer_{nullptr};
 
-	/// The capacity of @c buffer_ in bytes.
+	/// The capacity of buffer_ in bytes.
 	uint32_t capacity_{0};
-	/// The capacity of @c buffer_ in bytes minus one.
+	/// The capacity of buffer_ in bytes minus one.
 	uint32_t capacityMask_{0};
 
-	/// The offset into @c buffer_ of the write location.
+	/// The offset into buffer_ of the write location.
 	std::atomic_uint32_t writePosition_{0};
-	/// The offset into @c buffer_ of the read location.
+	/// The offset into buffer_ of the read location.
 	std::atomic_uint32_t readPosition_{0};
 
 	static_assert(std::atomic_uint32_t::is_always_lock_free, "Lock-free std::atomic_uint32_t required");
