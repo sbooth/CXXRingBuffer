@@ -73,7 +73,7 @@ public:
 
 	// MARK: Buffer Information
 
-	/// Returns the usable capacity of the ring buffer in bytes.
+	/// Returns the usable capacity of the ring buffer.
 	/// @return The usable ring buffer capacity in bytes.
 	uint32_t Capacity() const noexcept;
 
