@@ -181,7 +181,7 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
 	bool WriteValues(const Args&... args) noexcept
 	{
-		const auto totalSize = static_cast<uint32_t>((sizeof(args) + ...));
+		const auto totalSize = static_cast<uint32_t>((sizeof args + ...));
 		auto wvec = GetWriteVector();
 		if(wvec.first.capacity_ + wvec.second.capacity_ < totalSize)
 			return false;
@@ -190,7 +190,7 @@ public:
 
 		([&]
 		 {
-			auto bytesRemaining = static_cast<uint32_t>(sizeof(args));
+			auto bytesRemaining = static_cast<uint32_t>(sizeof args);
 
 			// Write to wvec.first if space is available
 			if(wvec.first.capacity_ > bytesWritten) {
@@ -222,7 +222,7 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
 	bool ReadValues(Args&... args) noexcept
 	{
-		const auto totalSize = static_cast<uint32_t>((sizeof(args) + ...));
+		const auto totalSize = static_cast<uint32_t>((sizeof args + ...));
 		const auto rvec = GetReadVector();
 		if(rvec.first.length_ + rvec.second.length_ < totalSize)
 			return false;
@@ -231,7 +231,7 @@ public:
 
 		([&]
 		 {
-			auto bytesRemaining = static_cast<uint32_t>(sizeof(args));
+			auto bytesRemaining = static_cast<uint32_t>(sizeof args);
 
 			// Read from rvec.first if data is available
 			if(rvec.first.length_ > bytesRead) {
