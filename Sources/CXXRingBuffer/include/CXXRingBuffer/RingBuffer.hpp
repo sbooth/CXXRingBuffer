@@ -188,8 +188,7 @@ public:
 
 		uint32_t bytesWritten = 0;
 
-		([&]
-		 {
+		([&] {
 			auto bytesRemaining = static_cast<uint32_t>(sizeof args);
 
 			// Write to wvec.first if space is available
@@ -229,8 +228,7 @@ public:
 
 		uint32_t bytesRead = 0;
 
-		([&]
-		 {
+		([&] {
 			auto bytesRemaining = static_cast<uint32_t>(sizeof args);
 
 			// Read from rvec.first if data is available
