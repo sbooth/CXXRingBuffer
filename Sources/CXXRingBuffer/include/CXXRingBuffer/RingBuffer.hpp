@@ -79,11 +79,11 @@ public:
 
 	/// Returns the number of bytes of free space available for writing.
 	/// @return The number of bytes available to write.
-	uint32_t AvailableWriteCount() const noexcept;
+	uint32_t SpaceAvailable() const noexcept;
 
 	/// Returns the number of bytes of data available for reading.
 	/// @return The number of bytes available to read.
-	uint32_t AvailableReadCount() const noexcept;
+	uint32_t DataAvailable() const noexcept;
 
 	// MARK: Writing and Reading Data
 
