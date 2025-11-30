@@ -83,7 +83,7 @@ public:
 
 	/// Returns the number of bytes of data available for reading.
 	/// @return The number of bytes available to read.
-	uint32_t AvailableData() const noexcept;
+	uint32_t AvailableBytes() const noexcept;
 
 	// MARK: Writing and Reading Data
 
