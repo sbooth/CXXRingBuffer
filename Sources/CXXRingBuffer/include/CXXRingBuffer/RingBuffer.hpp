@@ -77,13 +77,13 @@ public:
 	/// @return The usable ring buffer capacity in bytes.
 	uint32_t Capacity() const noexcept;
 
-	/// Returns the number of bytes of free space available for writing.
-	/// @return The number of bytes available to write.
-	uint32_t AvailableWriteCount() const noexcept;
+	/// Returns the amount of free space in the buffer.
+	/// @return The number of bytes of free space available for writing.
+	uint32_t FreeSpace() const noexcept;
 
-	/// Returns the number of bytes of data available for reading.
-	/// @return The number of bytes available to read.
-	uint32_t AvailableReadCount() const noexcept;
+	/// Returns the amount of data in the buffer.
+	/// @return The number of bytes available for reading.
+	uint32_t AvailableBytes() const noexcept;
 
 	// MARK: Writing and Reading Data
 

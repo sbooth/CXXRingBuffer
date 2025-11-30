@@ -98,7 +98,7 @@ uint32_t CXXRingBuffer::RingBuffer::Capacity() const noexcept
 	return capacity_ - 1;
 }
 
-uint32_t CXXRingBuffer::RingBuffer::AvailableWriteCount() const noexcept
+uint32_t CXXRingBuffer::RingBuffer::FreeSpace() const noexcept
 {
 	if(capacity_ == 0)
 		return 0;
@@ -114,7 +114,7 @@ uint32_t CXXRingBuffer::RingBuffer::AvailableWriteCount() const noexcept
 		return capacity_ - 1;
 }
 
-uint32_t CXXRingBuffer::RingBuffer::AvailableReadCount() const noexcept
+uint32_t CXXRingBuffer::RingBuffer::AvailableBytes() const noexcept
 {
 	if(capacity_ == 0)
 		return 0;
