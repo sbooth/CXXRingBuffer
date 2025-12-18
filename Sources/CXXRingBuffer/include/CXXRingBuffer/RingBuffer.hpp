@@ -119,19 +119,31 @@ public:
 
 	// MARK: Writing and Reading Spans
 
+	/// Writes data and advances the write position.
+	/// @param data A span containing the data to copy.
+	/// @param allowPartial Whether any bytes should be written if the free space available for writing is less than data.size().
+	/// @return The number of bytes actually written.
 	size_type Write(std::span<const std::byte> data, bool allowPartial = true) noexcept
 	{
 		return Write(data.data(), data.size(), allowPartial);
 	}
 
-	size_type Read(std::span<std::byte> buffer, bool allowPartial = true) noexcept
+	/// Reads data and advances the read position.
+	/// @param buffer A span to receive the data.
+	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than buffer.size().
+	/// @return A subspan containing the bytes actually read.
+	std::span<std::byte> Read(std::span<std::byte> buffer, bool allowPartial = true) noexcept
 	{
-		return Read(buffer.data(), buffer.size(), allowPartial);
+		return buffer.first(Read(buffer.data(), buffer.size(), allowPartial));
 	}
 
-	size_type Peek(std::span<std::byte> buffer, bool allowPartial = true) noexcept
+	/// Reads data without advancing the read position.
+	/// @param buffer A span to receive the data.
+	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than buffer.size().
+	/// @return A subspan containing the bytes actually read.
+	std::span<std::byte> Peek(std::span<std::byte> buffer, bool allowPartial = true) noexcept
 	{
-		return Peek(buffer.data(), buffer.size(), allowPartial);
+		return buffer.first(Peek(buffer.data(), buffer.size(), allowPartial));
 	}
 
 	// MARK: Writing and Reading Single Values
