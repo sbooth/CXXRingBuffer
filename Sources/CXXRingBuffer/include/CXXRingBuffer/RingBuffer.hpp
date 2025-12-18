@@ -93,21 +93,21 @@ public:
 	/// @param count The desired number of bytes to write.
 	/// @param allowPartial Whether any bytes should be written if the free space available for writing is less than count.
 	/// @return The number of bytes actually written.
-	uint32_t Write(const void * const _Nonnull source, uint32_t count, bool allowPartial = true) noexcept;
+	uint32_t Write(const std::byte * const _Nonnull source, uint32_t count, bool allowPartial = true) noexcept;
 
 	/// Reads data and advances the read position.
 	/// @param destination An address to receive the data.
 	/// @param count The desired number of bytes to read.
 	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than count.
 	/// @return The number of bytes actually read.
-	uint32_t Read(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) noexcept;
+	uint32_t Read(std::byte * const _Nonnull destination, uint32_t count, bool allowPartial = true) noexcept;
 
 	/// Reads data without advancing the read position.
 	/// @param destination An address to receive the data.
 	/// @param count The desired number of bytes to read.
 	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than count.
 	/// @return The number of bytes actually read.
-	uint32_t Peek(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) const noexcept;
+	uint32_t Peek(std::byte * const _Nonnull destination, uint32_t count, bool allowPartial = true) const noexcept;
 
 	// MARK: Writing and Reading Single Values
 
@@ -119,7 +119,7 @@ public:
 	bool WriteValue(const T& value) noexcept
 	{
 		const auto size = static_cast<uint32_t>(sizeof(T));
-		const auto bytesWritten = Write(static_cast<const void *>(&value), size, false);
+		const auto bytesWritten = Write(&value, size, false);
 		return bytesWritten == size;
 	}
 
@@ -131,7 +131,7 @@ public:
 	bool ReadValue(T& value) noexcept
 	{
 		const auto size = static_cast<uint32_t>(sizeof(T));
-		const auto bytesRead = Read(static_cast<void *>(&value), size, false);
+		const auto bytesRead = Read(&value, size, false);
 		return bytesRead == size;
 	}
 
@@ -156,7 +156,7 @@ public:
 	bool PeekValue(T& value) const noexcept
 	{
 		const auto size = static_cast<uint32_t>(sizeof(T));
-		const auto bytesRead = Peek(static_cast<void *>(&value), size, false);
+		const auto bytesRead = Peek(&value, size, false);
 		return bytesRead == size;
 	}
 
