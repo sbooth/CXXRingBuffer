@@ -23,9 +23,12 @@ namespace CXXRingBuffer {
 /// This class is thread safe when used from one reader thread and one writer thread.
 class RingBuffer final {
 public:
-
 	/// Unsigned integer type.
 	using size_type = std::size_t;
+	/// A write vector.
+	using write_vector = std::pair<std::span<uint8_t>, std::span<uint8_t>>;
+	/// A read vector.
+	using read_vector = std::pair<std::span<const uint8_t>, std::span<const uint8_t>>;
 
 	/// The minimum supported ring buffer size in bytes.
 	static constexpr size_type min_buffer_size = size_type{2};
@@ -301,9 +304,6 @@ public:
 	/// Advances the read position by the specified number of bytes.
 	/// @param count The number of bytes to advance the read position.
 	void AdvanceReadPosition(size_type count) noexcept;
-
-	using write_vector = std::pair<std::span<uint8_t>, std::span<uint8_t>>;
-	using read_vector = std::pair<std::span<const uint8_t>, std::span<const uint8_t>>;
 
 	/// Returns a write vector containing the current writable space.
 	/// @return A pair of spans containing the current writable space.
