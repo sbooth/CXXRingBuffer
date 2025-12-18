@@ -159,7 +159,7 @@ uint32_t CXXRingBuffer::RingBuffer::Write(const void * const source, uint32_t co
 					reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(source) + bytesAfterWritePointer),
 					bytesToWrite - bytesAfterWritePointer);
 	} else
-		std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer_) + writePosition), source, bytesToWrite);
+		std::memcpy(buffer_ + writePosition, source, bytesToWrite);
 
 	writePosition_.store((writePosition + bytesToWrite) & capacityMask_, std::memory_order_release);
 
@@ -193,7 +193,7 @@ uint32_t CXXRingBuffer::RingBuffer::Read(void * const destination, uint32_t coun
 					buffer_,
 					bytesToRead - bytesAfterReadPointer);
 	} else
-		std::memcpy(destination, reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(buffer_) + readPosition), bytesToRead);
+		std::memcpy(destination, buffer_ + readPosition, bytesToRead);
 
 	readPosition_.store((readPosition + bytesToRead) & capacityMask_, std::memory_order_release);
 
@@ -227,7 +227,7 @@ uint32_t CXXRingBuffer::RingBuffer::Peek(void * const destination, uint32_t coun
 					buffer_,
 					bytesToRead - bytesAfterReadPointer);
 	} else
-		std::memcpy(destination, reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(buffer_) + readPosition), bytesToRead);
+		std::memcpy(destination, buffer_ + readPosition, bytesToRead);
 
 	return bytesToRead;
 }
