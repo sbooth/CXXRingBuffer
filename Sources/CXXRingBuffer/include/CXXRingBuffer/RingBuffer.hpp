@@ -8,7 +8,9 @@
 
 #import <algorithm>
 #import <atomic>
+#import <cstddef>
 #import <cstring>
+#import <limits>
 #import <optional>
 #import <type_traits>
 #import <utility>
@@ -21,6 +23,14 @@ namespace CXXRingBuffer {
 class RingBuffer final {
 public:
 
+	/// Unsigned integer type.
+	using size_type = std::size_t;
+
+	/// The minimum supported ring buffer size in bytes.
+	static constexpr size_type min_buffer_size = size_type{2};
+	/// The maximum supported ring buffer size in bytes.
+	static constexpr size_type max_buffer_size = size_type{1} << (std::numeric_limits<size_type>::digits - 1);
+
 	// MARK: Creation and Destruction
 
 	/// Creates an empty ring buffer.
@@ -28,11 +38,10 @@ public:
 	RingBuffer() noexcept = default;
 
 	/// Creates a ring buffer with the specified buffer size.
-	/// @note Buffer sizes from 2 to 2,147,483,648 (0x80000000) bytes are supported.
 	/// @note The usable ring buffer capacity will be one less than the smallest integral power of two that is not less than the specified size.
 	/// @param size The desired buffer size, in bytes.
 	/// @throw std::bad_alloc if memory could not be allocated or std::invalid_argument if the buffer size is not supported.
-	explicit RingBuffer(uint32_t size);
+	explicit RingBuffer(size_type size);
 
 	// This class is non-copyable
 	RingBuffer(const RingBuffer&) = delete;
@@ -57,11 +66,10 @@ public:
 
 	/// Allocates space for data.
 	/// @note This method is not thread safe.
-	/// @note Buffer sizes from 2 to 2,147,483,648 (0x80000000) bytes are supported.
 	/// @note The usable ring buffer capacity will be one less than the smallest integral power of two that is not less than the specified size.
 	/// @param size The desired buffer size, in bytes.
 	/// @return true on success, false if memory could not be allocated or the buffer size is not supported.
-	bool Allocate(uint32_t size) noexcept;
+	bool Allocate(size_type size) noexcept;
 
 	/// Frees any space allocated for data.
 	/// @note This method is not thread safe.
@@ -75,15 +83,15 @@ public:
 
 	/// Returns the usable capacity of the ring buffer.
 	/// @return The usable ring buffer capacity in bytes.
-	uint32_t Capacity() const noexcept;
+	size_type Capacity() const noexcept;
 
 	/// Returns the amount of free space in the buffer.
 	/// @return The number of bytes of free space available for writing.
-	uint32_t FreeSpace() const noexcept;
+	size_type FreeSpace() const noexcept;
 
 	/// Returns the amount of data in the buffer.
 	/// @return The number of bytes available for reading.
-	uint32_t AvailableBytes() const noexcept;
+	size_type AvailableBytes() const noexcept;
 
 	// MARK: Writing and Reading Data
 
@@ -92,21 +100,21 @@ public:
 	/// @param count The desired number of bytes to write.
 	/// @param allowPartial Whether any bytes should be written if the free space available for writing is less than count.
 	/// @return The number of bytes actually written.
-	uint32_t Write(const void * const _Nonnull source, uint32_t count, bool allowPartial = true) noexcept;
+	size_type Write(const void * const _Nonnull source, size_type count, bool allowPartial = true) noexcept;
 
 	/// Reads data and advances the read position.
 	/// @param destination An address to receive the data.
 	/// @param count The desired number of bytes to read.
 	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than count.
 	/// @return The number of bytes actually read.
-	uint32_t Read(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) noexcept;
+	size_type Read(void * const _Nonnull destination, size_type count, bool allowPartial = true) noexcept;
 
 	/// Reads data without advancing the read position.
 	/// @param destination An address to receive the data.
 	/// @param count The desired number of bytes to read.
 	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than count.
 	/// @return The number of bytes actually read.
-	uint32_t Peek(void * const _Nonnull destination, uint32_t count, bool allowPartial = true) const noexcept;
+	size_type Peek(void * const _Nonnull destination, size_type count, bool allowPartial = true) const noexcept;
 
 	// MARK: Writing and Reading Single Values
 
@@ -117,7 +125,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool WriteValue(const T& value) noexcept
 	{
-		const auto size = static_cast<uint32_t>(sizeof(T));
+		const auto size = sizeof(T);
 		const auto bytesWritten = Write(static_cast<const void *>(&value), size, false);
 		return bytesWritten == size;
 	}
@@ -129,7 +137,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool ReadValue(T& value) noexcept
 	{
-		const auto size = static_cast<uint32_t>(sizeof(T));
+		const auto size = sizeof(T);
 		const auto bytesRead = Read(static_cast<void *>(&value), size, false);
 		return bytesRead == size;
 	}
@@ -154,7 +162,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool PeekValue(T& value) const noexcept
 	{
-		const auto size = static_cast<uint32_t>(sizeof(T));
+		const auto size = sizeof(T);
 		const auto bytesRead = Peek(static_cast<void *>(&value), size, false);
 		return bytesRead == size;
 	}
@@ -181,15 +189,15 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
 	bool WriteValues(const Args&... args) noexcept
 	{
-		const auto totalSize = static_cast<uint32_t>((sizeof args + ...));
+		const auto totalSize = (sizeof args + ...);
 		auto wvec = GetWriteVector();
 		if(wvec.first.capacity_ + wvec.second.capacity_ < totalSize)
 			return false;
 
-		uint32_t bytesWritten = 0;
+		size_type bytesWritten = 0;
 
 		([&] {
-			auto bytesRemaining = static_cast<uint32_t>(sizeof args);
+			auto bytesRemaining = sizeof args;
 
 			// Write to wvec.first if space is available
 			if(wvec.first.capacity_ > bytesWritten) {
@@ -221,15 +229,15 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
 	bool ReadValues(Args&... args) noexcept
 	{
-		const auto totalSize = static_cast<uint32_t>((sizeof args + ...));
+		const auto totalSize = (sizeof args + ...);
 		const auto rvec = GetReadVector();
 		if(rvec.first.length_ + rvec.second.length_ < totalSize)
 			return false;
 
-		uint32_t bytesRead = 0;
+		size_type bytesRead = 0;
 
 		([&] {
-			auto bytesRemaining = static_cast<uint32_t>(sizeof args);
+			auto bytesRemaining = sizeof args;
 
 			// Read from rvec.first if data is available
 			if(rvec.first.length_ > bytesRead) {
@@ -258,18 +266,18 @@ public:
 
 	/// Advances the write position by the specified number of bytes.
 	/// @param count The number of bytes to advance the write position.
-	void AdvanceWritePosition(uint32_t count) noexcept;
+	void AdvanceWritePosition(size_type count) noexcept;
 
 	/// Advances the read position by the specified number of bytes.
 	/// @param count The number of bytes to advance the read position.
-	void AdvanceReadPosition(uint32_t count) noexcept;
+	void AdvanceReadPosition(size_type count) noexcept;
 
 	/// A write-only memory buffer.
 	struct WriteBuffer final {
 		/// The memory buffer location.
 		void * const _Nullable buffer_{nullptr};
 		/// The capacity of buffer_ in bytes.
-		const uint32_t capacity_{0};
+		const size_type capacity_{0};
 
 	private:
 		friend class RingBuffer;
@@ -280,7 +288,7 @@ public:
 		/// Constructs a write buffer with the specified location and capacity.
 		/// @param buffer The memory buffer location.
 		/// @param capacity The capacity of buffer in bytes.
-		WriteBuffer(void * const _Nullable buffer, uint32_t capacity) noexcept
+		WriteBuffer(void * const _Nullable buffer, size_type capacity) noexcept
 		: buffer_{buffer}, capacity_{capacity}
 		{}
 	};
@@ -297,7 +305,7 @@ public:
 		/// The memory buffer location.
 		const void * const _Nullable buffer_{nullptr};
 		/// The number of bytes of valid data in buffer_.
-		const uint32_t length_{0};
+		const size_type length_{0};
 
 	private:
 		friend class RingBuffer;
@@ -308,7 +316,7 @@ public:
 		/// Constructs a read buffer with the specified location and size.
 		/// @param buffer The memory buffer location.
 		/// @param length The number of bytes of valid data in buffer.
-		ReadBuffer(const void * const _Nullable buffer, uint32_t length) noexcept
+		ReadBuffer(const void * const _Nullable buffer, size_type length) noexcept
 		: buffer_{buffer}, length_{length}
 		{}
 	};
@@ -325,16 +333,16 @@ private:
 	void * _Nullable buffer_{nullptr};
 
 	/// The capacity of buffer_ in bytes.
-	uint32_t capacity_{0};
+	size_type capacity_{0};
 	/// The capacity of buffer_ in bytes minus one.
-	uint32_t capacityMask_{0};
+	size_type capacityMask_{0};
 
 	/// The offset into buffer_ of the write location.
-	std::atomic_uint32_t writePosition_{0};
+	std::atomic<size_type> writePosition_{0};
 	/// The offset into buffer_ of the read location.
-	std::atomic_uint32_t readPosition_{0};
+	std::atomic<size_type> readPosition_{0};
 
-	static_assert(std::atomic_uint32_t::is_always_lock_free, "Lock-free std::atomic_uint32_t required");
+	static_assert(std::atomic<size_type>::is_always_lock_free, "Lock-free std::atomic<size_type> required");
 };
 
 } /* namespace CXXRingBuffer */
