@@ -97,35 +97,35 @@ public:
 	// MARK: Writing and Reading Data
 
 	/// Writes data and advances the write position.
-	/// @param src An address containing the data to copy.
-	/// @param size The size of an individual element in bytes.
-	/// @param count The desired number of elements to write.
-	/// @param allowPartial Whether any elements should be written if insufficient free space is available to write all elements.
-	/// @return The number of elements actually written.
-	size_type Write(const void * const _Nonnull src, size_type size, size_type count, bool allowPartial) noexcept;
+	/// @param ptr An address containing the data to copy.
+	/// @param itemSize The size of an individual item in bytes.
+	/// @param itemCount The desired number of items to write.
+	/// @param allowPartial Whether any items should be written if insufficient free space is available to write all items.
+	/// @return The number of items actually written.
+	size_type Write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
 
 	/// Reads data and advances the read position.
-	/// @param dst An address to receive the data.
-	/// @param size The size of an individual element in bytes.
-	/// @param count The desired number of elements to read.
-	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
-	/// @return The number of elements actually read.
-	size_type Read(void * const _Nonnull dst, size_type size, size_type count, bool allowPartial) noexcept;
+	/// @param ptr An address to receive the data.
+	/// @param itemSize The size of an individual item in bytes.
+	/// @param itemCount The desired number of items to read.
+	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than count.
+	/// @return The number of items actually read.
+	size_type Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
 
 	/// Reads data without advancing the read position.
-	/// @param dst An address to receive the data.
-	/// @param size The size of an individual element in bytes.
-	/// @param count The desired number of elements to read.
-	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
-	/// @return The number of elements actually read.
-	size_type Peek(void * const _Nonnull dst, size_type size, size_type count, bool allowPartial) const noexcept;
+	/// @param ptr An address to receive the data.
+	/// @param itemSize The size of an individual item in bytes.
+	/// @param itemCount The desired number of items to read.
+	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than count.
+	/// @return The number of items actually read.
+	size_type Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) const noexcept;
 
 	// MARK: Writing and Reading Spans
 
 	/// Writes data and advances the write position.
-	/// @param data A span containing the elements to copy.
-	/// @param allowPartial Whether any elements should be written if insufficient free space is available to write all elements.
-	/// @return The number of elements actually written.
+	/// @param data A span containing the items to copy.
+	/// @param allowPartial Whether any items should be written if insufficient free space is available to write all items.
+	/// @return The number of items actually written.
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	size_type Write(std::span<const T> data, bool allowPartial = true) noexcept
 	{
@@ -134,8 +134,8 @@ public:
 
 	/// Reads data and advances the read position.
 	/// @param buffer A span to receive the data.
-	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than buffer.size().
-	/// @return A subspan containing the data actually read.
+	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than buffer.size().
+	/// @return A subspan containing the items actually read.
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	std::span<T> Read(std::span<T> buffer, bool allowPartial = true) noexcept
 	{
@@ -144,8 +144,8 @@ public:
 
 	/// Reads data without advancing the read position.
 	/// @param buffer A span to receive the data.
-	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than buffer.size().
-	/// @return A subspan containing the data actually read.
+	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than buffer.size().
+	/// @return A subspan containing the items actually read.
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	std::span<T> Peek(std::span<T> buffer, bool allowPartial = true) noexcept
 	{
