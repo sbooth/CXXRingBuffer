@@ -123,30 +123,33 @@ public:
 	// MARK: Writing and Reading Spans
 
 	/// Writes data and advances the write position.
-	/// @param data A span containing the data to copy.
-	/// @param allowPartial Whether any bytes should be written if the free space available for writing is less than data.size().
-	/// @return The number of bytes actually written.
-	size_type Write(std::span<const std::byte> data, bool allowPartial = true) noexcept
+	/// @param data A span containing the elements to copy.
+	/// @param allowPartial Whether any elements should be written if insufficient free space is available to write all elements.
+	/// @return The number of elements actually written.
+	template <typename T> requires std::is_trivially_copyable_v<T>
+	size_type Write(std::span<const T> data, bool allowPartial = true) noexcept
 	{
-		return Write(data.data(), data.size(), allowPartial);
+		return Write(data.data(), sizeof(T), data.size(), allowPartial);
 	}
 
 	/// Reads data and advances the read position.
 	/// @param buffer A span to receive the data.
-	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than buffer.size().
-	/// @return A subspan containing the bytes actually read.
-	std::span<std::byte> Read(std::span<std::byte> buffer, bool allowPartial = true) noexcept
+	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
+	/// @return A subspan containing the data actually read.
+	template <typename T> requires std::is_trivially_copyable_v<T>
+	std::span<T> Read(std::span<T> buffer, bool allowPartial = true) noexcept
 	{
-		return buffer.first(Read(buffer.data(), buffer.size(), allowPartial));
+		return buffer.first(Read(buffer.data(), sizeof(T), buffer.size(), allowPartial));
 	}
 
 	/// Reads data without advancing the read position.
 	/// @param buffer A span to receive the data.
-	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than buffer.size().
-	/// @return A subspan containing the bytes actually read.
-	std::span<std::byte> Peek(std::span<std::byte> buffer, bool allowPartial = true) noexcept
+	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
+	/// @return A subspan containing the data actually read.
+	template <typename T> requires std::is_trivially_copyable_v<T>
+	std::span<T> Peek(std::span<T> buffer, bool allowPartial = true) noexcept
 	{
-		return buffer.first(Peek(buffer.data(), buffer.size(), allowPartial));
+		return buffer.first(Peek(buffer.data(), sizeof(T), buffer.size(), allowPartial));
 	}
 
 	// MARK: Writing and Reading Single Values
