@@ -123,10 +123,10 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Write(const void
 	if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
 		return 0;
 
-	const auto writePosition = writePosition_.load(std::memory_order_relaxed);
-	const auto readPosition = readPosition_.load(std::memory_order_acquire);
+	const auto writePos = writePosition_.load(std::memory_order_relaxed);
+	const auto readPos = readPosition_.load(std::memory_order_acquire);
 
-	const auto freeBytes = (readPosition - writePosition - 1) & capacityMask_;
+	const auto freeBytes = (readPos - writePos - 1) & capacityMask_;
 	const auto freeSlots = freeBytes / itemSize;
 	if(freeSlots == 0 || (freeSlots < itemCount && !allowPartial)) [[unlikely]]
 		return 0;
@@ -137,15 +137,15 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Write(const void
 	auto dst = static_cast<uint8_t *>(buffer_);
 	const auto src = static_cast<const uint8_t *>(ptr);
 
-	const auto spaceToEnd = capacity_ - writePosition;
+	const auto spaceToEnd = capacity_ - writePos;
 	if(bytesToWrite <= spaceToEnd) [[likely]]
-		std::memcpy(dst + writePosition, src, bytesToWrite);
+		std::memcpy(dst + writePos, src, bytesToWrite);
 	else [[unlikely]] {
-		std::memcpy(dst + writePosition, src, spaceToEnd);
+		std::memcpy(dst + writePos, src, spaceToEnd);
 		std::memcpy(dst, src + spaceToEnd, bytesToWrite - spaceToEnd);
 	}
 
-	writePosition_.store((writePosition + bytesToWrite) & capacityMask_, std::memory_order_release);
+	writePosition_.store((writePos + bytesToWrite) & capacityMask_, std::memory_order_release);
 
 	return itemsToWrite;
 }
@@ -155,10 +155,10 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Read(void * cons
 	if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
 		return 0;
 
-	const auto writePosition = writePosition_.load(std::memory_order_acquire);
-	const auto readPosition = readPosition_.load(std::memory_order_relaxed);
+	const auto writePos = writePosition_.load(std::memory_order_acquire);
+	const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-	const auto availableBytes = (writePosition - readPosition) & capacityMask_;
+	const auto availableBytes = (writePos - readPos) & capacityMask_;
 	const auto availableItems = availableBytes / itemSize;
 	if(availableItems == 0 || (availableItems < itemCount && !allowPartial)) [[unlikely]]
 		return 0;
@@ -169,20 +169,20 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Read(void * cons
 	auto dst = static_cast<uint8_t *>(ptr);
 	const auto src = static_cast<const uint8_t *>(buffer_);
 
-	const auto spaceToEnd = capacity_ - readPosition;
+	const auto spaceToEnd = capacity_ - readPos;
 	if(bytesToRead <= spaceToEnd) [[likely]]
-		std::memcpy(dst, src + readPosition, bytesToRead);
+		std::memcpy(dst, src + readPos, bytesToRead);
 	else [[unlikely]] {
-		std::memcpy(dst, src + readPosition, spaceToEnd);
+		std::memcpy(dst, src + readPos, spaceToEnd);
 		std::memcpy(dst + spaceToEnd, src, bytesToRead - spaceToEnd);
 	}
 
-	readPosition_.store((readPosition + bytesToRead) & capacityMask_, std::memory_order_release);
+	readPosition_.store((readPos + bytesToRead) & capacityMask_, std::memory_order_release);
 
 	return itemsToRead;
 }
 
-CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Peek(void * const ptr, size_type itemSize, size_type itemCount, bool allowPartial) const noexcept
+bool CXXRingBuffer::RingBuffer::Peek(void * const ptr, size_type itemSize, size_type itemCount) const noexcept
 {
 	if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
 		return 0;
@@ -192,56 +192,57 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Peek(void * cons
 
 	const auto availableBytes = (writePosition - readPosition) & capacityMask_;
 	const auto availableItems = availableBytes / itemSize;
-	if(availableItems == 0 || (availableItems < itemCount && !allowPartial)) [[unlikely]]
+	if(availableItems < itemCount) [[unlikely]]
 		return 0;
 
-	const auto itemsToRead = std::min(availableItems, itemCount);
-	const auto bytesToRead = itemsToRead * itemSize;
+	const auto bytesToPeek = itemCount * itemSize;
 
 	auto dst = static_cast<uint8_t *>(ptr);
 	const auto src = static_cast<const uint8_t *>(buffer_);
 
 	const auto spaceToEnd = capacity_ - readPosition;
-	if(bytesToRead <= spaceToEnd) [[likely]]
-		std::memcpy(dst, src + readPosition, bytesToRead);
+	if(bytesToPeek <= spaceToEnd) [[likely]]
+		std::memcpy(dst, src + readPosition, bytesToPeek);
 	else [[unlikely]] {
 		std::memcpy(dst, src + readPosition, spaceToEnd);
-		std::memcpy(dst + spaceToEnd, src, bytesToRead - spaceToEnd);
+		std::memcpy(dst + spaceToEnd, src, bytesToPeek - spaceToEnd);
 	}
 
-	return itemsToRead;
+	return itemCount;
 }
 
 // MARK: Advanced Writing and Reading
 
 void CXXRingBuffer::RingBuffer::AdvanceWritePosition(size_type count) noexcept
 {
-	writePosition_.store((writePosition_.load(std::memory_order_relaxed) + count) & capacityMask_, std::memory_order_release);
+	const auto writePos = writePosition_.load(std::memory_order_relaxed);
+	writePosition_.store((writePos + count) & capacityMask_, std::memory_order_release);
 }
 
 void CXXRingBuffer::RingBuffer::AdvanceReadPosition(size_type count) noexcept
 {
-	readPosition_.store((readPosition_.load(std::memory_order_relaxed) + count) & capacityMask_, std::memory_order_release);
+	const auto readPos = readPosition_.load(std::memory_order_relaxed);
+	readPosition_.store((readPos + count) & capacityMask_, std::memory_order_release);
 }
 
 const CXXRingBuffer::RingBuffer::WriteBufferPair CXXRingBuffer::RingBuffer::GetWriteVector() const noexcept
 {
-	const auto writePosition = writePosition_.load(std::memory_order_relaxed);
-	const auto readPosition = readPosition_.load(std::memory_order_acquire);
+	const auto writePos = writePosition_.load(std::memory_order_relaxed);
+	const auto readPos = readPosition_.load(std::memory_order_acquire);
 
-	const auto freeBytes = (readPosition - writePosition - 1) & capacityMask_;
-	const auto endOfWrite = writePosition + freeBytes;
+	const auto freeBytes = (readPos - writePos - 1) & capacityMask_;
+	const auto endOfWrite = writePos + freeBytes;
 
 	auto dst = static_cast<uint8_t *>(buffer_);
 
 	if(endOfWrite > capacity_)
 		return {
-			{ dst + writePosition, capacity_ - writePosition },
+			{ dst + writePos, capacity_ - writePos },
 			{ dst, endOfWrite & capacity_ }
 		};
 	else
 		return {
-			{ dst + writePosition, freeBytes },
+			{ dst + writePos, freeBytes },
 			{}
 		};
 }

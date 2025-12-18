@@ -116,13 +116,12 @@ public:
 	/// @param ptr An address to receive the data.
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to read.
-	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than count.
-	/// @return The number of items actually read.
-	size_type Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) const noexcept;
+	/// @return True if the requested items were read, false otherwise.
+	bool Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept;
 
 	// MARK: Writing and Reading Spans
 
-	/// Writes data and advances the write position.
+	/// Writes items and advances the write position.
 	/// @param data A span containing the items to copy.
 	/// @param allowPartial Whether any items should be written if insufficient free space is available to write all items.
 	/// @return The number of items actually written.
@@ -132,7 +131,7 @@ public:
 		return Write(data.data(), sizeof(T), data.size(), allowPartial);
 	}
 
-	/// Reads data and advances the read position.
+	/// Reads items and advances the read position.
 	/// @param buffer A span to receive the data.
 	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than buffer.size().
 	/// @return A subspan containing the items actually read.
@@ -142,14 +141,13 @@ public:
 		return buffer.first(Read(buffer.data(), sizeof(T), buffer.size(), allowPartial));
 	}
 
-	/// Reads data without advancing the read position.
+	/// Reads items without advancing the read position.
 	/// @param buffer A span to receive the data.
-	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than buffer.size().
-	/// @return A subspan containing the items actually read.
+	/// @return True if the requested items were read, false otherwise.
 	template <typename T> requires std::is_trivially_copyable_v<T>
-	std::span<T> Peek(std::span<T> buffer, bool allowPartial = true) noexcept
+	bool Peek(std::span<T> buffer) noexcept
 	{
-		return buffer.first(Peek(buffer.data(), sizeof(T), buffer.size(), allowPartial));
+		return Peek(buffer.data(), sizeof(T), buffer.size());
 	}
 
 	// MARK: Writing and Reading Single Values
@@ -196,8 +194,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool PeekValue(T& value) const noexcept
 	{
-		const auto nitems = Peek(static_cast<void *>(&value), sizeof(T), 1, false);
-		return nitems == 1;
+		return Peek(static_cast<void *>(&value), sizeof(T), 1);
 	}
 
 	/// Reads a value without advancing the read position.
