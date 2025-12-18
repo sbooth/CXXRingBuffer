@@ -56,7 +56,7 @@ bool CXXRingBuffer::RingBuffer::Allocate(uint32_t size) noexcept
 
 	size = std::bit_ceil(size);
 
-	buffer_ = std::malloc(size);
+	buffer_ = static_cast<std::byte *>(std::malloc(size));
 	if(!buffer_)
 		return false;
 
@@ -152,7 +152,7 @@ uint32_t CXXRingBuffer::RingBuffer::Write(const void * const source, uint32_t co
 	const auto bytesToWrite = std::min(bytesAvailable, count);
 	if(writePosition + bytesToWrite > capacity_) {
 		auto bytesAfterWritePointer = capacity_ - writePosition;
-		std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer_) + writePosition),
+		std::memcpy(buffer_ + writePosition,
 					source,
 					bytesAfterWritePointer);
 		std::memcpy(buffer_,
@@ -187,7 +187,7 @@ uint32_t CXXRingBuffer::RingBuffer::Read(void * const destination, uint32_t coun
 	if(readPosition + bytesToRead > capacity_) {
 		const auto bytesAfterReadPointer = capacity_ - readPosition;
 		std::memcpy(destination,
-					reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(buffer_) + readPosition),
+					buffer_ + readPosition,
 					bytesAfterReadPointer);
 		std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(destination) + bytesAfterReadPointer),
 					buffer_,
@@ -221,7 +221,7 @@ uint32_t CXXRingBuffer::RingBuffer::Peek(void * const destination, uint32_t coun
 	if(readPosition + bytesToRead > capacity_) {
 		auto bytesAfterReadPointer = capacity_ - readPosition;
 		std::memcpy(destination,
-					reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(buffer_) + readPosition),
+					buffer_ + readPosition,
 					bytesAfterReadPointer);
 		std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(destination) + bytesAfterReadPointer),
 					buffer_,
@@ -261,12 +261,12 @@ const CXXRingBuffer::RingBuffer::WriteBufferPair CXXRingBuffer::RingBuffer::GetW
 
 	if(endOfWrite > capacity_)
 		return {
-			{ reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer_) + writePosition), capacity_ - writePosition },
+			{ buffer_ + writePosition, capacity_ - writePosition },
 			{ buffer_, endOfWrite & capacity_ }
 		};
 	else
 		return {
-			{ reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer_) + writePosition), bytesAvailable },
+			{ buffer_ + writePosition, bytesAvailable },
 			{}
 		};
 }
@@ -286,12 +286,12 @@ const CXXRingBuffer::RingBuffer::ReadBufferPair CXXRingBuffer::RingBuffer::GetRe
 
 	if(endOfRead > capacity_)
 		return {
-			{ reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(buffer_) + readPosition), capacity_ - readPosition },
+			{ buffer_ + readPosition, capacity_ - readPosition },
 			{ buffer_, endOfRead & capacity_ }
 		};
 	else
 		return {
-			{ reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(buffer_) + readPosition), bytesAvailable },
+			{ buffer_ + readPosition, bytesAvailable },
 			{}
 		};
 }

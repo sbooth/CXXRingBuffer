@@ -8,6 +8,7 @@
 
 #import <algorithm>
 #import <atomic>
+#import <cstddef>
 #import <cstring>
 #import <optional>
 #import <type_traits>
@@ -322,7 +323,7 @@ public:
 
 private:
 	/// The memory buffer holding the data.
-	void * _Nullable buffer_{nullptr};
+	std::byte * _Nullable buffer_{nullptr};
 
 	/// The capacity of buffer_ in bytes.
 	uint32_t capacity_{0};
