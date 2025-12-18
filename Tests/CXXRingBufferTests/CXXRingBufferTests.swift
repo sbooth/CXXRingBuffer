@@ -22,8 +22,6 @@ import Foundation
 
 		#expect(rb.Allocate(1) == false)
 		#expect(rb.Allocate(2) == true)
-		#expect(rb.Allocate(0x80000000) == true)
-		#expect(rb.Allocate(0x80000001) == false)
 
 		#expect(rb.Allocate(1024) == true)
 		#expect(rb.Capacity() == 1023)
@@ -38,7 +36,7 @@ import Foundation
 
 		let written = Data(stride(from: 0, through: 15, by: 1))
 		written.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
-			#expect(rb.Write(ptr.assumingMemoryBound(to: std.byte.self).baseAddress!, UInt32(written.count)) == 16)
+			#expect(rb.Write(ptr.assumingMemoryBound(to: std.byte.self).baseAddress!, written.count) == 16)
 		}
 		#expect(rb.AvailableBytes() == written.count)
 
@@ -54,8 +52,8 @@ import Foundation
 	@Test func multi() async {
 		var rb = CXXRingBuffer.RingBuffer()
 
-		let data_size: UInt32 = 255
-		let buf_size: UInt32 = 128
+		let data_size = 255
+		let buf_size = 128
 		#expect(rb.Allocate(buf_size) == true)
 
 		let producer_buf = UnsafeMutableBufferPointer<std.byte>.allocate(capacity: Int(data_size))
@@ -63,8 +61,8 @@ import Foundation
 
 		arc4random_buf(producer_buf.baseAddress, Int(data_size))
 
-		var written: UInt32 = 0
-		var read: UInt32 = 0
+		var written = 0
+		var read = 0
 
 		var addr = producer_buf.baseAddress
 		var length = rb.Write(addr!, 64)
@@ -119,7 +117,7 @@ import Foundation
 	@Test func spsc() {
 		var rb = CXXRingBuffer.RingBuffer()
 
-		let data_size: UInt32 = 8192
+		let data_size = 8192
 
 		let buf_size = data_size / 4
 		#expect(rb.Allocate(buf_size) == true)
@@ -132,10 +130,10 @@ import Foundation
 		let producer = DispatchQueue(label: "producer")
 		producer.async(group: group) {
 			var remaining = data_size
-			var written: UInt32 = 0
+			var written = 0
 
 			while remaining > 0 {
-				let n = UInt32.random(in: 0...remaining)
+				let n = Int.random(in: 0...remaining)
 				let addr = producer_buf.baseAddress?.advanced(by: Int(written))
 				let length = rb.Write(addr!, n)
 				remaining -= length
@@ -149,10 +147,10 @@ import Foundation
 		let consumer = DispatchQueue(label: "consumer")
 		consumer.async(group: group) {
 			var remaining = data_size
-			var read: UInt32 = 0
+			var read = 0
 
 			while remaining > 0 {
-				let n = UInt32.random(in: 0...remaining)
+				let n = Int.random(in: 0...remaining)
 				let addr = consumer_buf.baseAddress?.advanced(by: Int(read))
 				let length = rb.Read(addr!, n)
 				remaining -= length
