@@ -12,6 +12,7 @@
 #import <cstring>
 #import <limits>
 #import <optional>
+#import <span>
 #import <type_traits>
 #import <utility>
 
@@ -115,6 +116,23 @@ public:
 	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than count.
 	/// @return The number of bytes actually read.
 	size_type Peek(void * const _Nonnull destination, size_type count, bool allowPartial = true) const noexcept;
+
+	// MARK: Writing and Reading Spans
+
+	size_type Write(std::span<const std::byte> data, bool allowPartial = true) noexcept
+	{
+		return Write(data.data(), data.size(), allowPartial);
+	}
+
+	size_type Read(std::span<std::byte> buffer, bool allowPartial = true) noexcept
+	{
+		return Read(buffer.data(), buffer.size(), allowPartial);
+	}
+
+	size_type Peek(std::span<std::byte> buffer, bool allowPartial = true) noexcept
+	{
+		return Peek(buffer.data(), buffer.size(), allowPartial);
+	}
 
 	// MARK: Writing and Reading Single Values
 
