@@ -96,25 +96,28 @@ public:
 	// MARK: Writing and Reading Data
 
 	/// Writes data and advances the write position.
-	/// @param source An address containing the data to copy.
-	/// @param count The desired number of bytes to write.
-	/// @param allowPartial Whether any bytes should be written if the free space available for writing is less than count.
-	/// @return The number of bytes actually written.
-	size_type Write(const void * const _Nonnull source, size_type count, bool allowPartial = true) noexcept;
+	/// @param src An address containing the data to copy.
+	/// @param size The size of an individual element in bytes.
+	/// @param count The desired number of elements to write.
+	/// @param allowPartial Whether any elements should be written if insufficient free space is available to write all elements.
+	/// @return The number of elements actually written.
+	size_type Write(const void * const _Nonnull src, size_type size, size_type count, bool allowPartial) noexcept;
 
 	/// Reads data and advances the read position.
-	/// @param destination An address to receive the data.
-	/// @param count The desired number of bytes to read.
-	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than count.
-	/// @return The number of bytes actually read.
-	size_type Read(void * const _Nonnull destination, size_type count, bool allowPartial = true) noexcept;
+	/// @param dst An address to receive the data.
+	/// @param size The size of an individual element in bytes.
+	/// @param count The desired number of elements to read.
+	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
+	/// @return The number of elements actually read.
+	size_type Read(void * const _Nonnull dst, size_type size, size_type count, bool allowPartial) noexcept;
 
 	/// Reads data without advancing the read position.
-	/// @param destination An address to receive the data.
-	/// @param count The desired number of bytes to read.
-	/// @param allowPartial Whether any bytes should be read if the number of bytes available for reading is less than count.
-	/// @return The number of bytes actually read.
-	size_type Peek(void * const _Nonnull destination, size_type count, bool allowPartial = true) const noexcept;
+	/// @param dst An address to receive the data.
+	/// @param size The size of an individual element in bytes.
+	/// @param count The desired number of elements to read.
+	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
+	/// @return The number of elements actually read.
+	size_type Peek(void * const _Nonnull dst, size_type size, size_type count, bool allowPartial) const noexcept;
 
 	// MARK: Writing and Reading Single Values
 
@@ -125,9 +128,8 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool WriteValue(const T& value) noexcept
 	{
-		const auto size = sizeof(T);
-		const auto bytesWritten = Write(static_cast<const void *>(&value), size, false);
-		return bytesWritten == size;
+		const auto nitems = Write(static_cast<const void *>(&value), sizeof(T), 1, false);
+		return nitems == 1;
 	}
 
 	/// Reads a value and advances the read position.
@@ -137,9 +139,8 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool ReadValue(T& value) noexcept
 	{
-		const auto size = sizeof(T);
-		const auto bytesRead = Read(static_cast<void *>(&value), size, false);
-		return bytesRead == size;
+		const auto nitems = Read(static_cast<void *>(&value), sizeof(T), 1, false);
+		return nitems == 1;
 	}
 
 	/// Reads a value and advances the read position.
@@ -162,9 +163,8 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool PeekValue(T& value) const noexcept
 	{
-		const auto size = sizeof(T);
-		const auto bytesRead = Peek(static_cast<void *>(&value), size, false);
-		return bytesRead == size;
+		const auto nitems = Peek(static_cast<void *>(&value), sizeof(T), 1, false);
+		return nitems == 1;
 	}
 
 	/// Reads a value without advancing the read position.

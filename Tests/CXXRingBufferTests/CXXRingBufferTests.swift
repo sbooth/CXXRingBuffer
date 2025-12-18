@@ -12,8 +12,8 @@ import Foundation
 
 		var d = Data(capacity: 1024)
 		d.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) in
-			#expect(rb.Read(ptr.baseAddress!, 1024) == 0)
-			#expect(rb.Write(ptr.baseAddress!, 1024) == 0)
+			#expect(rb.Read(ptr.baseAddress!, 1, 1024, true) == 0)
+			#expect(rb.Write(ptr.baseAddress!, 1, 1024, true) == 0)
 		}
 	}
 
@@ -36,13 +36,13 @@ import Foundation
 
 		let written = Data(stride(from: 0, through: 15, by: 1))
 		written.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
-			#expect(rb.Write(ptr.baseAddress!, written.count) == 16)
+			#expect(rb.Write(ptr.baseAddress!, 1, written.count, true) == 16)
 		}
 		#expect(rb.AvailableBytes() == written.count)
 
 		var read = Data(count: written.count)
 		read.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) in
-			#expect(rb.Read(ptr.baseAddress!, 16) == 16)
+			#expect(rb.Read(ptr.baseAddress!, 1, 16, true) == 16)
 		}
 
 		#expect(read == written)
@@ -65,42 +65,42 @@ import Foundation
 		var read = 0
 
 		var addr = producer_buf.baseAddress
-		var length = rb.Write(addr!, 64)
+		var length = rb.Write(addr!, 1, 64, true)
 		written += length
 		#expect(length == 64)
 		#expect(rb.AvailableBytes() == 64)
 		#expect(rb.FreeSpace() == rb.Capacity() - 64)
 
 		addr = consumer_buf.baseAddress
-		length = rb.Read(addr!, 64)
+		length = rb.Read(addr!, 1, 64, true)
 		read += length
 		#expect(length == 64)
 		#expect(rb.AvailableBytes() == 0)
 		#expect(rb.FreeSpace() == rb.Capacity())
 
 		addr = producer_buf.baseAddress?.advanced(by: Int(written))
-		length = rb.Write(addr!, 64)
+		length = rb.Write(addr!, 1, 64, true)
 		written += length
 		#expect(length == 64)
 		#expect(rb.AvailableBytes() == 64)
 		#expect(rb.FreeSpace() == rb.Capacity() - 64)
 
 		addr = consumer_buf.baseAddress?.advanced(by: Int(read))
-		length = rb.Read(addr!, 64)
+		length = rb.Read(addr!, 1, 64, true)
 		read += length
 		#expect(length == 64)
 		#expect(rb.AvailableBytes() == 0)
 		#expect(rb.FreeSpace() == rb.Capacity())
 
 		addr = producer_buf.baseAddress?.advanced(by: Int(written))
-		length = rb.Write(addr!, 127)
+		length = rb.Write(addr!, 1, 127, true)
 		written += length
 		#expect(length == 127)
 		#expect(rb.AvailableBytes() == 127)
 		#expect(rb.FreeSpace() == rb.Capacity() - 127)
 
 		addr = consumer_buf.baseAddress?.advanced(by: Int(read))
-		length = rb.Read(addr!, 127)
+		length = rb.Read(addr!, 1, 127, true)
 		read += length
 		#expect(length == 127)
 		#expect(rb.AvailableBytes() == 0)
@@ -135,7 +135,7 @@ import Foundation
 			while remaining > 0 {
 				let n = Int.random(in: 0...remaining)
 				let addr = producer_buf.baseAddress?.advanced(by: Int(written))
-				let length = rb.Write(addr!, n)
+				let length = rb.Write(addr!, 1, n, true)
 				remaining -= length
 				written += length
 				usleep(useconds_t.random(in: 0..<10))
@@ -152,7 +152,7 @@ import Foundation
 			while remaining > 0 {
 				let n = Int.random(in: 0...remaining)
 				let addr = consumer_buf.baseAddress?.advanced(by: Int(read))
-				let length = rb.Read(addr!, n)
+				let length = rb.Read(addr!, 1, n, true)
 				remaining -= length
 				read += length
 				usleep(useconds_t.random(in: 0..<10))
