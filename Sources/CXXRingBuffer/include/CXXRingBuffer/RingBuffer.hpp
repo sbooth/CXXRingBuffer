@@ -12,6 +12,7 @@
 #import <cstring>
 #import <limits>
 #import <optional>
+#import <span>
 #import <type_traits>
 #import <utility>
 
@@ -118,6 +119,38 @@ public:
 	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
 	/// @return The number of elements actually read.
 	size_type Peek(void * const _Nonnull dst, size_type size, size_type count, bool allowPartial) const noexcept;
+
+	// MARK: Writing and Reading Spans
+
+	/// Writes data and advances the write position.
+	/// @param data A span containing the elements to copy.
+	/// @param allowPartial Whether any elements should be written if insufficient free space is available to write all elements.
+	/// @return The number of elements actually written.
+	template <typename T> requires std::is_trivially_copyable_v<T>
+	size_type Write(std::span<const T> data, bool allowPartial = true) noexcept
+	{
+		return Write(data.data(), sizeof(T), data.size(), allowPartial);
+	}
+
+	/// Reads data and advances the read position.
+	/// @param buffer A span to receive the data.
+	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than buffer.size().
+	/// @return A subspan containing the data actually read.
+	template <typename T> requires std::is_trivially_copyable_v<T>
+	std::span<T> Read(std::span<T> buffer, bool allowPartial = true) noexcept
+	{
+		return buffer.first(Read(buffer.data(), sizeof(T), buffer.size(), allowPartial));
+	}
+
+	/// Reads data without advancing the read position.
+	/// @param buffer A span to receive the data.
+	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than buffer.size().
+	/// @return A subspan containing the data actually read.
+	template <typename T> requires std::is_trivially_copyable_v<T>
+	std::span<T> Peek(std::span<T> buffer, bool allowPartial = true) noexcept
+	{
+		return buffer.first(Peek(buffer.data(), sizeof(T), buffer.size(), allowPartial));
+	}
 
 	// MARK: Writing and Reading Single Values
 
