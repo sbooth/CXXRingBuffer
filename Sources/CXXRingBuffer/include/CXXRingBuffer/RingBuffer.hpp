@@ -221,7 +221,7 @@ public:
 	{
 		const auto totalSize = (sizeof args + ...);
 		auto wvec = GetWriteVector();
-		if(wvec.first.capacity_ + wvec.second.capacity_ < totalSize)
+		if(wvec.first.size() + wvec.second.size() < totalSize)
 			return false;
 
 		size_type bytesWritten = 0;
@@ -230,9 +230,9 @@ public:
 			auto bytesRemaining = sizeof args;
 
 			// Write to wvec.first if space is available
-			if(wvec.first.capacity_ > bytesWritten) {
-				const auto n = std::min(bytesRemaining, wvec.first.capacity_ - bytesWritten);
-				std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(wvec.first.buffer_) + bytesWritten),
+			if(wvec.first.size() > bytesWritten) {
+				const auto n = std::min(bytesRemaining, wvec.first.size() - bytesWritten);
+				std::memcpy(wvec.first.data() + bytesWritten,
 							static_cast<const void *>(&args),
 							n);
 				bytesRemaining -= n;
@@ -241,7 +241,7 @@ public:
 			// Write to wvec.second
 			if(bytesRemaining > 0) {
 				const auto n = bytesRemaining;
-				std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(wvec.second.buffer_) + (bytesWritten - wvec.first.capacity_)),
+				std::memcpy(wvec.second.data() + (bytesWritten - wvec.first.size()),
 							static_cast<const void *>(&args),
 							n);
 				bytesWritten += n;
@@ -261,7 +261,7 @@ public:
 	{
 		const auto totalSize = (sizeof args + ...);
 		const auto rvec = GetReadVector();
-		if(rvec.first.length_ + rvec.second.length_ < totalSize)
+		if(rvec.first.size() + rvec.second.size() < totalSize)
 			return false;
 
 		size_type bytesRead = 0;
@@ -270,10 +270,10 @@ public:
 			auto bytesRemaining = sizeof args;
 
 			// Read from rvec.first if data is available
-			if(rvec.first.length_ > bytesRead) {
-				const auto n = std::min(bytesRemaining, rvec.first.length_ - bytesRead);
+			if(rvec.first.size() > bytesRead) {
+				const auto n = std::min(bytesRemaining, rvec.first.size() - bytesRead);
 				std::memcpy(static_cast<void *>(&args),
-							reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(rvec.first.buffer_) + bytesRead),
+							rvec.first.data() + bytesRead,
 							n);
 				bytesRemaining -= n;
 				bytesRead += n;
@@ -282,7 +282,7 @@ public:
 			if(bytesRemaining > 0) {
 				const auto n = bytesRemaining;
 				std::memcpy(static_cast<void *>(&args),
-							reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(rvec.second.buffer_) + (bytesRead - rvec.first.length_)),
+							rvec.second.data() + (bytesRead - rvec.first.size()),
 							n);
 				bytesRead += n;
 			}
@@ -302,61 +302,16 @@ public:
 	/// @param count The number of bytes to advance the read position.
 	void AdvanceReadPosition(size_type count) noexcept;
 
-	/// A write-only memory buffer.
-	struct WriteBuffer final {
-		/// The memory buffer location.
-		void * const _Nullable buffer_{nullptr};
-		/// The capacity of buffer_ in bytes.
-		const size_type capacity_{0};
-
-	private:
-		friend class RingBuffer;
-
-		/// Constructs an empty write buffer.
-		WriteBuffer() noexcept = default;
-
-		/// Constructs a write buffer with the specified location and capacity.
-		/// @param buffer The memory buffer location.
-		/// @param capacity The capacity of buffer in bytes.
-		WriteBuffer(void * const _Nullable buffer, size_type capacity) noexcept
-		: buffer_{buffer}, capacity_{capacity}
-		{}
-	};
-
-	/// A pair of write buffers.
-	using WriteBufferPair = std::pair<const WriteBuffer, const WriteBuffer>;
+	using write_vector = std::pair<std::span<uint8_t>, std::span<uint8_t>>;
+	using read_vector = std::pair<std::span<const uint8_t>, std::span<const uint8_t>>;
 
 	/// Returns a write vector containing the current writable space.
-	/// @return A pair of write buffers containing the current writable space.
-	const WriteBufferPair GetWriteVector() const noexcept;
-
-	/// A read-only memory buffer.
-	struct ReadBuffer final {
-		/// The memory buffer location.
-		const void * const _Nullable buffer_{nullptr};
-		/// The number of bytes of valid data in buffer_.
-		const size_type length_{0};
-
-	private:
-		friend class RingBuffer;
-
-		/// Constructs an empty read buffer.
-		ReadBuffer() noexcept = default;
-
-		/// Constructs a read buffer with the specified location and size.
-		/// @param buffer The memory buffer location.
-		/// @param length The number of bytes of valid data in buffer.
-		ReadBuffer(const void * const _Nullable buffer, size_type length) noexcept
-		: buffer_{buffer}, length_{length}
-		{}
-	};
-
-	/// A pair of read buffers.
-	using ReadBufferPair = std::pair<const ReadBuffer, const ReadBuffer>;
+	/// @return A pair of spans containing the current writable space.
+	write_vector GetWriteVector() const noexcept;
 
 	/// Returns a read vector containing the current readable data.
-	/// @return A pair of read buffers containing the current readable data.
-	const ReadBufferPair GetReadVector() const noexcept;
+	/// @return A pair of spans containing the current readable data.
+	read_vector GetReadVector() const noexcept;
 
 private:
 	/// The memory buffer holding the data.
