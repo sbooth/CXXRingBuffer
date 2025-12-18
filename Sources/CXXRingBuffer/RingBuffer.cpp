@@ -238,7 +238,7 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Peek(void * cons
 	const auto itemCountToRead = std::min(availableItems, count);
 	const auto byteCountToRead = itemCountToRead * size;
 	if(readPosition + byteCountToRead > capacity_) {
-		auto bytesAfterReadPointer = capacity_ - readPosition;
+		const auto bytesAfterReadPointer = capacity_ - readPosition;
 		std::memcpy(dst,
 					reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(buffer_) + readPosition),
 					bytesAfterReadPointer);
