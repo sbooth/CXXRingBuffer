@@ -12,8 +12,8 @@ import Foundation
 
 		var d = Data(capacity: 1024)
 		d.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) in
-			#expect(rb.Read(ptr.baseAddress!, 1024) == 0)
-			#expect(rb.Write(ptr.baseAddress!, 1024) == 0)
+			#expect(rb.Read(ptr.assumingMemoryBound(to: std.byte.self).baseAddress!, 1024) == 0)
+			#expect(rb.Write(ptr.assumingMemoryBound(to: std.byte.self).baseAddress!, 1024) == 0)
 		}
 	}
 
@@ -38,13 +38,13 @@ import Foundation
 
 		let written = Data(stride(from: 0, through: 15, by: 1))
 		written.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
-			#expect(rb.Write(ptr.baseAddress!, UInt32(written.count)) == 16)
+			#expect(rb.Write(ptr.assumingMemoryBound(to: std.byte.self).baseAddress!, UInt32(written.count)) == 16)
 		}
 		#expect(rb.AvailableBytes() == written.count)
 
 		var read = Data(count: written.count)
 		read.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) in
-			#expect(rb.Read(ptr.baseAddress!, 16) == 16)
+			#expect(rb.Read(ptr.assumingMemoryBound(to: std.byte.self).baseAddress!, 16) == 16)
 		}
 
 		#expect(read == written)
@@ -58,8 +58,8 @@ import Foundation
 		let buf_size: UInt32 = 128
 		#expect(rb.Allocate(buf_size) == true)
 
-		let producer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
-		let consumer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
+		let producer_buf = UnsafeMutableBufferPointer<std.byte>.allocate(capacity: Int(data_size))
+		let consumer_buf = UnsafeMutableBufferPointer<std.byte>.allocate(capacity: Int(data_size))
 
 		arc4random_buf(producer_buf.baseAddress, Int(data_size))
 
@@ -126,7 +126,7 @@ import Foundation
 
 		let group = DispatchGroup()
 
-		let producer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
+		let producer_buf = UnsafeMutableBufferPointer<std.byte>.allocate(capacity: Int(data_size))
 		arc4random_buf(producer_buf.baseAddress, Int(data_size))
 
 		let producer = DispatchQueue(label: "producer")
@@ -144,7 +144,7 @@ import Foundation
 			}
 		}
 
-		let consumer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
+		let consumer_buf = UnsafeMutableBufferPointer<std.byte>.allocate(capacity: Int(data_size))
 
 		let consumer = DispatchQueue(label: "consumer")
 		consumer.async(group: group) {
