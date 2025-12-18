@@ -96,28 +96,28 @@ public:
 	// MARK: Writing and Reading Data
 
 	/// Writes data and advances the write position.
-	/// @param ptr An address containing the data to copy.
+	/// @param src An address containing the data to copy.
 	/// @param size The size of an individual element in bytes.
 	/// @param count The desired number of elements to write.
 	/// @param allowPartial Whether any elements should be written if insufficient free space is available to write all elements.
 	/// @return The number of elements actually written.
-	size_type Write(const void * const _Nonnull ptr, size_type size, size_type count, bool allowPartial) noexcept;
+	size_type Write(const void * const _Nonnull src, size_type size, size_type count, bool allowPartial) noexcept;
 
 	/// Reads data and advances the read position.
-	/// @param ptr An address to receive the data.
+	/// @param dst An address to receive the data.
 	/// @param size The size of an individual element in bytes.
 	/// @param count The desired number of elements to read.
 	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
 	/// @return The number of elements actually read.
-	size_type Read(void * const _Nonnull ptr, size_type size, size_type count, bool allowPartial) noexcept;
+	size_type Read(void * const _Nonnull dst, size_type size, size_type count, bool allowPartial) noexcept;
 
 	/// Reads data without advancing the read position.
-	/// @param ptr An address to receive the data.
+	/// @param dst An address to receive the data.
 	/// @param size The size of an individual element in bytes.
 	/// @param count The desired number of elements to read.
 	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
 	/// @return The number of elements actually read.
-	size_type Peek(void * const _Nonnull ptr, size_type size, size_type count, bool allowPartial) const noexcept;
+	size_type Peek(void * const _Nonnull dst, size_type size, size_type count, bool allowPartial) const noexcept;
 
 	// MARK: Writing and Reading Single Values
 
