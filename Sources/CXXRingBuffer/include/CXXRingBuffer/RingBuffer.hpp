@@ -134,7 +134,7 @@ public:
 
 	/// Reads data and advances the read position.
 	/// @param buffer A span to receive the data.
-	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
+	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than buffer.size().
 	/// @return A subspan containing the data actually read.
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	std::span<T> Read(std::span<T> buffer, bool allowPartial = true) noexcept
@@ -144,7 +144,7 @@ public:
 
 	/// Reads data without advancing the read position.
 	/// @param buffer A span to receive the data.
-	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
+	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than buffer.size().
 	/// @return A subspan containing the data actually read.
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	std::span<T> Peek(std::span<T> buffer, bool allowPartial = true) noexcept
