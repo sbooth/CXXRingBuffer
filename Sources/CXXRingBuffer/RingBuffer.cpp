@@ -214,9 +214,9 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Read(void * cons
 	return itemCountToRead;
 }
 
-CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Peek(void * const destination, size_type size, size_type count, bool allowPartial) const noexcept
+CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Peek(void * const dst, size_type size, size_type count, bool allowPartial) const noexcept
 {
-	if(!destination || size == 0 || count == 0 || capacity_ == 0)
+	if(!dst || size == 0 || count == 0 || capacity_ == 0)
 		return 0;
 
 	const auto writePosition = writePosition_.load(std::memory_order_acquire);
@@ -239,14 +239,14 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Peek(void * cons
 	const auto byteCountToRead = itemCountToRead * size;
 	if(readPosition + byteCountToRead > capacity_) {
 		auto bytesAfterReadPointer = capacity_ - readPosition;
-		std::memcpy(destination,
+		std::memcpy(dst,
 					reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(buffer_) + readPosition),
 					bytesAfterReadPointer);
-		std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(destination) + bytesAfterReadPointer),
+		std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(dst) + bytesAfterReadPointer),
 					buffer_,
 					byteCountToRead - bytesAfterReadPointer);
 	} else
-		std::memcpy(destination,
+		std::memcpy(dst,
 					reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(buffer_) + readPosition),
 					byteCountToRead);
 
