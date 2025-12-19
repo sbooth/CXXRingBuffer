@@ -326,11 +326,9 @@ private:
 	size_type capacityMask_{0};
 
 	/// The offset into buffer_ of the write location.
-//	alignas(64)
 //	alignas(std::hardware_destructive_interference_size)
 	std::atomic<size_type> writePosition_{0};
 	/// The offset into buffer_ of the read location.
-//	alignas(64)
 //	alignas(std::hardware_destructive_interference_size)
 	std::atomic<size_type> readPosition_{0};
 
