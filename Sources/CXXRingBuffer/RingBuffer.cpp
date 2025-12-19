@@ -24,18 +24,20 @@ CXXRingBuffer::RingBuffer::RingBuffer(size_type size)
 }
 
 CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
-: buffer_{std::exchange(other.buffer_, nullptr)}, capacity_{std::exchange(other.capacity_, 0)}, capacityMask_{std::exchange(other.capacityMask_, 0)}, writePosition_{std::atomic_exchange(&other.writePosition_, 0)}, readPosition_{std::atomic_exchange(&other.readPosition_, 0)}
+: buffer_{std::exchange(other.buffer_, nullptr)}, capacity_{std::exchange(other.capacity_, 0)}, capacityMask_{std::exchange(other.capacityMask_, 0)}, writePosition_{other.writePosition_.exchange(0, std::memory_order_relaxed)}, readPosition_{other.readPosition_.exchange(0, std::memory_order_relaxed)}
 {}
 
 CXXRingBuffer::RingBuffer& CXXRingBuffer::RingBuffer::operator=(RingBuffer&& other) noexcept
 {
-	if(this != &other) {
+	if(this != &other) { [[likely]]
 		std::free(buffer_);
 		buffer_ = std::exchange(other.buffer_, nullptr);
+
 		capacity_ = std::exchange(other.capacity_, 0);
 		capacityMask_ = std::exchange(other.capacityMask_, 0);
-		writePosition_ = std::atomic_exchange(&other.writePosition_, 0);
-		readPosition_ = std::atomic_exchange(&other.readPosition_, 0);
+
+		writePosition_.store(other.writePosition_.exchange(0, std::memory_order_relaxed), std::memory_order_relaxed);
+		readPosition_.store(other.readPosition_.exchange(0, std::memory_order_relaxed), std::memory_order_relaxed);
 	}
 	return *this;
 }
@@ -72,8 +74,8 @@ bool CXXRingBuffer::RingBuffer::Allocate(size_type size) noexcept
 	capacity_ = size;
 	capacityMask_ = size - 1;
 
-	writePosition_ = 0;
-	readPosition_ = 0;
+	writePosition_.store(0, std::memory_order_relaxed);
+	readPosition_.store(0, std::memory_order_relaxed);
 
 	return true;
 }
@@ -87,15 +89,15 @@ void CXXRingBuffer::RingBuffer::Deallocate() noexcept
 		capacity_ = 0;
 		capacityMask_ = 0;
 
-		writePosition_ = 0;
-		readPosition_ = 0;
+		writePosition_.store(0, std::memory_order_relaxed);
+		readPosition_.store(0, std::memory_order_relaxed);
 	}
 }
 
 void CXXRingBuffer::RingBuffer::Reset() noexcept
 {
-	writePosition_ = 0;
-	readPosition_ = 0;
+	writePosition_.store(0, std::memory_order_relaxed);
+	readPosition_.store(0, std::memory_order_relaxed);
 }
 
 // MARK: Buffer Information
