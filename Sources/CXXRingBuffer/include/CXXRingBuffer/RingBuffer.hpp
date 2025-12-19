@@ -23,9 +23,12 @@ namespace CXXRingBuffer {
 /// This class is thread safe when used from one reader thread and one writer thread.
 class RingBuffer final {
 public:
-
 	/// Unsigned integer type.
 	using size_type = std::size_t;
+	/// A write vector.
+	using write_vector = std::pair<std::span<uint8_t>, std::span<uint8_t>>;
+	/// A read vector.
+	using read_vector = std::pair<std::span<const uint8_t>, std::span<const uint8_t>>;
 
 	/// The minimum supported ring buffer size in bytes.
 	static constexpr size_type min_buffer_size = size_type{2};
@@ -94,62 +97,63 @@ public:
 	/// @return The number of bytes available for reading.
 	size_type AvailableBytes() const noexcept;
 
+	/// Returns true if the ring buffer is empty.
+	bool IsEmpty() const noexcept;
+
 	// MARK: Writing and Reading Data
 
 	/// Writes data and advances the write position.
-	/// @param src An address containing the data to copy.
-	/// @param size The size of an individual element in bytes.
-	/// @param count The desired number of elements to write.
-	/// @param allowPartial Whether any elements should be written if insufficient free space is available to write all elements.
-	/// @return The number of elements actually written.
-	size_type Write(const void * const _Nonnull src, size_type size, size_type count, bool allowPartial) noexcept;
+	/// @param ptr An address containing the data to copy.
+	/// @param itemSize The size of an individual item in bytes.
+	/// @param itemCount The desired number of items to write.
+	/// @param allowPartial Whether any items should be written if insufficient free space is available to write all items.
+	/// @return The number of items actually written.
+	size_type Write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
 
 	/// Reads data and advances the read position.
-	/// @param dst An address to receive the data.
-	/// @param size The size of an individual element in bytes.
-	/// @param count The desired number of elements to read.
-	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
-	/// @return The number of elements actually read.
-	size_type Read(void * const _Nonnull dst, size_type size, size_type count, bool allowPartial) noexcept;
+	/// @param ptr An address to receive the data.
+	/// @param itemSize The size of an individual item in bytes.
+	/// @param itemCount The desired number of items to read.
+	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than count.
+	/// @return The number of items actually read.
+	size_type Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
 
 	/// Reads data without advancing the read position.
-	/// @param dst An address to receive the data.
-	/// @param size The size of an individual element in bytes.
-	/// @param count The desired number of elements to read.
-	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than count.
-	/// @return The number of elements actually read.
-	size_type Peek(void * const _Nonnull dst, size_type size, size_type count, bool allowPartial) const noexcept;
+	/// @param ptr An address to receive the data.
+	/// @param itemSize The size of an individual item in bytes.
+	/// @param itemCount The desired number of items to read.
+	/// @return True if the requested items were read, false otherwise.
+	bool Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept;
 
 	// MARK: Writing and Reading Spans
 
-	/// Writes data and advances the write position.
-	/// @param data A span containing the elements to copy.
-	/// @param allowPartial Whether any elements should be written if insufficient free space is available to write all elements.
-	/// @return The number of elements actually written.
+	/// Writes items and advances the write position.
+	/// @param data A span containing the items to copy.
+	/// @param allowPartial Whether any items should be written if insufficient free space is available to write all items.
+	/// @return The number of items actually written.
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	size_type Write(std::span<const T> data, bool allowPartial = true) noexcept
 	{
 		return Write(data.data(), sizeof(T), data.size(), allowPartial);
 	}
 
-	/// Reads data and advances the read position.
-	/// @param buffer A span to receive the data.
-	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than buffer.size().
-	/// @return A subspan containing the data actually read.
+	/// Reads items and advances the read position.
+	/// @param buffer A span to receive the items.
+	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than buffer.size().
+	/// @return The number of items actually read.
 	template <typename T> requires std::is_trivially_copyable_v<T>
-	std::span<T> Read(std::span<T> buffer, bool allowPartial = true) noexcept
+	size_type Read(std::span<T> buffer, bool allowPartial = true) noexcept
 	{
-		return buffer.first(Read(buffer.data(), sizeof(T), buffer.size(), allowPartial));
+		return Read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
 	}
 
-	/// Reads data without advancing the read position.
+	/// Reads items without advancing the read position.
 	/// @param buffer A span to receive the data.
-	/// @param allowPartial Whether any elements should be read if the number of elements available for reading is less than buffer.size().
-	/// @return A subspan containing the data actually read.
+	/// @return True if the requested items were read, false otherwise.
 	template <typename T> requires std::is_trivially_copyable_v<T>
-	std::span<T> Peek(std::span<T> buffer, bool allowPartial = true) noexcept
+	bool Peek(std::span<T> buffer) noexcept
 	{
-		return buffer.first(Peek(buffer.data(), sizeof(T), buffer.size(), allowPartial));
+		return Peek(buffer.data(), sizeof(T), buffer.size());
 	}
 
 	// MARK: Writing and Reading Single Values
@@ -196,8 +200,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool PeekValue(T& value) const noexcept
 	{
-		const auto nitems = Peek(static_cast<void *>(&value), sizeof(T), 1, false);
-		return nitems == 1;
+		return Peek(static_cast<void *>(&value), sizeof(T), 1);
 	}
 
 	/// Reads a value without advancing the read position.
@@ -224,7 +227,7 @@ public:
 	{
 		const auto totalSize = (sizeof args + ...);
 		auto wvec = GetWriteVector();
-		if(wvec.first.capacity_ + wvec.second.capacity_ < totalSize)
+		if(wvec.first.size() + wvec.second.size() < totalSize)
 			return false;
 
 		size_type bytesWritten = 0;
@@ -233,9 +236,9 @@ public:
 			auto bytesRemaining = sizeof args;
 
 			// Write to wvec.first if space is available
-			if(wvec.first.capacity_ > bytesWritten) {
-				const auto n = std::min(bytesRemaining, wvec.first.capacity_ - bytesWritten);
-				std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(wvec.first.buffer_) + bytesWritten),
+			if(wvec.first.size() > bytesWritten) {
+				const auto n = std::min(bytesRemaining, wvec.first.size() - bytesWritten);
+				std::memcpy(wvec.first.data() + bytesWritten,
 							static_cast<const void *>(&args),
 							n);
 				bytesRemaining -= n;
@@ -244,14 +247,14 @@ public:
 			// Write to wvec.second
 			if(bytesRemaining > 0) {
 				const auto n = bytesRemaining;
-				std::memcpy(reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(wvec.second.buffer_) + (bytesWritten - wvec.first.capacity_)),
+				std::memcpy(wvec.second.data() + (bytesWritten - wvec.first.size()),
 							static_cast<const void *>(&args),
 							n);
 				bytesWritten += n;
 			}
 		}(), ...);
 
-		AdvanceWritePosition(bytesWritten);
+		CommitWrite(bytesWritten);
 		return true;
 	}
 
@@ -264,7 +267,7 @@ public:
 	{
 		const auto totalSize = (sizeof args + ...);
 		const auto rvec = GetReadVector();
-		if(rvec.first.length_ + rvec.second.length_ < totalSize)
+		if(rvec.first.size() + rvec.second.size() < totalSize)
 			return false;
 
 		size_type bytesRead = 0;
@@ -273,10 +276,10 @@ public:
 			auto bytesRemaining = sizeof args;
 
 			// Read from rvec.first if data is available
-			if(rvec.first.length_ > bytesRead) {
-				const auto n = std::min(bytesRemaining, rvec.first.length_ - bytesRead);
+			if(rvec.first.size() > bytesRead) {
+				const auto n = std::min(bytesRemaining, rvec.first.size() - bytesRead);
 				std::memcpy(static_cast<void *>(&args),
-							reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(rvec.first.buffer_) + bytesRead),
+							rvec.first.data() + bytesRead,
 							n);
 				bytesRemaining -= n;
 				bytesRead += n;
@@ -285,81 +288,33 @@ public:
 			if(bytesRemaining > 0) {
 				const auto n = bytesRemaining;
 				std::memcpy(static_cast<void *>(&args),
-							reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(rvec.second.buffer_) + (bytesRead - rvec.first.length_)),
+							rvec.second.data() + (bytesRead - rvec.first.size()),
 							n);
 				bytesRead += n;
 			}
 		}(), ...);
 
-		AdvanceReadPosition(bytesRead);
+		CommitRead(bytesRead);
 		return true;
 	}
 
 	// MARK: Advanced Writing and Reading
 
-	/// Advances the write position by the specified number of bytes.
-	/// @param count The number of bytes to advance the write position.
-	void AdvanceWritePosition(size_type count) noexcept;
-
-	/// Advances the read position by the specified number of bytes.
-	/// @param count The number of bytes to advance the read position.
-	void AdvanceReadPosition(size_type count) noexcept;
-
-	/// A write-only memory buffer.
-	struct WriteBuffer final {
-		/// The memory buffer location.
-		void * const _Nullable buffer_{nullptr};
-		/// The capacity of buffer_ in bytes.
-		const size_type capacity_{0};
-
-	private:
-		friend class RingBuffer;
-
-		/// Constructs an empty write buffer.
-		WriteBuffer() noexcept = default;
-
-		/// Constructs a write buffer with the specified location and capacity.
-		/// @param buffer The memory buffer location.
-		/// @param capacity The capacity of buffer in bytes.
-		WriteBuffer(void * const _Nullable buffer, size_type capacity) noexcept
-		: buffer_{buffer}, capacity_{capacity}
-		{}
-	};
-
-	/// A pair of write buffers.
-	using WriteBufferPair = std::pair<const WriteBuffer, const WriteBuffer>;
-
 	/// Returns a write vector containing the current writable space.
-	/// @return A pair of write buffers containing the current writable space.
-	const WriteBufferPair GetWriteVector() const noexcept;
-
-	/// A read-only memory buffer.
-	struct ReadBuffer final {
-		/// The memory buffer location.
-		const void * const _Nullable buffer_{nullptr};
-		/// The number of bytes of valid data in buffer_.
-		const size_type length_{0};
-
-	private:
-		friend class RingBuffer;
-
-		/// Constructs an empty read buffer.
-		ReadBuffer() noexcept = default;
-
-		/// Constructs a read buffer with the specified location and size.
-		/// @param buffer The memory buffer location.
-		/// @param length The number of bytes of valid data in buffer.
-		ReadBuffer(const void * const _Nullable buffer, size_type length) noexcept
-		: buffer_{buffer}, length_{length}
-		{}
-	};
-
-	/// A pair of read buffers.
-	using ReadBufferPair = std::pair<const ReadBuffer, const ReadBuffer>;
+	/// @return A pair of spans containing the current writable space.
+	write_vector GetWriteVector() const noexcept;
 
 	/// Returns a read vector containing the current readable data.
-	/// @return A pair of read buffers containing the current readable data.
-	const ReadBufferPair GetReadVector() const noexcept;
+	/// @return A pair of spans containing the current readable data.
+	read_vector GetReadVector() const noexcept;
+
+	/// Finalizes a write transaction by writing staged data to the ring buffer.
+	/// @param count The number of bytes that were successfully written to the write vector.
+	void CommitWrite(size_type count) noexcept;
+
+	/// Finalizes a read transaction by removing data from the front of the ring buffer.
+	/// @param count The number of bytes that were successfully read from the read vector.
+	void CommitRead(size_type count) noexcept;
 
 private:
 	/// The memory buffer holding the data.
@@ -371,11 +326,14 @@ private:
 	size_type capacityMask_{0};
 
 	/// The offset into buffer_ of the write location.
+//	alignas(std::hardware_destructive_interference_size)
 	std::atomic<size_type> writePosition_{0};
 	/// The offset into buffer_ of the read location.
+//	alignas(std::hardware_destructive_interference_size)
 	std::atomic<size_type> readPosition_{0};
 
 	static_assert(std::atomic<size_type>::is_always_lock_free, "Lock-free std::atomic<size_type> required");
+//	static_assert(std::hardware_destructive_interference_size >= alignof(std::atomic<size_type>));
 };
 
 } /* namespace CXXRingBuffer */
