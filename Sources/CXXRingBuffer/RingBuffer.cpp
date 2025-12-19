@@ -223,18 +223,6 @@ bool CXXRingBuffer::RingBuffer::Peek(void * const ptr, size_type itemSize, size_
 
 // MARK: Advanced Writing and Reading
 
-void CXXRingBuffer::RingBuffer::CommitWrite(size_type count) noexcept
-{
-	const auto writePos = writePosition_.load(std::memory_order_relaxed);
-	writePosition_.store((writePos + count) & capacityMask_, std::memory_order_release);
-}
-
-void CXXRingBuffer::RingBuffer::CommitRead(size_type count) noexcept
-{
-	const auto readPos = readPosition_.load(std::memory_order_relaxed);
-	readPosition_.store((readPos + count) & capacityMask_, std::memory_order_release);
-}
-
 CXXRingBuffer::RingBuffer::write_vector CXXRingBuffer::RingBuffer::GetWriteVector() const noexcept
 {
 	const auto writePos = writePosition_.load(std::memory_order_relaxed);
@@ -281,4 +269,16 @@ CXXRingBuffer::RingBuffer::read_vector CXXRingBuffer::RingBuffer::GetReadVector(
 			{ src + readPos, spaceToEnd },
 			{ src, availableBytes - spaceToEnd }
 		};
+}
+
+void CXXRingBuffer::RingBuffer::CommitWrite(size_type count) noexcept
+{
+	const auto writePos = writePosition_.load(std::memory_order_relaxed);
+	writePosition_.store((writePos + count) & capacityMask_, std::memory_order_release);
+}
+
+void CXXRingBuffer::RingBuffer::CommitRead(size_type count) noexcept
+{
+	const auto readPos = readPosition_.load(std::memory_order_relaxed);
+	readPosition_.store((readPos + count) & capacityMask_, std::memory_order_release);
 }

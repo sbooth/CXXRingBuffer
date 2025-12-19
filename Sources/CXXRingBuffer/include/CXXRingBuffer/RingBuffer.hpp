@@ -300,14 +300,6 @@ public:
 
 	// MARK: Advanced Writing and Reading
 
-	/// Finalizes a write transaction by writing staged data to the ring buffer.
-	/// @param count The number of bytes that were successfully written to the write vector.
-	void CommitWrite(size_type count) noexcept;
-
-	/// Finalizes a read transaction by removing data from the front of the ring buffer.
-	/// @param count The number of bytes that were successfully read from the read vector.
-	void CommitRead(size_type count) noexcept;
-
 	/// Returns a write vector containing the current writable space.
 	/// @return A pair of spans containing the current writable space.
 	write_vector GetWriteVector() const noexcept;
@@ -315,6 +307,14 @@ public:
 	/// Returns a read vector containing the current readable data.
 	/// @return A pair of spans containing the current readable data.
 	read_vector GetReadVector() const noexcept;
+
+	/// Finalizes a write transaction by writing staged data to the ring buffer.
+	/// @param count The number of bytes that were successfully written to the write vector.
+	void CommitWrite(size_type count) noexcept;
+
+	/// Finalizes a read transaction by removing data from the front of the ring buffer.
+	/// @param count The number of bytes that were successfully read from the read vector.
+	void CommitRead(size_type count) noexcept;
 
 private:
 	/// The memory buffer holding the data.
