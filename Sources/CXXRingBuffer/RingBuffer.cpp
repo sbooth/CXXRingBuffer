@@ -17,9 +17,9 @@
 
 CXXRingBuffer::RingBuffer::RingBuffer(size_type size)
 {
-	if(size < min_buffer_size || size > max_buffer_size)
+	if(size < min_buffer_size || size > max_buffer_size) [[unlikely]]
 		throw std::invalid_argument("capacity out of range");
-	if(!Allocate(size))
+	if(!Allocate(size)) [[unlikely]]
 		throw std::bad_alloc();
 }
 
@@ -29,7 +29,7 @@ CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
 
 CXXRingBuffer::RingBuffer& CXXRingBuffer::RingBuffer::operator=(RingBuffer&& other) noexcept
 {
-	if(this != &other) { [[likely]]
+	if(this != &other) [[likely]] {
 		std::free(buffer_);
 		buffer_ = std::exchange(other.buffer_, nullptr);
 
@@ -51,7 +51,7 @@ CXXRingBuffer::RingBuffer::~RingBuffer() noexcept
 
 bool CXXRingBuffer::RingBuffer::Allocate(size_type size) noexcept
 {
-	if(size < min_buffer_size || size > max_buffer_size)
+	if(size < min_buffer_size || size > max_buffer_size) [[unlikely]]
 		return false;
 
 	Deallocate();
@@ -68,7 +68,7 @@ bool CXXRingBuffer::RingBuffer::Allocate(size_type size) noexcept
 #endif
 
 	buffer_ = std::malloc(size);
-	if(!buffer_)
+	if(!buffer_) [[unlikely]]
 		return false;
 
 	capacity_ = size;
@@ -82,7 +82,7 @@ bool CXXRingBuffer::RingBuffer::Allocate(size_type size) noexcept
 
 void CXXRingBuffer::RingBuffer::Deallocate() noexcept
 {
-	if(buffer_) {
+	if(buffer_) [[likely]] {
 		std::free(buffer_);
 		buffer_ = nullptr;
 
@@ -236,15 +236,9 @@ CXXRingBuffer::RingBuffer::write_vector CXXRingBuffer::RingBuffer::GetWriteVecto
 
 	const auto spaceToEnd = capacity_ - writePos;
 	if(freeBytes <= spaceToEnd) [[likely]]
-		return {
-			{ dst + writePos, freeBytes },
-			{}
-		};
+		return {{dst + writePos, freeBytes}, {}};
 	else [[unlikely]]
-		return {
-			{ dst + writePos, spaceToEnd },
-			{ dst, freeBytes - spaceToEnd }
-		};
+		return {{dst + writePos, spaceToEnd}, {dst, freeBytes - spaceToEnd}};
 }
 
 CXXRingBuffer::RingBuffer::read_vector CXXRingBuffer::RingBuffer::GetReadVector() const noexcept
@@ -260,15 +254,9 @@ CXXRingBuffer::RingBuffer::read_vector CXXRingBuffer::RingBuffer::GetReadVector(
 
 	const auto spaceToEnd = capacity_ - readPos;
 	if(availableBytes <= spaceToEnd) [[likely]]
-		return {
-			{ src + readPos, availableBytes },
-			{}
-		};
+		return {{src + readPos, availableBytes}, {}};
 	else [[unlikely]]
-		return {
-			{ src + readPos, spaceToEnd },
-			{ src, availableBytes - spaceToEnd }
-		};
+		return {{src + readPos, spaceToEnd}, {src, availableBytes - spaceToEnd}};
 }
 
 void CXXRingBuffer::RingBuffer::CommitWrite(size_type count) noexcept
