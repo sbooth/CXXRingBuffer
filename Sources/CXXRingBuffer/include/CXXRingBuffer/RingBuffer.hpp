@@ -138,13 +138,13 @@ public:
 	}
 
 	/// Reads items and advances the read position.
-	/// @param buffer A span to receive the data.
+	/// @param buffer A span to receive the items.
 	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than buffer.size().
-	/// @return A subspan containing the items actually read.
+	/// @return The number of items actually read.
 	template <typename T> requires std::is_trivially_copyable_v<T>
-	std::span<T> Read(std::span<T> buffer, bool allowPartial = true) noexcept
+	size_type Read(std::span<T> buffer, bool allowPartial = true) noexcept
 	{
-		return buffer.first(Read(buffer.data(), sizeof(T), buffer.size(), allowPartial));
+		return Read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
 	}
 
 	/// Reads items without advancing the read position.
