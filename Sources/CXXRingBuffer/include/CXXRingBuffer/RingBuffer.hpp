@@ -254,7 +254,7 @@ public:
 			}
 		}(), ...);
 
-		AdvanceWritePosition(bytesWritten);
+		CommitWrite(bytesWritten);
 		return true;
 	}
 
@@ -294,19 +294,19 @@ public:
 			}
 		}(), ...);
 
-		AdvanceReadPosition(bytesRead);
+		CommitRead(bytesRead);
 		return true;
 	}
 
 	// MARK: Advanced Writing and Reading
 
-	/// Advances the write position by the specified number of bytes.
-	/// @param count The number of bytes to advance the write position.
-	void AdvanceWritePosition(size_type count) noexcept;
+	/// Finalizes a write transaction by writing staged data to the ring buffer.
+	/// @param count The number of bytes that were successfully written to the write vector.
+	void CommitWrite(size_type count) noexcept;
 
-	/// Advances the read position by the specified number of bytes.
-	/// @param count The number of bytes to advance the read position.
-	void AdvanceReadPosition(size_type count) noexcept;
+	/// Finalizes a read transaction by removing data from the front of the ring buffer.
+	/// @param count The number of bytes that were successfully read from the read vector.
+	void CommitRead(size_type count) noexcept;
 
 	/// Returns a write vector containing the current writable space.
 	/// @return A pair of spans containing the current writable space.
