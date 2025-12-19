@@ -104,27 +104,26 @@ void CXXRingBuffer::RingBuffer::Reset() noexcept
 
 CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Capacity() const noexcept
 {
-	if(capacity_ == 0) [[unlikely]]
-		return 0;
-	return capacity_ - 1;
+	return capacityMask_;
 }
 
 CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::FreeSpace() const noexcept
 {
-	if(capacity_ == 0) [[unlikely]]
-		return 0;
-	const auto writePosition = writePosition_.load(std::memory_order_acquire);
-	const auto readPosition = readPosition_.load(std::memory_order_acquire);
+	const auto writePosition = writePosition_.load(std::memory_order_relaxed);
+	const auto readPosition = readPosition_.load(std::memory_order_relaxed);
 	return (readPosition - writePosition - 1) & capacityMask_;
 }
 
 CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::AvailableBytes() const noexcept
 {
-	if(capacity_ == 0) [[unlikely]]
-		return 0;
-	const auto writePosition = writePosition_.load(std::memory_order_acquire);
-	const auto readPosition = readPosition_.load(std::memory_order_acquire);
+	const auto writePosition = writePosition_.load(std::memory_order_relaxed);
+	const auto readPosition = readPosition_.load(std::memory_order_relaxed);
 	return (writePosition - readPosition) & capacityMask_;
+}
+
+bool CXXRingBuffer::RingBuffer::IsEmpty() const noexcept
+{
+	return writePosition_.load(std::memory_order_relaxed) == readPosition_.load(std::memory_order_relaxed);
 }
 
 // MARK: Writing and Reading Data

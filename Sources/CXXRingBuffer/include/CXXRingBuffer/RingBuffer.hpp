@@ -97,6 +97,9 @@ public:
 	/// @return The number of bytes available for reading.
 	size_type AvailableBytes() const noexcept;
 
+	/// Returns true if the ring buffer is empty.
+	bool IsEmpty() const noexcept;
+
 	// MARK: Writing and Reading Data
 
 	/// Writes data and advances the write position.
@@ -323,11 +326,16 @@ private:
 	size_type capacityMask_{0};
 
 	/// The offset into buffer_ of the write location.
-	/*alignas(64)*/ std::atomic<size_type> writePosition_{0};
+//	alignas(64)
+//	alignas(std::hardware_destructive_interference_size)
+	std::atomic<size_type> writePosition_{0};
 	/// The offset into buffer_ of the read location.
-	/*alignas(64)*/ std::atomic<size_type> readPosition_{0};
+//	alignas(64)
+//	alignas(std::hardware_destructive_interference_size)
+	std::atomic<size_type> readPosition_{0};
 
 	static_assert(std::atomic<size_type>::is_always_lock_free, "Lock-free std::atomic<size_type> required");
+//	static_assert(std::hardware_destructive_interference_size >= alignof(std::atomic<size_type>));
 };
 
 } /* namespace CXXRingBuffer */
