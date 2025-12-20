@@ -138,7 +138,7 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Write(const void
 
 	const auto freeBytes = (readPos - writePos - 1) & capacityMask_;
 	const auto freeSlots = freeBytes / itemSize;
-	if(freeSlots == 0 || (freeSlots < itemCount && !allowPartial)) [[unlikely]]
+	if(freeSlots == 0 || (freeSlots < itemCount && !allowPartial))
 		return 0;
 
 	const auto itemsToWrite = std::min(freeSlots, itemCount);
@@ -170,7 +170,7 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Read(void * cons
 
 	const auto availableBytes = (writePos - readPos) & capacityMask_;
 	const auto availableItems = availableBytes / itemSize;
-	if(availableItems == 0 || (availableItems < itemCount && !allowPartial)) [[unlikely]]
+	if(availableItems == 0 || (availableItems < itemCount && !allowPartial))
 		return 0;
 
 	const auto itemsToRead = std::min(availableItems, itemCount);
@@ -202,7 +202,7 @@ bool CXXRingBuffer::RingBuffer::Peek(void * const ptr, size_type itemSize, size_
 
 	const auto availableBytes = (writePos - readPos) & capacityMask_;
 	const auto availableItems = availableBytes / itemSize;
-	if(availableItems < itemCount) [[unlikely]]
+	if(availableItems < itemCount)
 		return false;
 
 	const auto bytesToPeek = itemCount * itemSize;

@@ -166,8 +166,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool WriteValue(const T& value) noexcept
 	{
-		const auto nitems = Write(static_cast<const void *>(std::addressof(value)), sizeof(T), 1, false);
-		return nitems == 1;
+		return Write(static_cast<const void *>(std::addressof(value)), sizeof(T), 1, false) == 1;
 	}
 
 	/// Reads a value and advances the read position.
@@ -177,8 +176,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool ReadValue(T& value) noexcept
 	{
-		const auto nitems = Read(static_cast<void *>(std::addressof(value)), sizeof(T), 1, false);
-		return nitems == 1;
+		return Read(static_cast<void *>(std::addressof(value)), sizeof(T), 1, false) == 1;
 	}
 
 	/// Reads a value and advances the read position.
@@ -188,10 +186,9 @@ public:
 	template <typename T> requires std::is_default_constructible_v<T>
 	std::optional<T> ReadValue() noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
-		T value{};
-		if(!ReadValue(value))
-			return std::nullopt;
-		return value;
+		if(T value{}; ReadValue(value))
+			return value;
+		return std::nullopt;
 	}
 
 	/// Reads a value without advancing the read position.
@@ -211,10 +208,9 @@ public:
 	template <typename T> requires std::is_default_constructible_v<T>
 	std::optional<T> PeekValue() const noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
-		T value{};
-		if(!PeekValue(value))
-			return std::nullopt;
-		return value;
+		if(T value{}; PeekValue(value))
+			return value;
+		return std::nullopt;
 	}
 
 	// MARK: Writing and Reading Multiple Values
@@ -240,7 +236,7 @@ public:
 				std::memcpy(front.data() + cursor, src, len);
 			else if(cursor >= frontSize)
 				std::memcpy(back.data() + (cursor - frontSize), src, len);
-			else {
+			else [[unlikely]] {
 				const size_t toFront = frontSize - cursor;
 				std::memcpy(front.data() + cursor, src, toFront);
 				std::memcpy(back.data(), src + toFront, len - toFront);
@@ -275,7 +271,7 @@ public:
 				std::memcpy(dst, front.data() + cursor, len);
 			else if(cursor >= frontSize)
 				std::memcpy(dst, back.data() + (cursor - frontSize), len);
-			else {
+			else [[unlikely]] {
 				const size_t fromFront = frontSize - cursor;
 				std::memcpy(dst, front.data() + cursor, fromFront);
 				std::memcpy(dst + fromFront, back.data(), len - fromFront);
