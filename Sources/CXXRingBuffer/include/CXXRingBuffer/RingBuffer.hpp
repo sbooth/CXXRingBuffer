@@ -233,24 +233,22 @@ public:
 		if(frontSize + back.size() < totalSize)
 			return false;
 
-		size_t cursor = 0;
-		auto write_single = [&](const void *src, size_t len) {
-			const auto *ptr = static_cast<const uint8_t *>(src);
-
+		std::size_t cursor = 0;
+		auto write_single_arg = [&](const void *arg, std::size_t len) noexcept {
+			const auto *src = static_cast<const uint8_t *>(arg);
 			if(cursor + len <= frontSize)
-				std::memcpy(front.data() + cursor, ptr, len);
+				std::memcpy(front.data() + cursor, src, len);
 			else if(cursor >= frontSize)
-				std::memcpy(back.data() + (cursor - frontSize), ptr, len);
+				std::memcpy(back.data() + (cursor - frontSize), src, len);
 			else {
 				const size_t toFront = frontSize - cursor;
-				std::memcpy(front.data() + cursor, ptr, toFront);
-				std::memcpy(back.data(), ptr + toFront, len - toFront);
+				std::memcpy(front.data() + cursor, src, toFront);
+				std::memcpy(back.data(), src + toFront, len - toFront);
 			}
-
 			cursor += len;
 		};
 
-		(write_single(std::addressof(args), sizeof(args)), ...);
+		(write_single_arg(std::addressof(args), sizeof(args)), ...);
 
 		CommitWrite(totalSize);
 		return true;
@@ -270,24 +268,22 @@ public:
 		if(frontSize + back.size() < totalSize)
 			return false;
 
-		size_t cursor = 0;
-		auto read_single = [&](void *dst, size_t len) {
-			auto *ptr = static_cast<uint8_t *>(dst);
-
+		std::size_t cursor = 0;
+		auto read_single_arg = [&](void *arg, std::size_t len) noexcept {
+			auto *dst = static_cast<uint8_t *>(arg);
 			if(cursor + len <= frontSize)
-				std::memcpy(ptr, front.data() + cursor, len);
+				std::memcpy(dst, front.data() + cursor, len);
 			else if(cursor >= frontSize)
-				std::memcpy(ptr, back.data() + (cursor - frontSize), len);
+				std::memcpy(dst, back.data() + (cursor - frontSize), len);
 			else {
 				const size_t fromFront = frontSize - cursor;
-				std::memcpy(ptr, front.data() + cursor, fromFront);
-				std::memcpy(ptr + fromFront, back.data(), len - fromFront);
+				std::memcpy(dst, front.data() + cursor, fromFront);
+				std::memcpy(dst + fromFront, back.data(), len - fromFront);
 			}
-
 			cursor += len;
 		};
 
-		(read_single(std::addressof(args), sizeof(args)), ...);
+		(read_single_arg(std::addressof(args), sizeof(args)), ...);
 
 		CommitRead(totalSize);
 		return true;
