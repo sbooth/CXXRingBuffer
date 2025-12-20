@@ -11,6 +11,7 @@
 #import <cstddef>
 #import <cstring>
 #import <limits>
+#import <memory>
 #import <optional>
 #import <span>
 #import <type_traits>
@@ -165,7 +166,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool WriteValue(const T& value) noexcept
 	{
-		const auto nitems = Write(static_cast<const void *>(&value), sizeof(T), 1, false);
+		const auto nitems = Write(static_cast<const void *>(std::addressof(value)), sizeof(T), 1, false);
 		return nitems == 1;
 	}
 
@@ -176,7 +177,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool ReadValue(T& value) noexcept
 	{
-		const auto nitems = Read(static_cast<void *>(&value), sizeof(T), 1, false);
+		const auto nitems = Read(static_cast<void *>(std::addressof(value)), sizeof(T), 1, false);
 		return nitems == 1;
 	}
 
@@ -200,7 +201,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool PeekValue(T& value) const noexcept
 	{
-		return Peek(static_cast<void *>(&value), sizeof(T), 1);
+		return Peek(static_cast<void *>(std::addressof(value)), sizeof(T), 1);
 	}
 
 	/// Reads a value without advancing the read position.
@@ -226,35 +227,32 @@ public:
 	bool WriteValues(const Args&... args) noexcept
 	{
 		const auto totalSize = (sizeof args + ...);
-		auto wvec = GetWriteVector();
-		if(wvec.first.size() + wvec.second.size() < totalSize)
+		auto [front, back] = GetWriteVector();
+
+		const auto frontSize = front.size();
+		if(frontSize + back.size() < totalSize)
 			return false;
 
-		size_type bytesWritten = 0;
+		size_t cursor = 0;
+		auto write_single = [&](const void *src, size_t len) {
+			const auto *ptr = static_cast<const uint8_t *>(src);
 
-		([&] {
-			auto bytesRemaining = sizeof args;
-
-			// Write to wvec.first if space is available
-			if(wvec.first.size() > bytesWritten) {
-				const auto n = std::min(bytesRemaining, wvec.first.size() - bytesWritten);
-				std::memcpy(wvec.first.data() + bytesWritten,
-							static_cast<const void *>(&args),
-							n);
-				bytesRemaining -= n;
-				bytesWritten += n;
+			if(cursor + len <= frontSize)
+				std::memcpy(front.data() + cursor, ptr, len);
+			else if(cursor >= frontSize)
+				std::memcpy(back.data() + (cursor - frontSize), ptr, len);
+			else {
+				const size_t toFront = frontSize - cursor;
+				std::memcpy(front.data() + cursor, ptr, toFront);
+				std::memcpy(back.data(), ptr + toFront, len - toFront);
 			}
-			// Write to wvec.second
-			if(bytesRemaining > 0) {
-				const auto n = bytesRemaining;
-				std::memcpy(wvec.second.data() + (bytesWritten - wvec.first.size()),
-							static_cast<const void *>(&args),
-							n);
-				bytesWritten += n;
-			}
-		}(), ...);
 
-		CommitWrite(bytesWritten);
+			cursor += len;
+		};
+
+		(write_single(std::addressof(args), sizeof(args)), ...);
+
+		CommitWrite(totalSize);
 		return true;
 	}
 
@@ -266,35 +264,32 @@ public:
 	bool ReadValues(Args&... args) noexcept
 	{
 		const auto totalSize = (sizeof args + ...);
-		const auto rvec = GetReadVector();
-		if(rvec.first.size() + rvec.second.size() < totalSize)
+		const auto [front, back] = GetReadVector();
+
+		const auto frontSize = front.size();
+		if(frontSize + back.size() < totalSize)
 			return false;
 
-		size_type bytesRead = 0;
+		size_t cursor = 0;
+		auto read_single = [&](void *dst, size_t len) {
+			auto *ptr = static_cast<uint8_t *>(dst);
 
-		([&] {
-			auto bytesRemaining = sizeof args;
-
-			// Read from rvec.first if data is available
-			if(rvec.first.size() > bytesRead) {
-				const auto n = std::min(bytesRemaining, rvec.first.size() - bytesRead);
-				std::memcpy(static_cast<void *>(&args),
-							rvec.first.data() + bytesRead,
-							n);
-				bytesRemaining -= n;
-				bytesRead += n;
+			if(cursor + len <= frontSize)
+				std::memcpy(ptr, front.data() + cursor, len);
+			else if(cursor >= frontSize)
+				std::memcpy(ptr, back.data() + (cursor - frontSize), len);
+			else {
+				const size_t fromFront = frontSize - cursor;
+				std::memcpy(ptr, front.data() + cursor, fromFront);
+				std::memcpy(ptr + fromFront, back.data(), len - fromFront);
 			}
-			// Read from rvec.second
-			if(bytesRemaining > 0) {
-				const auto n = bytesRemaining;
-				std::memcpy(static_cast<void *>(&args),
-							rvec.second.data() + (bytesRead - rvec.first.size()),
-							n);
-				bytesRead += n;
-			}
-		}(), ...);
 
-		CommitRead(bytesRead);
+			cursor += len;
+		};
+
+		(read_single(std::addressof(args), sizeof(args)), ...);
+
+		CommitRead(totalSize);
 		return true;
 	}
 
