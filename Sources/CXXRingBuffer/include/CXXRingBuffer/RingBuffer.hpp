@@ -21,7 +21,7 @@ namespace CXXRingBuffer {
 
 /// A lock-free SPSC ring buffer.
 ///
-/// This class is thread safe when used from one reader thread and one writer thread.
+/// This class is thread safe when used with a single producer and a single consumer.
 class RingBuffer final {
 public:
 	/// Unsigned integer type.
@@ -42,9 +42,9 @@ public:
 	/// @note ``Allocate`` must be called before the object may be used.
 	RingBuffer() noexcept = default;
 
-	/// Creates a ring buffer with the specified buffer size.
-	/// @note The ring buffer capacity will be rounded to the smallest integral power of two that is not less than the specified size.
-	/// @param size The desired buffer size, in bytes.
+	/// Creates a ring buffer with the specified minimum capacity.
+	/// @note The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified size.
+	/// @param size The desired minimum capacity in bytes.
 	/// @throw std::bad_alloc if memory could not be allocated or std::invalid_argument if the buffer size is not supported.
 	explicit RingBuffer(size_type size);
 
@@ -71,8 +71,8 @@ public:
 
 	/// Allocates space for data.
 	/// @note This method is not thread safe.
-	/// @note The ring buffer capacity will be rounded to the smallest integral power of two that is not less than the specified size.
-	/// @param size The desired buffer size, in bytes.
+	/// @note The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified size.
+	/// @param size The desired minimum capacity in bytes.
 	/// @return true on success, false if memory could not be allocated or the buffer size is not supported.
 	bool Allocate(size_type size) noexcept;
 
@@ -87,26 +87,34 @@ public:
 	// MARK: Buffer Information
 
 	/// Returns the capacity of the ring buffer.
+	/// @note This method is thread safe.
 	/// @return The ring buffer capacity in bytes.
 	[[nodiscard]] size_type Capacity() const noexcept;
 
-	/// Returns the amount of free space in the buffer.
+	/// Returns the amount of free space in the ring buffer.
+	/// @note This method is thread safe.
 	/// @return The number of bytes of free space available for writing.
 	[[nodiscard]] size_type FreeSpace() const noexcept;
 
-	/// Returns the amount of data in the buffer.
+	/// Returns the amount of data in the ring buffer.
+	/// @note This method is thread safe.
 	/// @return The number of bytes available for reading.
 	[[nodiscard]] size_type AvailableBytes() const noexcept;
 
 	/// Returns true if the ring buffer is empty.
+	/// @note This method is thread safe.
+	/// @return true if the ring buffer is empty.
 	[[nodiscard]] bool IsEmpty() const noexcept;
 
 	/// Returns true if the ring buffer is full.
+	/// @note This method is thread safe.
+	/// @return true if the ring buffer is full.
 	[[nodiscard]] bool IsFull() const noexcept;
 
 	// MARK: Writing and Reading Data
 
 	/// Writes data and advances the write position.
+	/// @note This method is only safe to call from the producer.
 	/// @param ptr An address containing the data to copy.
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to write.
@@ -115,6 +123,7 @@ public:
 	size_type Write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
 
 	/// Reads data and advances the read position.
+	/// @note This method is only safe to call from the consumer.
 	/// @param ptr An address to receive the data.
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to read.
@@ -123,6 +132,7 @@ public:
 	size_type Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
 
 	/// Reads data without advancing the read position.
+	/// @note This method is only safe to call from the consumer.
 	/// @param ptr An address to receive the data.
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to read.
@@ -132,6 +142,8 @@ public:
 	// MARK: Writing and Reading Spans
 
 	/// Writes items and advances the write position.
+	/// @note This method is only safe to call from the producer.
+	/// @tparam T The type to write.
 	/// @param data A span containing the items to copy.
 	/// @param allowPartial Whether any items should be written if insufficient free space is available to write all items.
 	/// @return The number of items actually written.
@@ -142,6 +154,8 @@ public:
 	}
 
 	/// Reads items and advances the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @tparam T The type to read.
 	/// @param buffer A span to receive the items.
 	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than buffer.size().
 	/// @return The number of items actually read.
@@ -152,6 +166,8 @@ public:
 	}
 
 	/// Reads items without advancing the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @tparam T The type to read.
 	/// @param buffer A span to receive the data.
 	/// @return True if the requested items were read, false otherwise.
 	template <typename T> requires std::is_trivially_copyable_v<T>
@@ -163,6 +179,7 @@ public:
 	// MARK: Writing and Reading Single Values
 
 	/// Writes a value and advances the write position.
+	/// @note This method is only safe to call from the producer.
 	/// @tparam T The type to write.
 	/// @param value The value to write.
 	/// @return true if value was successfully written.
@@ -173,6 +190,7 @@ public:
 	}
 
 	/// Reads a value and advances the read position.
+	/// @note This method is only safe to call from the consumer.
 	/// @tparam T The type to read.
 	/// @param value The destination value.
 	/// @return true on success, false otherwise.
@@ -183,6 +201,7 @@ public:
 	}
 
 	/// Reads a value and advances the read position.
+	/// @note This method is only safe to call from the consumer.
 	/// @tparam T The type to read.
 	/// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
 	/// @throw Any exceptions thrown by the default constructor of T.
@@ -195,6 +214,7 @@ public:
 	}
 
 	/// Reads a value without advancing the read position.
+	/// @note This method is only safe to call from the consumer.
 	/// @tparam T The type to read.
 	/// @param value The destination value.
 	/// @return true on success, false otherwise.
@@ -205,6 +225,7 @@ public:
 	}
 
 	/// Reads a value without advancing the read position.
+	/// @note This method is only safe to call from the consumer.
 	/// @tparam T The type to read.
 	/// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
 	/// @throw Any exceptions thrown by the default constructor of T.
@@ -219,6 +240,7 @@ public:
 	// MARK: Writing and Reading Multiple Values
 
 	/// Writes values and advances the write position.
+	/// @note This method is only safe to call from the producer.
 	/// @tparam Args The types to write.
 	/// @param args The values to write.
 	/// @return true if the values were successfully written.
@@ -254,6 +276,7 @@ public:
 	}
 
 	/// Reads values and advances the read position.
+	/// @note This method is only safe to call from the consumer.
 	/// @tparam Args The types to read.
 	/// @param args The destination values.
 	/// @return true if the values were successfully read.
@@ -291,18 +314,24 @@ public:
 	// MARK: Advanced Writing and Reading
 
 	/// Returns a write vector containing the current writable space.
+	/// @note This method is only safe to call from the producer.
 	/// @return A pair of spans containing the current writable space.
 	[[nodiscard]] write_vector GetWriteVector() const noexcept;
 
 	/// Returns a read vector containing the current readable data.
+	/// @note This method is only safe to call from the consumer.
 	/// @return A pair of spans containing the current readable data.
 	[[nodiscard]] read_vector GetReadVector() const noexcept;
 
 	/// Finalizes a write transaction by writing staged data to the ring buffer.
+	/// @warning The behavior is undefined if count is greater than the free space in the write vector.
+	/// @note This method is only safe to call from the producer.
 	/// @param count The number of bytes that were successfully written to the write vector.
 	void CommitWrite(size_type count) noexcept;
 
 	/// Finalizes a read transaction by removing data from the front of the ring buffer.
+	/// @warning The behavior is undefined if count is greater than the available data in the read vector.
+	/// @note This method is only safe to call from the consumer.
 	/// @param count The number of bytes that were successfully read from the read vector.
 	void CommitRead(size_type count) noexcept;
 
