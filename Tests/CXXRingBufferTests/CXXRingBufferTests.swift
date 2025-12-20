@@ -24,7 +24,7 @@ import Foundation
 		#expect(rb.Allocate(2) == true)
 
 		#expect(rb.Allocate(1024) == true)
-		#expect(rb.Capacity() == 1023)
+		#expect(rb.Capacity() == 1024)
 		#expect(rb.AvailableBytes() == 0)
 		#expect(rb.FreeSpace() == rb.Capacity())
 	}
