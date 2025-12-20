@@ -145,13 +145,13 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Write(const void
 	const auto writePos = writePosition_.load(std::memory_order_relaxed);
 	const auto readPos = readPosition_.load(std::memory_order_acquire);
 
-	const auto usedBytes = writePos - readPos;
-	const auto freeBytes = capacity_ - usedBytes;
-	const auto freeSlots = freeBytes / itemSize;
-	if(freeSlots == 0 || (freeSlots < itemCount && !allowPartial))
+	const auto bytesUsed = writePos - readPos;
+	const auto bytesFree = capacity_ - bytesUsed;
+	const auto slotsFree = bytesFree / itemSize;
+	if(slotsFree == 0 || (slotsFree < itemCount && !allowPartial))
 		return 0;
 
-	const auto itemsToWrite = std::min(freeSlots, itemCount);
+	const auto itemsToWrite = std::min(slotsFree, itemCount);
 	const auto bytesToWrite = itemsToWrite * itemSize;
 
 	auto dst = static_cast<uint8_t *>(buffer_);
