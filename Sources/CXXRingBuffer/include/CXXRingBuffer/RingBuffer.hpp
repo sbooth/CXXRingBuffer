@@ -103,7 +103,7 @@ public:
 
 	/// Returns true if the ring buffer is empty.
 	/// @note This method is thread safe.
-	/// @return true if the buffer is empty.
+	/// @return true if the buffer contains no data.
 	[[nodiscard]] bool IsEmpty() const noexcept;
 
 	/// Returns true if the ring buffer is full.
