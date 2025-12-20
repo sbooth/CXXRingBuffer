@@ -43,7 +43,7 @@ public:
 	RingBuffer() noexcept = default;
 
 	/// Creates a ring buffer with the specified buffer size.
-	/// @note The usable ring buffer capacity will be one less than the smallest integral power of two that is not less than the specified size.
+	/// @note The ring buffer capacity will be rounded to the smallest integral power of two that is not less than the specified size.
 	/// @param size The desired buffer size, in bytes.
 	/// @throw std::bad_alloc if memory could not be allocated or std::invalid_argument if the buffer size is not supported.
 	explicit RingBuffer(size_type size);
@@ -71,7 +71,7 @@ public:
 
 	/// Allocates space for data.
 	/// @note This method is not thread safe.
-	/// @note The usable ring buffer capacity will be one less than the smallest integral power of two that is not less than the specified size.
+	/// @note The ring buffer capacity will be rounded to the smallest integral power of two that is not less than the specified size.
 	/// @param size The desired buffer size, in bytes.
 	/// @return true on success, false if memory could not be allocated or the buffer size is not supported.
 	bool Allocate(size_type size) noexcept;
@@ -86,20 +86,23 @@ public:
 
 	// MARK: Buffer Information
 
-	/// Returns the usable capacity of the ring buffer.
-	/// @return The usable ring buffer capacity in bytes.
-	size_type Capacity() const noexcept;
+	/// Returns the capacity of the ring buffer.
+	/// @return The ring buffer capacity in bytes.
+	[[nodiscard]] size_type Capacity() const noexcept;
 
 	/// Returns the amount of free space in the buffer.
 	/// @return The number of bytes of free space available for writing.
-	size_type FreeSpace() const noexcept;
+	[[nodiscard]] size_type FreeSpace() const noexcept;
 
 	/// Returns the amount of data in the buffer.
 	/// @return The number of bytes available for reading.
-	size_type AvailableBytes() const noexcept;
+	[[nodiscard]] size_type AvailableBytes() const noexcept;
 
 	/// Returns true if the ring buffer is empty.
-	bool IsEmpty() const noexcept;
+	[[nodiscard]] bool IsEmpty() const noexcept;
+
+	/// Returns true if the ring buffer is full.
+	[[nodiscard]] bool IsFull() const noexcept;
 
 	// MARK: Writing and Reading Data
 
@@ -124,7 +127,7 @@ public:
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to read.
 	/// @return True if the requested items were read, false otherwise.
-	bool Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept;
+	[[nodiscard]] bool Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept;
 
 	// MARK: Writing and Reading Spans
 
@@ -152,7 +155,7 @@ public:
 	/// @param buffer A span to receive the data.
 	/// @return True if the requested items were read, false otherwise.
 	template <typename T> requires std::is_trivially_copyable_v<T>
-	bool Peek(std::span<T> buffer) noexcept
+	[[nodiscard]] bool Peek(std::span<T> buffer) const noexcept
 	{
 		return Peek(buffer.data(), sizeof(T), buffer.size());
 	}
@@ -196,7 +199,7 @@ public:
 	/// @param value The destination value.
 	/// @return true on success, false otherwise.
 	template <typename T> requires std::is_trivially_copyable_v<T>
-	bool PeekValue(T& value) const noexcept
+	[[nodiscard]] bool PeekValue(T& value) const noexcept
 	{
 		return Peek(static_cast<void *>(std::addressof(value)), sizeof(T), 1);
 	}
@@ -206,7 +209,7 @@ public:
 	/// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
 	/// @throw Any exceptions thrown by the default constructor of T.
 	template <typename T> requires std::is_default_constructible_v<T>
-	std::optional<T> PeekValue() const noexcept(std::is_nothrow_default_constructible_v<T>)
+	[[nodiscard]] std::optional<T> PeekValue() const noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
 		if(T value{}; PeekValue(value))
 			return value;
@@ -289,11 +292,11 @@ public:
 
 	/// Returns a write vector containing the current writable space.
 	/// @return A pair of spans containing the current writable space.
-	write_vector GetWriteVector() const noexcept;
+	[[nodiscard]] write_vector GetWriteVector() const noexcept;
 
 	/// Returns a read vector containing the current readable data.
 	/// @return A pair of spans containing the current readable data.
-	read_vector GetReadVector() const noexcept;
+	[[nodiscard]] read_vector GetReadVector() const noexcept;
 
 	/// Finalizes a write transaction by writing staged data to the ring buffer.
 	/// @param count The number of bytes that were successfully written to the write vector.
@@ -312,9 +315,9 @@ private:
 	/// The capacity of buffer_ in bytes minus one.
 	size_type capacityMask_{0};
 
-	/// The offset into buffer_ of the write location.
+	/// The free-running write location.
 	std::atomic<size_type> writePosition_{0};
-	/// The offset into buffer_ of the read location.
+	/// The free-running read location.
 	std::atomic<size_type> readPosition_{0};
 
 	static_assert(std::atomic<size_type>::is_always_lock_free, "Lock-free std::atomic<size_type> required");

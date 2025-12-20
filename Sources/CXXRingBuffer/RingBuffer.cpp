@@ -104,26 +104,35 @@ void CXXRingBuffer::RingBuffer::Reset() noexcept
 
 CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Capacity() const noexcept
 {
-	return capacityMask_;
+	return capacity_;
 }
 
 CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::FreeSpace() const noexcept
 {
-	const auto writePosition = writePosition_.load(std::memory_order_relaxed);
-	const auto readPosition = readPosition_.load(std::memory_order_relaxed);
-	return (readPosition - writePosition - 1) & capacityMask_;
+	const auto writePos = writePosition_.load(std::memory_order_relaxed);
+	const auto readPos = readPosition_.load(std::memory_order_acquire);
+	return capacity_ - (writePos - readPos);
 }
 
 CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::AvailableBytes() const noexcept
 {
-	const auto writePosition = writePosition_.load(std::memory_order_relaxed);
-	const auto readPosition = readPosition_.load(std::memory_order_relaxed);
-	return (writePosition - readPosition) & capacityMask_;
+	const auto writePos = writePosition_.load(std::memory_order_acquire);
+	const auto readPos = readPosition_.load(std::memory_order_relaxed);
+	return writePos - readPos;
 }
 
 bool CXXRingBuffer::RingBuffer::IsEmpty() const noexcept
 {
-	return writePosition_.load(std::memory_order_relaxed) == readPosition_.load(std::memory_order_relaxed);
+	const auto writePos = writePosition_.load(std::memory_order_relaxed);
+	const auto readPos = readPosition_.load(std::memory_order_relaxed);
+	return writePos == readPos;
+}
+
+bool CXXRingBuffer::RingBuffer::IsFull() const noexcept
+{
+	const auto writePos = writePosition_.load(std::memory_order_relaxed);
+	const auto readPos = readPosition_.load(std::memory_order_relaxed);
+	return (writePos - readPos) == capacity_;
 }
 
 // MARK: Writing and Reading Data
@@ -136,7 +145,8 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Write(const void
 	const auto writePos = writePosition_.load(std::memory_order_relaxed);
 	const auto readPos = readPosition_.load(std::memory_order_acquire);
 
-	const auto freeBytes = (readPos - writePos - 1) & capacityMask_;
+	const auto usedBytes = writePos - readPos;
+	const auto freeBytes = capacity_ - usedBytes;
 	const auto freeSlots = freeBytes / itemSize;
 	if(freeSlots == 0 || (freeSlots < itemCount && !allowPartial))
 		return 0;
@@ -147,15 +157,16 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Write(const void
 	auto dst = static_cast<uint8_t *>(buffer_);
 	const auto src = static_cast<const uint8_t *>(ptr);
 
-	const auto spaceToEnd = capacity_ - writePos;
+	const auto writeIndex = writePos & capacityMask_;
+	const auto spaceToEnd = capacity_ - writeIndex;
 	if(bytesToWrite <= spaceToEnd) [[likely]]
-		std::memcpy(dst + writePos, src, bytesToWrite);
+		std::memcpy(dst + writeIndex, src, bytesToWrite);
 	else [[unlikely]] {
-		std::memcpy(dst + writePos, src, spaceToEnd);
+		std::memcpy(dst + writeIndex, src, spaceToEnd);
 		std::memcpy(dst, src + spaceToEnd, bytesToWrite - spaceToEnd);
 	}
 
-	writePosition_.store((writePos + bytesToWrite) & capacityMask_, std::memory_order_release);
+	writePosition_.store(writePos + bytesToWrite, std::memory_order_release);
 
 	return itemsToWrite;
 }
@@ -168,7 +179,7 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Read(void * cons
 	const auto writePos = writePosition_.load(std::memory_order_acquire);
 	const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-	const auto availableBytes = (writePos - readPos) & capacityMask_;
+	const auto availableBytes = writePos - readPos;
 	const auto availableItems = availableBytes / itemSize;
 	if(availableItems == 0 || (availableItems < itemCount && !allowPartial))
 		return 0;
@@ -179,15 +190,16 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Read(void * cons
 	auto dst = static_cast<uint8_t *>(ptr);
 	const auto src = static_cast<const uint8_t *>(buffer_);
 
-	const auto spaceToEnd = capacity_ - readPos;
+	const auto readIndex = readPos & capacityMask_;
+	const auto spaceToEnd = capacity_ - readIndex;
 	if(bytesToRead <= spaceToEnd) [[likely]]
-		std::memcpy(dst, src + readPos, bytesToRead);
+		std::memcpy(dst, src + readIndex, bytesToRead);
 	else [[unlikely]] {
-		std::memcpy(dst, src + readPos, spaceToEnd);
+		std::memcpy(dst, src + readIndex, spaceToEnd);
 		std::memcpy(dst + spaceToEnd, src, bytesToRead - spaceToEnd);
 	}
 
-	readPosition_.store((readPos + bytesToRead) & capacityMask_, std::memory_order_release);
+	readPosition_.store(readPos + bytesToRead, std::memory_order_release);
 
 	return itemsToRead;
 }
@@ -200,7 +212,7 @@ bool CXXRingBuffer::RingBuffer::Peek(void * const ptr, size_type itemSize, size_
 	const auto writePos = writePosition_.load(std::memory_order_acquire);
 	const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-	const auto availableBytes = (writePos - readPos) & capacityMask_;
+	const auto availableBytes = writePos - readPos;
 	const auto availableItems = availableBytes / itemSize;
 	if(availableItems < itemCount)
 		return false;
@@ -210,11 +222,12 @@ bool CXXRingBuffer::RingBuffer::Peek(void * const ptr, size_type itemSize, size_
 	auto dst = static_cast<uint8_t *>(ptr);
 	const auto src = static_cast<const uint8_t *>(buffer_);
 
-	const auto spaceToEnd = capacity_ - readPos;
+	const auto readIndex = readPos & capacityMask_;
+	const auto spaceToEnd = capacity_ - readIndex;
 	if(bytesToPeek <= spaceToEnd) [[likely]]
-		std::memcpy(dst, src + readPos, bytesToPeek);
+		std::memcpy(dst, src + readIndex, bytesToPeek);
 	else [[unlikely]] {
-		std::memcpy(dst, src + readPos, spaceToEnd);
+		std::memcpy(dst, src + readIndex, spaceToEnd);
 		std::memcpy(dst + spaceToEnd, src, bytesToPeek - spaceToEnd);
 	}
 
@@ -228,17 +241,19 @@ CXXRingBuffer::RingBuffer::write_vector CXXRingBuffer::RingBuffer::GetWriteVecto
 	const auto writePos = writePosition_.load(std::memory_order_relaxed);
 	const auto readPos = readPosition_.load(std::memory_order_acquire);
 
-	const auto freeBytes = (readPos - writePos - 1) & capacityMask_;
+	const auto usedBytes = writePos - readPos;
+	const auto freeBytes = capacity_ - usedBytes;
 	if(freeBytes == 0) [[unlikely]]
 		return {};
 
 	auto dst = static_cast<uint8_t *>(buffer_);
 
-	const auto spaceToEnd = capacity_ - writePos;
+	const auto writeIndex = writePos & capacityMask_;
+	const auto spaceToEnd = capacity_ - writeIndex;
 	if(freeBytes <= spaceToEnd) [[likely]]
-		return {{dst + writePos, freeBytes}, {}};
+		return {{dst + writeIndex, freeBytes}, {}};
 	else [[unlikely]]
-		return {{dst + writePos, spaceToEnd}, {dst, freeBytes - spaceToEnd}};
+		return {{dst + writeIndex, spaceToEnd}, {dst, freeBytes - spaceToEnd}};
 }
 
 CXXRingBuffer::RingBuffer::read_vector CXXRingBuffer::RingBuffer::GetReadVector() const noexcept
@@ -246,27 +261,30 @@ CXXRingBuffer::RingBuffer::read_vector CXXRingBuffer::RingBuffer::GetReadVector(
 	const auto writePos = writePosition_.load(std::memory_order_acquire);
 	const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-	const auto availableBytes = (writePos - readPos) & capacityMask_;
+	const auto availableBytes = writePos - readPos;
 	if(availableBytes == 0) [[unlikely]]
 		return {};
 
 	const auto src = static_cast<const uint8_t *>(buffer_);
 
-	const auto spaceToEnd = capacity_ - readPos;
+	const auto readIndex = readPos & capacityMask_;
+	const auto spaceToEnd = capacity_ - readIndex;
 	if(availableBytes <= spaceToEnd) [[likely]]
-		return {{src + readPos, availableBytes}, {}};
+		return {{src + readIndex, availableBytes}, {}};
 	else [[unlikely]]
-		return {{src + readPos, spaceToEnd}, {src, availableBytes - spaceToEnd}};
+		return {{src + readIndex, spaceToEnd}, {src, availableBytes - spaceToEnd}};
 }
 
 void CXXRingBuffer::RingBuffer::CommitWrite(size_type count) noexcept
 {
+	assert(count <= FreeSpace() && "Logic error: Write committing more than available free space");
 	const auto writePos = writePosition_.load(std::memory_order_relaxed);
-	writePosition_.store((writePos + count) & capacityMask_, std::memory_order_release);
+	writePosition_.store(writePos + count, std::memory_order_release);
 }
 
 void CXXRingBuffer::RingBuffer::CommitRead(size_type count) noexcept
 {
+	assert(count <= AvailableBytes() && "Logic error: Read committing more than available data");
 	const auto readPos = readPosition_.load(std::memory_order_relaxed);
-	readPosition_.store((readPos + count) & capacityMask_, std::memory_order_release);
+	readPosition_.store(readPos + count, std::memory_order_release);
 }
