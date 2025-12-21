@@ -43,7 +43,8 @@ public:
 	RingBuffer() noexcept = default;
 
 	/// Creates a ring buffer with the specified minimum capacity.
-	/// @note The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified minimum capacity.
+	///
+	/// The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified minimum capacity.
 	/// @param minCapacity The desired minimum capacity in bytes.
 	/// @throw std::bad_alloc if memory could not be allocated or std::invalid_argument if the buffer size is not supported.
 	explicit RingBuffer(size_type minCapacity);
@@ -70,8 +71,9 @@ public:
 	// MARK: Buffer Management
 
 	/// Allocates space for data.
+	///
+	/// The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified minimum capacity.
 	/// @note This method is not thread safe.
-	/// @note The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified minimum capacity.
 	/// @param minCapacity The desired minimum capacity in bytes.
 	/// @return true on success, false if memory could not be allocated or the buffer size is not supported.
 	bool Allocate(size_type minCapacity) noexcept;
