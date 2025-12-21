@@ -94,12 +94,12 @@ public:
 	[[nodiscard]] size_type Capacity() const noexcept;
 
 	/// Returns the amount of free space in the ring buffer.
-	/// @note This method is thread safe.
+	/// @note This method is only safe to call from the producer.
 	/// @return The number of bytes of free space available for writing.
 	[[nodiscard]] size_type FreeSpace() const noexcept;
 
 	/// Returns the amount of data in the ring buffer.
-	/// @note This method is thread safe.
+	/// @note This method is only safe to call from the consumer.
 	/// @return The number of bytes available for reading.
 	[[nodiscard]] size_type AvailableBytes() const noexcept;
 
