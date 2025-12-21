@@ -31,10 +31,10 @@ public:
 	/// A read vector.
 	using read_vector = std::pair<std::span<const uint8_t>, std::span<const uint8_t>>;
 
-	/// The minimum supported ring buffer size in bytes.
-	static constexpr size_type min_buffer_size = size_type{2};
-	/// The maximum supported ring buffer size in bytes.
-	static constexpr size_type max_buffer_size = size_type{1} << (std::numeric_limits<size_type>::digits - 1);
+	/// The minimum supported ring buffer capacity in bytes.
+	static constexpr size_type min_capacity = size_type{2};
+	/// The maximum supported ring buffer capacity in bytes.
+	static constexpr size_type max_capacity = size_type{1} << (std::numeric_limits<size_type>::digits - 1);
 
 	// MARK: Creation and Destruction
 
@@ -43,10 +43,10 @@ public:
 	RingBuffer() noexcept = default;
 
 	/// Creates a ring buffer with the specified minimum capacity.
-	/// @note The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified size.
-	/// @param size The desired minimum capacity in bytes.
+	/// @note The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified minimum capacity.
+	/// @param minCapacity The desired minimum capacity in bytes.
 	/// @throw std::bad_alloc if memory could not be allocated or std::invalid_argument if the buffer size is not supported.
-	explicit RingBuffer(size_type size);
+	explicit RingBuffer(size_type minCapacity);
 
 	// This class is non-copyable
 	RingBuffer(const RingBuffer&) = delete;
@@ -71,10 +71,10 @@ public:
 
 	/// Allocates space for data.
 	/// @note This method is not thread safe.
-	/// @note The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified size.
-	/// @param size The desired minimum capacity in bytes.
+	/// @note The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified minimum capacity.
+	/// @param minCapacity The desired minimum capacity in bytes.
 	/// @return true on success, false if memory could not be allocated or the buffer size is not supported.
-	bool Allocate(size_type size) noexcept;
+	bool Allocate(size_type minCapacity) noexcept;
 
 	/// Frees any space allocated for data.
 	/// @note This method is not thread safe.

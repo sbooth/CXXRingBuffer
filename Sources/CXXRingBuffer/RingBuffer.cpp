@@ -15,11 +15,11 @@
 
 // MARK: Creation and Destruction
 
-CXXRingBuffer::RingBuffer::RingBuffer(size_type size)
+CXXRingBuffer::RingBuffer::RingBuffer(size_type minCapacity)
 {
-	if(size < min_buffer_size || size > max_buffer_size) [[unlikely]]
+	if(minCapacity < min_capacity || minCapacity > max_capacity) [[unlikely]]
 		throw std::invalid_argument("capacity out of range");
-	if(!Allocate(size)) [[unlikely]]
+	if(!Allocate(minCapacity)) [[unlikely]]
 		throw std::bad_alloc();
 }
 
@@ -49,14 +49,14 @@ CXXRingBuffer::RingBuffer::~RingBuffer() noexcept
 
 // MARK: Buffer Management
 
-bool CXXRingBuffer::RingBuffer::Allocate(size_type size) noexcept
+bool CXXRingBuffer::RingBuffer::Allocate(size_type minCapacity) noexcept
 {
-	if(size < min_buffer_size || size > max_buffer_size) [[unlikely]]
+	if(minCapacity < min_capacity || minCapacity > max_capacity) [[unlikely]]
 		return false;
 
 	Deallocate();
 
-	size = std::bit_ceil(size);
+	const auto capacity = std::bit_ceil(minCapacity);
 
 #if false
 	// Use aligned_alloc for cache-line alignment (64 bytes)
@@ -64,15 +64,15 @@ bool CXXRingBuffer::RingBuffer::Allocate(size_type size) noexcept
 	if(__builtin_available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *))
 		buffer_ = std::aligned_alloc(64, size);
 	else
-		buffer_ = std::malloc(size);
+		buffer_ = std::malloc(capacity);
 #endif
 
-	buffer_ = std::malloc(size);
+	buffer_ = std::malloc(capacity);
 	if(!buffer_) [[unlikely]]
 		return false;
 
-	capacity_ = size;
-	capacityMask_ = size - 1;
+	capacity_ = capacity;
+	capacityMask_ = capacity - 1;
 
 	writePosition_.store(0, std::memory_order_relaxed);
 	readPosition_.store(0, std::memory_order_relaxed);
