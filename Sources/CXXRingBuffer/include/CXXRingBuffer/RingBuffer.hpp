@@ -148,7 +148,7 @@ public:
 	/// @return The number of items actually skipped.
 	size_type Skip(size_type itemSize, size_type itemCount) noexcept;
 
-	/// Drains the ring buffer.
+	/// Advances the read position to the write position, emptying the buffer.
 	/// @note This method is only safe to call from the consumer.
 	void Drain() noexcept;
 
