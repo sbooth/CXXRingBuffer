@@ -11,6 +11,7 @@
 #import <cstddef>
 #import <cstring>
 #import <limits>
+#import <new>
 #import <optional>
 #import <span>
 #import <type_traits>
