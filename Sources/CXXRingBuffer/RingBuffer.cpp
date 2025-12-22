@@ -94,10 +94,10 @@ void CXXRingBuffer::RingBuffer::Deallocate() noexcept
 	}
 }
 
-void CXXRingBuffer::RingBuffer::Reset() noexcept
+void CXXRingBuffer::RingBuffer::Drain() noexcept
 {
-	writePosition_.store(0, std::memory_order_relaxed);
-	readPosition_.store(0, std::memory_order_relaxed);
+	const auto writePos = writePosition_.load(std::memory_order_acquire);
+	readPosition_.store(writePos, std::memory_order_release);
 }
 
 // MARK: Buffer Information

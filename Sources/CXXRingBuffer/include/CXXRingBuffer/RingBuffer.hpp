@@ -82,9 +82,9 @@ public:
 	/// @note This method is not thread safe.
 	void Deallocate() noexcept;
 
-	/// Resets the read and write positions to their default state, emptying the buffer.
-	/// @note This method is not thread safe.
-	void Reset() noexcept;
+	/// Drains the ring buffer.
+	/// @note This method is only safe to call from the consumer.
+	void Drain() noexcept;
 
 	// MARK: Buffer Information
 
