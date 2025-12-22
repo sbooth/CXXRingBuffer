@@ -82,16 +82,14 @@ public:
 	/// @note This method is not thread safe.
 	void Deallocate() noexcept;
 
-	/// Drains the ring buffer.
-	/// @note This method is only safe to call from the consumer.
-	void Drain() noexcept;
-
 	// MARK: Buffer Information
 
 	/// Returns the capacity of the ring buffer.
 	/// @note This method is thread safe.
 	/// @return The ring buffer capacity in bytes.
 	[[nodiscard]] size_type Capacity() const noexcept;
+
+	// MARK: Buffer Usage
 
 	/// Returns the amount of free space in the ring buffer.
 	/// @note This method is only safe to call from the producer.
@@ -133,13 +131,6 @@ public:
 	/// @return The number of items actually read.
 	size_type Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
 
-	/// Skips data and advances the read position.
-	/// @note This method is only safe to call from the consumer.
-	/// @param itemSize The size of an individual item in bytes.
-	/// @param itemCount The desired number of items to skip.
-	/// @return The number of items actually skipped.
-	size_type Skip(size_type itemSize, size_type itemCount) noexcept;
-
 	/// Reads data without advancing the read position.
 	/// @note This method is only safe to call from the consumer.
 	/// @param ptr An address to receive the data.
@@ -147,6 +138,19 @@ public:
 	/// @param itemCount The desired number of items to read.
 	/// @return True if the requested items were read, false otherwise.
 	[[nodiscard]] bool Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept;
+
+	// MARK: Discarding Data
+
+	/// Skips data and advances the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @param itemSize The size of an individual item in bytes.
+	/// @param itemCount The desired number of items to skip.
+	/// @return The number of items actually skipped.
+	size_type Skip(size_type itemSize, size_type itemCount) noexcept;
+
+	/// Drains the ring buffer.
+	/// @note This method is only safe to call from the consumer.
+	void Drain() noexcept;
 
 	// MARK: Writing and Reading Spans
 
