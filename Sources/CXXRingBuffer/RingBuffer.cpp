@@ -204,6 +204,27 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Read(void * cons
 	return itemsToRead;
 }
 
+CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Skip(size_type itemSize, size_type itemCount) noexcept
+{
+	if(itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
+		return 0;
+
+	const auto writePos = writePosition_.load(std::memory_order_acquire);
+	const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+	const auto availableBytes = writePos - readPos;
+	const auto availableItems = availableBytes / itemSize;
+	if(availableItems == 0) [[unlikely]]
+		return 0;
+
+	const auto itemsToSkip = std::min(availableItems, itemCount);
+	const auto bytesToSkip = itemsToSkip * itemSize;
+
+	readPosition_.store(readPos + bytesToSkip, std::memory_order_release);
+
+	return itemsToSkip;
+}
+
 bool CXXRingBuffer::RingBuffer::Peek(void * const ptr, size_type itemSize, size_type itemCount) const noexcept
 {
 	if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]

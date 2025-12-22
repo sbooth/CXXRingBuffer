@@ -133,6 +133,13 @@ public:
 	/// @return The number of items actually read.
 	size_type Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
 
+	/// Skips data and advances the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @param itemSize The size of an individual item in bytes.
+	/// @param itemCount The desired number of items to skip.
+	/// @return The number of items actually skipped.
+	size_type Skip(size_type itemSize, size_type itemCount) noexcept;
+
 	/// Reads data without advancing the read position.
 	/// @note This method is only safe to call from the consumer.
 	/// @param ptr An address to receive the data.
