@@ -82,9 +82,9 @@ public:
 	/// @note This method is not thread safe.
 	void Deallocate() noexcept;
 
-	/// Resets the read and write positions to their default state, emptying the buffer.
-	/// @note This method is not thread safe.
-	void Reset() noexcept;
+	/// Drains the ring buffer.
+	/// @note This method is only safe to call from the consumer.
+	void Drain() noexcept;
 
 	// MARK: Buffer Information
 
@@ -132,6 +132,13 @@ public:
 	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than count.
 	/// @return The number of items actually read.
 	size_type Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
+
+	/// Skips data and advances the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @param itemSize The size of an individual item in bytes.
+	/// @param itemCount The desired number of items to skip.
+	/// @return The number of items actually skipped.
+	size_type Skip(size_type itemSize, size_type itemCount) noexcept;
 
 	/// Reads data without advancing the read position.
 	/// @note This method is only safe to call from the consumer.
