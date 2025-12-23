@@ -110,6 +110,13 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::FreeSpace() cons
 	return capacity_ - (writePos - readPos);
 }
 
+bool CXXRingBuffer::RingBuffer::IsFull() const noexcept
+{
+	const auto writePos = writePosition_.load(std::memory_order_relaxed);
+	const auto readPos = readPosition_.load(std::memory_order_acquire);
+	return (writePos - readPos) == capacity_;
+}
+
 CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::AvailableBytes() const noexcept
 {
 	const auto writePos = writePosition_.load(std::memory_order_acquire);
@@ -120,15 +127,8 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::AvailableBytes()
 bool CXXRingBuffer::RingBuffer::IsEmpty() const noexcept
 {
 	const auto writePos = writePosition_.load(std::memory_order_acquire);
-	const auto readPos = readPosition_.load(std::memory_order_acquire);
+	const auto readPos = readPosition_.load(std::memory_order_relaxed);
 	return writePos == readPos;
-}
-
-bool CXXRingBuffer::RingBuffer::IsFull() const noexcept
-{
-	const auto writePos = writePosition_.load(std::memory_order_acquire);
-	const auto readPos = readPosition_.load(std::memory_order_acquire);
-	return (writePos - readPos) == capacity_;
 }
 
 // MARK: Writing and Reading Data

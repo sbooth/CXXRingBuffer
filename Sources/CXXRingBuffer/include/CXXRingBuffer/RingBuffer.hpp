@@ -95,24 +95,24 @@ public:
 	// MARK: Buffer Usage
 
 	/// Returns the amount of free space in the ring buffer.
-	/// @note This method is only safe to call from the producer.
+	/// @note The result of this method is only accurate when called from the producer.
 	/// @return The number of bytes of free space available for writing.
 	[[nodiscard]] size_type FreeSpace() const noexcept;
 
+	/// Returns true if the ring buffer is full.
+	/// @note The result of this method is only accurate when called from the producer.
+	/// @return true if the buffer is full.
+	[[nodiscard]] bool IsFull() const noexcept;
+
 	/// Returns the amount of data in the ring buffer.
-	/// @note This method is only safe to call from the consumer.
+	/// @note The result of this method is only accurate when called from the consumer.
 	/// @return The number of bytes available for reading.
 	[[nodiscard]] size_type AvailableBytes() const noexcept;
 
 	/// Returns true if the ring buffer is empty.
-	/// @note This method is thread safe.
+	/// @note The result of this method is only accurate when called from the consumer.
 	/// @return true if the buffer contains no data.
 	[[nodiscard]] bool IsEmpty() const noexcept;
-
-	/// Returns true if the ring buffer is full.
-	/// @note This method is thread safe.
-	/// @return true if the buffer is full.
-	[[nodiscard]] bool IsFull() const noexcept;
 
 	// MARK: Writing and Reading Data
 
