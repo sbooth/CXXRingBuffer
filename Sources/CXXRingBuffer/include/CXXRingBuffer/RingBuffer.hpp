@@ -90,7 +90,10 @@ public:
 	/// Returns the capacity of the ring buffer.
 	/// @note This method is safe to call from both producer and consumer.
 	/// @return The ring buffer capacity in bytes.
-	[[nodiscard]] size_type Capacity() const noexcept;
+	[[nodiscard]] size_type Capacity() const noexcept
+	{
+		return capacity_;
+	}
 
 	// MARK: Buffer Usage
 
