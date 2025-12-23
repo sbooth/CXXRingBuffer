@@ -94,13 +94,6 @@ void CXXRingBuffer::RingBuffer::Deallocate() noexcept
 	}
 }
 
-// MARK: Buffer Information
-
-CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Capacity() const noexcept
-{
-	return capacity_;
-}
-
 // MARK: Buffer Usage
 
 CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::FreeSpace() const noexcept
