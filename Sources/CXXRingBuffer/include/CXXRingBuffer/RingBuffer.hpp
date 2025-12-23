@@ -27,6 +27,9 @@ class RingBuffer final {
 public:
 	/// Unsigned integer type.
 	using size_type = std::size_t;
+	/// Atomic unsigned integer type.
+	using atomic_size_type = std::atomic<size_type>;
+
 	/// A write vector.
 	using write_vector = std::pair<std::span<uint8_t>, std::span<uint8_t>>;
 	/// A read vector.
@@ -360,13 +363,13 @@ private:
 
 	/// The free-running write location.
 	alignas(std::hardware_destructive_interference_size)
-	std::atomic<size_type> writePosition_{0};
+	atomic_size_type writePosition_{0};
 	/// The free-running read location.
 	alignas(std::hardware_destructive_interference_size)
-	std::atomic<size_type> readPosition_{0};
+	atomic_size_type readPosition_{0};
 
-	static_assert(std::atomic<size_type>::is_always_lock_free, "Lock-free std::atomic<size_type> required");
-	static_assert(std::hardware_destructive_interference_size >= alignof(std::atomic<size_type>));
+	static_assert(atomic_size_type::is_always_lock_free, "Lock-free atomic_size_type required");
+	static_assert(std::hardware_destructive_interference_size >= alignof(atomic_size_type));
 };
 
 } /* namespace CXXRingBuffer */
