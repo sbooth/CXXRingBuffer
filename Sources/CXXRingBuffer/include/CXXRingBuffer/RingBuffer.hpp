@@ -88,31 +88,31 @@ public:
 	// MARK: Buffer Information
 
 	/// Returns the capacity of the ring buffer.
-	/// @note This method is thread safe.
+	/// @note This method is safe to call from both producer and consumer.
 	/// @return The ring buffer capacity in bytes.
 	[[nodiscard]] size_type Capacity() const noexcept;
 
 	// MARK: Buffer Usage
 
 	/// Returns the amount of free space in the ring buffer.
-	/// @note This method is only safe to call from the producer.
+	/// @note The result of this method is only accurate when called from the producer.
 	/// @return The number of bytes of free space available for writing.
 	[[nodiscard]] size_type FreeSpace() const noexcept;
 
+	/// Returns true if the ring buffer is full.
+	/// @note The result of this method is only accurate when called from the producer.
+	/// @return true if the buffer is full.
+	[[nodiscard]] bool IsFull() const noexcept;
+
 	/// Returns the amount of data in the ring buffer.
-	/// @note This method is only safe to call from the consumer.
+	/// @note The result of this method is only accurate when called from the consumer.
 	/// @return The number of bytes available for reading.
 	[[nodiscard]] size_type AvailableBytes() const noexcept;
 
 	/// Returns true if the ring buffer is empty.
-	/// @note This method is thread safe.
+	/// @note The result of this method is only accurate when called from the consumer.
 	/// @return true if the buffer contains no data.
 	[[nodiscard]] bool IsEmpty() const noexcept;
-
-	/// Returns true if the ring buffer is full.
-	/// @note This method is thread safe.
-	/// @return true if the buffer is full.
-	[[nodiscard]] bool IsFull() const noexcept;
 
 	// MARK: Writing and Reading Data
 
@@ -334,16 +334,16 @@ public:
 	/// @return A pair of spans containing the current writable space.
 	[[nodiscard]] write_vector GetWriteVector() const noexcept;
 
-	/// Returns a read vector containing the current readable data.
-	/// @note This method is only safe to call from the consumer.
-	/// @return A pair of spans containing the current readable data.
-	[[nodiscard]] read_vector GetReadVector() const noexcept;
-
 	/// Finalizes a write transaction by writing staged data to the ring buffer.
 	/// @warning The behavior is undefined if count is greater than the free space in the write vector.
 	/// @note This method is only safe to call from the producer.
 	/// @param count The number of bytes that were successfully written to the write vector.
 	void CommitWrite(size_type count) noexcept;
+
+	/// Returns a read vector containing the current readable data.
+	/// @note This method is only safe to call from the consumer.
+	/// @return A pair of spans containing the current readable data.
+	[[nodiscard]] read_vector GetReadVector() const noexcept;
 
 	/// Finalizes a read transaction by removing data from the front of the ring buffer.
 	/// @warning The behavior is undefined if count is greater than the available data in the read vector.
