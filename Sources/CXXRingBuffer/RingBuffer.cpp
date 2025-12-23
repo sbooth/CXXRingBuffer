@@ -60,9 +60,9 @@ bool CXXRingBuffer::RingBuffer::Allocate(size_type minCapacity) noexcept
 
 #if false
 	// Use aligned_alloc for cache-line alignment (64 bytes)
-	// Note: size must be a multiple of alignment for aligned_alloc
+	// Note: capacity must be a multiple of alignment for aligned_alloc
 	if(__builtin_available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *))
-		buffer_ = std::aligned_alloc(64, size);
+		buffer_ = std::aligned_alloc(64, capacity);
 	else
 		buffer_ = std::malloc(capacity);
 #endif
