@@ -28,6 +28,7 @@ public:
 	using size_type = std::size_t;
 	/// Atomic unsigned integer type.
 	using atomic_size_type = std::atomic<size_type>;
+
 	/// A write vector.
 	using write_vector = std::pair<std::span<uint8_t>, std::span<uint8_t>>;
 	/// A read vector.
