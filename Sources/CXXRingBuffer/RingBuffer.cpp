@@ -143,8 +143,8 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Write(const void
 	const auto itemsToWrite = std::min(slotsFree, itemCount);
 	const auto bytesToWrite = itemsToWrite * itemSize;
 
-	auto dst = static_cast<uint8_t *>(buffer_);
-	const auto src = static_cast<const uint8_t *>(ptr);
+	auto dst = static_cast<unsigned char *>(buffer_);
+	const auto src = static_cast<const unsigned char *>(ptr);
 
 	const auto writeIndex = writePos & capacityMask_;
 	const auto spaceToEnd = capacity_ - writeIndex;
@@ -176,8 +176,8 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Read(void * cons
 	const auto itemsToRead = std::min(availableItems, itemCount);
 	const auto bytesToRead = itemsToRead * itemSize;
 
-	auto dst = static_cast<uint8_t *>(ptr);
-	const auto src = static_cast<const uint8_t *>(buffer_);
+	auto dst = static_cast<unsigned char *>(ptr);
+	const auto src = static_cast<const unsigned char *>(buffer_);
 
 	const auto readIndex = readPos & capacityMask_;
 	const auto spaceToEnd = capacity_ - readIndex;
@@ -208,8 +208,8 @@ bool CXXRingBuffer::RingBuffer::Peek(void * const ptr, size_type itemSize, size_
 
 	const auto bytesToPeek = itemCount * itemSize;
 
-	auto dst = static_cast<uint8_t *>(ptr);
-	const auto src = static_cast<const uint8_t *>(buffer_);
+	auto dst = static_cast<unsigned char *>(ptr);
+	const auto src = static_cast<const unsigned char *>(buffer_);
 
 	const auto readIndex = readPos & capacityMask_;
 	const auto spaceToEnd = capacity_ - readIndex;
@@ -264,7 +264,7 @@ CXXRingBuffer::RingBuffer::write_vector CXXRingBuffer::RingBuffer::GetWriteVecto
 	if(freeBytes == 0) [[unlikely]]
 		return {};
 
-	auto dst = static_cast<uint8_t *>(buffer_);
+	auto dst = static_cast<unsigned char *>(buffer_);
 
 	const auto writeIndex = writePos & capacityMask_;
 	const auto spaceToEnd = capacity_ - writeIndex;
@@ -290,7 +290,7 @@ CXXRingBuffer::RingBuffer::read_vector CXXRingBuffer::RingBuffer::GetReadVector(
 	if(availableBytes == 0) [[unlikely]]
 		return {};
 
-	const auto src = static_cast<const uint8_t *>(buffer_);
+	const auto src = static_cast<const unsigned char *>(buffer_);
 
 	const auto readIndex = readPos & capacityMask_;
 	const auto spaceToEnd = capacity_ - readIndex;
