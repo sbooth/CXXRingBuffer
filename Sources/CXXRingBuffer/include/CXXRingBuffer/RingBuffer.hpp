@@ -30,9 +30,9 @@ public:
 	using atomic_size_type = std::atomic<size_type>;
 
 	/// A write vector.
-	using write_vector = std::pair<std::span<uint8_t>, std::span<uint8_t>>;
+	using write_vector = std::pair<std::span<unsigned char>, std::span<unsigned char>>;
 	/// A read vector.
-	using read_vector = std::pair<std::span<const uint8_t>, std::span<const uint8_t>>;
+	using read_vector = std::pair<std::span<const unsigned char>, std::span<const unsigned char>>;
 
 	/// The minimum supported ring buffer capacity in bytes.
 	static constexpr size_type min_capacity = size_type{2};
@@ -275,7 +275,7 @@ public:
 
 		std::size_t cursor = 0;
 		auto write_single_arg = [&](const void *arg, std::size_t len) noexcept {
-			const auto *src = static_cast<const uint8_t *>(arg);
+			const auto *src = static_cast<const unsigned char *>(arg);
 			if(cursor + len <= frontSize)
 				std::memcpy(front.data() + cursor, src, len);
 			else if(cursor >= frontSize)
@@ -311,7 +311,7 @@ public:
 
 		std::size_t cursor = 0;
 		auto read_single_arg = [&](void *arg, std::size_t len) noexcept {
-			auto *dst = static_cast<uint8_t *>(arg);
+			auto *dst = static_cast<unsigned char *>(arg);
 			if(cursor + len <= frontSize)
 				std::memcpy(dst, front.data() + cursor, len);
 			else if(cursor >= frontSize)
