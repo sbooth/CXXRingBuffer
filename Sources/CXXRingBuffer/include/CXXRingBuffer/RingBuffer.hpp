@@ -14,6 +14,7 @@
 #import <memory>
 #import <optional>
 #import <span>
+#import <tuple>
 #import <type_traits>
 #import <utility>
 
@@ -328,6 +329,42 @@ public:
 
 		CommitRead(totalSize);
 		return true;
+	}
+
+	/// Reads values and advances the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @tparam Args The types to read.
+	/// @return A std::optional containing a tuple of the values if they were successfully read.
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
+	std::optional<std::tuple<Args...>> ReadValues() noexcept
+	{
+		const auto totalSize = (sizeof(Args) + ...);
+		const auto [front, back] = GetReadVector();
+
+		const auto frontSize = front.size();
+		if(frontSize + back.size() < totalSize)
+			return std::nullopt;
+
+		std::size_t cursor = 0;
+		const auto read_single_arg = [&](void *arg, std::size_t len) noexcept {
+			auto *dst = static_cast<unsigned char *>(arg);
+			if(cursor + len <= frontSize)
+				std::memcpy(dst, front.data() + cursor, len);
+			else if(cursor >= frontSize)
+				std::memcpy(dst, back.data() + (cursor - frontSize), len);
+			else [[unlikely]] {
+				const size_t fromFront = frontSize - cursor;
+				std::memcpy(dst, front.data() + cursor, fromFront);
+				std::memcpy(dst + fromFront, back.data(), len - fromFront);
+			}
+			cursor += len;
+		};
+
+		std::tuple<Args...> result;
+		std::apply([&](Args&... args) { (read_single_arg(std::addressof(args), sizeof args), ...); }, result);
+
+		CommitRead(totalSize);
+		return result;
 	}
 
 	// MARK: Advanced Writing and Reading
