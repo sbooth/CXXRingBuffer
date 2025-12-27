@@ -274,7 +274,7 @@ public:
 			return false;
 
 		std::size_t cursor = 0;
-		auto write_single_arg = [&](const void *arg, std::size_t len) noexcept {
+		const auto write_single_arg = [&](const void *arg, std::size_t len) noexcept {
 			const auto *src = static_cast<const unsigned char *>(arg);
 			if(cursor + len <= frontSize)
 				std::memcpy(front.data() + cursor, src, len);
@@ -310,7 +310,7 @@ public:
 			return false;
 
 		std::size_t cursor = 0;
-		auto read_single_arg = [&](void *arg, std::size_t len) noexcept {
+		const auto read_single_arg = [&](void *arg, std::size_t len) noexcept {
 			auto *dst = static_cast<unsigned char *>(arg);
 			if(cursor + len <= frontSize)
 				std::memcpy(dst, front.data() + cursor, len);
