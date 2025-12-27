@@ -288,7 +288,7 @@ public:
 			cursor += len;
 		};
 
-		(write_single_arg(std::addressof(args), sizeof(args)), ...);
+		(write_single_arg(std::addressof(args), sizeof args), ...);
 
 		CommitWrite(totalSize);
 		return true;
@@ -324,7 +324,7 @@ public:
 			cursor += len;
 		};
 
-		(read_single_arg(std::addressof(args), sizeof(args)), ...);
+		(read_single_arg(std::addressof(args), sizeof args), ...);
 
 		CommitRead(totalSize);
 		return true;
