@@ -267,7 +267,7 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
 	bool WriteValues(const Args&... args) noexcept
 	{
-		const auto totalSize = (sizeof args + ...);
+		constexpr auto totalSize = (sizeof args + ...);
 		auto [front, back] = GetWriteVector();
 
 		const auto frontSize = front.size();
@@ -303,7 +303,7 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
 	bool ReadValues(Args&... args) noexcept
 	{
-		const auto totalSize = (sizeof args + ...);
+		constexpr auto totalSize = (sizeof args + ...);
 		const auto [front, back] = GetReadVector();
 
 		const auto frontSize = front.size();
