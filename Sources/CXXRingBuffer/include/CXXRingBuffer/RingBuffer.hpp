@@ -335,9 +335,7 @@ public:
 	/// @note This method is only safe to call from the consumer.
 	/// @tparam Args The types to read.
 	/// @return A std::optional containing a tuple of the values if they were successfully read.
-	template <typename... Args>
-		requires (std::is_trivially_copyable_v<Args> && ...) &&
-		         (std::is_default_constructible_v<Args> && ...)
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (std::is_default_constructible_v<Args> && ...)
 	std::optional<std::tuple<Args...>> ReadValues() noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
 	{
 		constexpr auto totalSize = (sizeof(Args) + ...);
