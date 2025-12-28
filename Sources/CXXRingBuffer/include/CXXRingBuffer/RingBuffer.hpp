@@ -338,7 +338,7 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
 	std::optional<std::tuple<Args...>> ReadValues() noexcept
 	{
-		const auto totalSize = (sizeof(Args) + ...);
+		constexpr auto totalSize = (sizeof(Args) + ...);
 		const auto [front, back] = GetReadVector();
 
 		const auto frontSize = front.size();
