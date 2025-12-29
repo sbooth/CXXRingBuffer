@@ -342,7 +342,7 @@ public:
 	/// @param args The destination values.
 	/// @return true if the values were successfully read.
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
-	[[nodiscard]] bool PeekValues(Args&... args) noexcept
+	[[nodiscard]] bool PeekValues(Args&... args) const noexcept
 	{
 		return CopyFromReadVector<Args...>(false, [&](auto&& copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
 	}
