@@ -27,6 +27,12 @@ import Foundation
 		#expect(rb.Capacity() == capacity)
 		#expect(rb.AvailableBytes() == 0)
 		#expect(rb.FreeSpace() == rb.Capacity())
+
+		rb.Deallocate()
+		#expect(rb.__convertToBool() == false)
+		#expect(rb.Capacity() == 0)
+		#expect(rb.AvailableBytes() == 0)
+		#expect(rb.FreeSpace() == rb.Capacity())
 	}
 
 	@Test func capacity() async {
