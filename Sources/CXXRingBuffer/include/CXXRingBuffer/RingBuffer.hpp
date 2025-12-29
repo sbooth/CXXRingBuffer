@@ -469,11 +469,11 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (std::is_default_constructible_v<Args> && ...) && (sizeof...(Args) > 0)
 	std::optional<std::tuple<Args...>> ReadValues() noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
 	{
-		if(auto result = PeekValues<Args...>(); result) {
-			CommitRead((sizeof(Args) + ...));
-			return result;
-		}
-		return std::nullopt;
+		auto result = PeekValues<Args...>();
+		if(!result)
+			return std::nullopt;
+		CommitRead((sizeof(Args) + ...));
+		return result;
 	}
 
 	/// Reads values without advancing the read position.
@@ -485,7 +485,7 @@ public:
 	std::optional<std::tuple<Args...>> PeekValues() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
 	{
 		std::tuple<Args...> result;
-		if(!CopyFromReadVector<Args...>([&](auto&& f) { std::apply([&](Args&... args) { (f(std::addressof(args), sizeof(Args)), ...); }, result); }))
+		if(!CopyFromReadVector<Args...>([&](auto&& copier) noexcept { std::apply([&](Args&... args) noexcept { (copier(std::addressof(args), sizeof(Args)), ...); }, result); }))
 			return std::nullopt;
 		return result;
 	}
