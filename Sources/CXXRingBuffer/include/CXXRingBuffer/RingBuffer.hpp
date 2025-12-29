@@ -8,6 +8,7 @@
 
 #import <algorithm>
 #import <atomic>
+#import <cassert>
 #import <cstddef>
 #import <cstring>
 #import <limits>
@@ -106,22 +107,42 @@ public:
 	/// Returns the amount of free space in the ring buffer.
 	/// @note The result of this method is only accurate when called from the producer.
 	/// @return The number of bytes of free space available for writing.
-	[[nodiscard]] size_type FreeSpace() const noexcept;
+	[[nodiscard]] size_type FreeSpace() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		const auto readPos = readPosition_.load(std::memory_order_acquire);
+		return capacity_ - (writePos - readPos);
+	}
 
 	/// Returns true if the ring buffer is full.
 	/// @note The result of this method is only accurate when called from the producer.
 	/// @return true if the buffer is full.
-	[[nodiscard]] bool IsFull() const noexcept;
+	[[nodiscard]] bool IsFull() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		const auto readPos = readPosition_.load(std::memory_order_acquire);
+		return (writePos - readPos) == capacity_;
+	}
 
 	/// Returns the amount of data in the ring buffer.
 	/// @note The result of this method is only accurate when called from the consumer.
 	/// @return The number of bytes available for reading.
-	[[nodiscard]] size_type AvailableBytes() const noexcept;
+	[[nodiscard]] size_type AvailableBytes() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+		return writePos - readPos;
+	}
 
 	/// Returns true if the ring buffer is empty.
 	/// @note The result of this method is only accurate when called from the consumer.
 	/// @return true if the buffer contains no data.
-	[[nodiscard]] bool IsEmpty() const noexcept;
+	[[nodiscard]] bool IsEmpty() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+		return writePos == readPos;
+	}
 
 	// MARK: Writing and Reading Data
 
@@ -162,7 +183,11 @@ public:
 
 	/// Advances the read position to the write position, emptying the buffer.
 	/// @note This method is only safe to call from the consumer.
-	void Drain() noexcept;
+	void Drain() noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		readPosition_.store(writePos, std::memory_order_release);
+	}
 
 	// MARK: Writing and Reading Spans
 
@@ -347,7 +372,12 @@ public:
 	/// @warning The behavior is undefined if count is greater than the free space in the write vector.
 	/// @note This method is only safe to call from the producer.
 	/// @param count The number of bytes that were successfully written to the write vector.
-	void CommitWrite(size_type count) noexcept;
+	void CommitWrite(size_type count) noexcept
+	{
+		assert(count <= FreeSpace() && "Logic error: Write committing more than available free space");
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		writePosition_.store(writePos + count, std::memory_order_release);
+	}
 
 	/// Returns a read vector containing the current readable data.
 	/// @note This method is only safe to call from the consumer.
@@ -358,7 +388,12 @@ public:
 	/// @warning The behavior is undefined if count is greater than the available data in the read vector.
 	/// @note This method is only safe to call from the consumer.
 	/// @param count The number of bytes that were successfully read from the read vector.
-	void CommitRead(size_type count) noexcept;
+	void CommitRead(size_type count) noexcept
+	{
+		assert(count <= AvailableBytes() && "Logic error: Read committing more than available data");
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+		readPosition_.store(readPos + count, std::memory_order_release);
+	}
 
 private:
 	/// The memory buffer holding the data.
