@@ -464,7 +464,7 @@ public:
 	/// Reads values and advances the read position.
 	/// @note This method is only safe to call from the consumer.
 	/// @tparam Args The types to read.
-	/// @return A std::optional containing a tuple of the values if they were successfully read.
+	/// @return A std::optional containing a std::tuple of the values if they were successfully read.
 	/// @throw Any exceptions thrown by the default constructors of Args.
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (std::is_default_constructible_v<Args> && ...) && (sizeof...(Args) > 0)
 	std::optional<std::tuple<Args...>> ReadValues() noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
@@ -479,7 +479,7 @@ public:
 	/// Reads values without advancing the read position.
 	/// @note This method is only safe to call from the consumer.
 	/// @tparam Args The types to read.
-	/// @return A std::optional containing a tuple of the values if they were successfully read.
+	/// @return A std::optional containing a std::tuple of the values if they were successfully read.
 	/// @throw Any exceptions thrown by the default constructors of Args.
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (std::is_default_constructible_v<Args> && ...) && (sizeof...(Args) > 0)
 	[[nodiscard]] std::optional<std::tuple<Args...>> PeekValues() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
