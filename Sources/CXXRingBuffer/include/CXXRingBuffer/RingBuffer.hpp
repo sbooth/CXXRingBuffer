@@ -391,8 +391,8 @@ private:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
 	bool CopyFromReadVector(bool commit, auto&& processor) noexcept
 	{
-		using CopierType = void(*)(void *, std::size_t) noexcept;
-		static_assert(std::is_nothrow_invocable_v<decltype(processor), CopierType>, "Processor must be callable with a noexcept copier without throwing");
+		using copier_type = void(*)(void *, std::size_t) noexcept;
+		static_assert(std::is_nothrow_invocable_v<decltype(processor), copier_type>, "Processor must be callable with a noexcept copier without throwing");
 
 		constexpr auto totalSize = (sizeof(Args) + ...);
 		const auto [front, back] = GetReadVector();
