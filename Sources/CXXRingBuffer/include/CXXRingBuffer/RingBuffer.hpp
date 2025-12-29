@@ -333,7 +333,10 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
 	bool ReadValues(Args&... args) noexcept
 	{
-		return CopyFromReadVector<Args...>(true, [&](auto&& copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
+		if(!PeekValues(args...))
+			return false;
+		CommitRead((sizeof args + ...));
+		return true;
 	}
 
 	/// Reads values without advancing the read position.
@@ -344,7 +347,7 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
 	[[nodiscard]] bool PeekValues(Args&... args) const noexcept
 	{
-		return CopyFromReadVector<Args...>(false, [&](auto&& copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
+		return CopyFromReadVector<Args...>([&](auto&& copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
 	}
 
 	// MARK: Advanced Writing and Reading
@@ -382,14 +385,13 @@ public:
 	}
 
 private:
-	/// Copies values from the read vector and optionally advances the read position.
+	/// Copies values from the read vector without advancing the read position.
 	/// @note This method is only safe to call from the consumer.
 	/// @tparam Args The types to read.
-	/// @param commit Whether the read should be committed.
-	/// @param processor A lambda processing the values.
-	/// @return true if the values were successfully read.
+	/// @param processor A lambda accepting a copier parameter.
+	/// @return true if the values were successfully copied.
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
-	bool CopyFromReadVector(bool commit, auto&& processor) noexcept
+	bool CopyFromReadVector(auto&& processor) const noexcept
 	{
 		using copier_type = void(*)(void *, std::size_t) noexcept;
 		static_assert(std::is_nothrow_invocable_v<decltype(processor), copier_type>, "Processor must be callable with a noexcept copier without throwing");
@@ -402,7 +404,7 @@ private:
 			return false;
 
 		std::size_t cursor = 0;
-		const auto copy_single_arg = [&](void *arg, std::size_t len) noexcept {
+		const auto copier = [&](void *arg, std::size_t len) noexcept {
 			auto *dst = static_cast<unsigned char *>(arg);
 			if(cursor + len <= frontSize)
 				std::memcpy(dst, front.data() + cursor, len);
@@ -416,10 +418,7 @@ private:
 			cursor += len;
 		};
 
-		processor(copy_single_arg);
-
-		if(commit)
-			CommitRead(totalSize);
+		processor(copier);
 		return true;
 	}
 
