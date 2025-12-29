@@ -384,7 +384,7 @@ public:
 		if(freeBytes == 0) [[unlikely]]
 			return {};
 
-		auto dst = static_cast<unsigned char *>(buffer_);
+		auto *dst = static_cast<unsigned char *>(buffer_);
 
 		const auto writeIndex = writePos & capacityMask_;
 		const auto spaceToEnd = capacity_ - writeIndex;
@@ -417,7 +417,7 @@ public:
 		if(availableBytes == 0) [[unlikely]]
 			return {};
 
-		const auto src = static_cast<const unsigned char *>(buffer_);
+		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
 		const auto spaceToEnd = capacity_ - readIndex;

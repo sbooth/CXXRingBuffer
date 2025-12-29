@@ -112,8 +112,8 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Write(const void
 	const auto itemsToWrite = std::min(slotsFree, itemCount);
 	const auto bytesToWrite = itemsToWrite * itemSize;
 
-	auto dst = static_cast<unsigned char *>(buffer_);
-	const auto src = static_cast<const unsigned char *>(ptr);
+	auto *dst = static_cast<unsigned char *>(buffer_);
+	const auto *src = static_cast<const unsigned char *>(ptr);
 
 	const auto writeIndex = writePos & capacityMask_;
 	const auto spaceToEnd = capacity_ - writeIndex;
@@ -145,8 +145,8 @@ CXXRingBuffer::RingBuffer::size_type CXXRingBuffer::RingBuffer::Read(void * cons
 	const auto itemsToRead = std::min(availableItems, itemCount);
 	const auto bytesToRead = itemsToRead * itemSize;
 
-	auto dst = static_cast<unsigned char *>(ptr);
-	const auto src = static_cast<const unsigned char *>(buffer_);
+	auto *dst = static_cast<unsigned char *>(ptr);
+	const auto *src = static_cast<const unsigned char *>(buffer_);
 
 	const auto readIndex = readPos & capacityMask_;
 	const auto spaceToEnd = capacity_ - readIndex;
@@ -177,8 +177,8 @@ bool CXXRingBuffer::RingBuffer::Peek(void * const ptr, size_type itemSize, size_
 
 	const auto bytesToPeek = itemCount * itemSize;
 
-	auto dst = static_cast<unsigned char *>(ptr);
-	const auto src = static_cast<const unsigned char *>(buffer_);
+	auto *dst = static_cast<unsigned char *>(ptr);
+	const auto *src = static_cast<const unsigned char *>(buffer_);
 
 	const auto readIndex = readPos & capacityMask_;
 	const auto spaceToEnd = capacity_ - readIndex;
