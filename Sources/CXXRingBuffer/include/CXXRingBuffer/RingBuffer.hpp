@@ -153,7 +153,39 @@ public:
 	/// @param itemCount The desired number of items to write.
 	/// @param allowPartial Whether any items should be written if insufficient free space is available to write all items.
 	/// @return The number of items actually written.
-	size_type Write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
+	size_type Write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
+	{
+		if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
+			return 0;
+
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		const auto readPos = readPosition_.load(std::memory_order_acquire);
+
+		const auto bytesUsed = writePos - readPos;
+		const auto bytesFree = capacity_ - bytesUsed;
+		const auto slotsFree = bytesFree / itemSize;
+		if(slotsFree == 0 || (slotsFree < itemCount && !allowPartial))
+			return 0;
+
+		const auto itemsToWrite = std::min(slotsFree, itemCount);
+		const auto bytesToWrite = itemsToWrite * itemSize;
+
+		auto *dst = static_cast<unsigned char *>(buffer_);
+		const auto *src = static_cast<const unsigned char *>(ptr);
+
+		const auto writeIndex = writePos & capacityMask_;
+		const auto spaceToEnd = capacity_ - writeIndex;
+		if(bytesToWrite <= spaceToEnd) [[likely]]
+			std::memcpy(dst + writeIndex, src, bytesToWrite);
+		else [[unlikely]] {
+			std::memcpy(dst + writeIndex, src, spaceToEnd);
+			std::memcpy(dst, src + spaceToEnd, bytesToWrite - spaceToEnd);
+		}
+
+		writePosition_.store(writePos + bytesToWrite, std::memory_order_release);
+
+		return itemsToWrite;
+	}
 
 	/// Reads data and advances the read position.
 	/// @note This method is only safe to call from the consumer.
@@ -162,7 +194,38 @@ public:
 	/// @param itemCount The desired number of items to read.
 	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than count.
 	/// @return The number of items actually read.
-	size_type Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
+	size_type Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
+	{
+		if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
+			return 0;
+
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto availableBytes = writePos - readPos;
+		const auto availableItems = availableBytes / itemSize;
+		if(availableItems == 0 || (availableItems < itemCount && !allowPartial))
+			return 0;
+
+		const auto itemsToRead = std::min(availableItems, itemCount);
+		const auto bytesToRead = itemsToRead * itemSize;
+
+		auto *dst = static_cast<unsigned char *>(ptr);
+		const auto *src = static_cast<const unsigned char *>(buffer_);
+
+		const auto readIndex = readPos & capacityMask_;
+		const auto spaceToEnd = capacity_ - readIndex;
+		if(bytesToRead <= spaceToEnd) [[likely]]
+			std::memcpy(dst, src + readIndex, bytesToRead);
+		else [[unlikely]] {
+			std::memcpy(dst, src + readIndex, spaceToEnd);
+			std::memcpy(dst + spaceToEnd, src, bytesToRead - spaceToEnd);
+		}
+
+		readPosition_.store(readPos + bytesToRead, std::memory_order_release);
+
+		return itemsToRead;
+	}
 
 	/// Reads data without advancing the read position.
 	/// @note This method is only safe to call from the consumer.
@@ -170,7 +233,35 @@ public:
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to read.
 	/// @return True if the requested items were read, false otherwise.
-	[[nodiscard]] bool Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept;
+	[[nodiscard]] bool Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept
+	{
+		if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
+			return false;
+
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto availableBytes = writePos - readPos;
+		const auto availableItems = availableBytes / itemSize;
+		if(availableItems < itemCount)
+			return false;
+
+		const auto bytesToPeek = itemCount * itemSize;
+
+		auto *dst = static_cast<unsigned char *>(ptr);
+		const auto *src = static_cast<const unsigned char *>(buffer_);
+
+		const auto readIndex = readPos & capacityMask_;
+		const auto spaceToEnd = capacity_ - readIndex;
+		if(bytesToPeek <= spaceToEnd) [[likely]]
+			std::memcpy(dst, src + readIndex, bytesToPeek);
+		else [[unlikely]] {
+			std::memcpy(dst, src + readIndex, spaceToEnd);
+			std::memcpy(dst + spaceToEnd, src, bytesToPeek - spaceToEnd);
+		}
+
+		return true;
+	}
 
 	// MARK: Discarding Data
 
@@ -179,7 +270,26 @@ public:
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to skip.
 	/// @return The number of items actually skipped.
-	size_type Skip(size_type itemSize, size_type itemCount) noexcept;
+	size_type Skip(size_type itemSize, size_type itemCount) noexcept
+	{
+		if(itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
+			return 0;
+
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto availableBytes = writePos - readPos;
+		const auto availableItems = availableBytes / itemSize;
+		if(availableItems == 0) [[unlikely]]
+			return 0;
+
+		const auto itemsToSkip = std::min(availableItems, itemCount);
+		const auto bytesToSkip = itemsToSkip * itemSize;
+
+		readPosition_.store(readPos + bytesToSkip, std::memory_order_release);
+
+		return itemsToSkip;
+	}
 
 	/// Advances the read position to the write position, emptying the buffer.
 	/// @note This method is only safe to call from the consumer.
@@ -236,7 +346,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool WriteValue(const T& value) noexcept
 	{
-		return WriteValues(value);
+		return Write(static_cast<const void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 	}
 
 	/// Reads a value and advances the read position.
@@ -247,7 +357,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool ReadValue(T& value) noexcept
 	{
-		return ReadValues(value);
+		return Read(static_cast<void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 	}
 
 	/// Reads a value and advances the read position.
@@ -271,7 +381,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	[[nodiscard]] bool PeekValue(T& value) const noexcept
 	{
-		return PeekValues(value);
+		return Peek(static_cast<void *>(std::addressof(value)), sizeof value, 1);
 	}
 
 	/// Reads a value without advancing the read position.
@@ -355,7 +465,25 @@ public:
 	/// Returns a write vector containing the current writable space.
 	/// @note This method is only safe to call from the producer.
 	/// @return A pair of spans containing the current writable space.
-	[[nodiscard]] write_vector GetWriteVector() const noexcept;
+	[[nodiscard]] write_vector GetWriteVector() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		const auto readPos = readPosition_.load(std::memory_order_acquire);
+
+		const auto usedBytes = writePos - readPos;
+		const auto freeBytes = capacity_ - usedBytes;
+		if(freeBytes == 0) [[unlikely]]
+			return {};
+
+		auto *dst = static_cast<unsigned char *>(buffer_);
+
+		const auto writeIndex = writePos & capacityMask_;
+		const auto spaceToEnd = capacity_ - writeIndex;
+		if(freeBytes <= spaceToEnd) [[likely]]
+			return {{dst + writeIndex, freeBytes}, {}};
+		else [[unlikely]]
+			return {{dst + writeIndex, spaceToEnd}, {dst, freeBytes - spaceToEnd}};
+	}
 
 	/// Finalizes a write transaction by writing staged data to the ring buffer.
 	/// @warning The behavior is undefined if count is greater than the free space in the write vector.
@@ -371,7 +499,24 @@ public:
 	/// Returns a read vector containing the current readable data.
 	/// @note This method is only safe to call from the consumer.
 	/// @return A pair of spans containing the current readable data.
-	[[nodiscard]] read_vector GetReadVector() const noexcept;
+	[[nodiscard]] read_vector GetReadVector() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto availableBytes = writePos - readPos;
+		if(availableBytes == 0) [[unlikely]]
+			return {};
+
+		const auto *src = static_cast<const unsigned char *>(buffer_);
+
+		const auto readIndex = readPos & capacityMask_;
+		const auto spaceToEnd = capacity_ - readIndex;
+		if(availableBytes <= spaceToEnd) [[likely]]
+			return {{src + readIndex, availableBytes}, {}};
+		else [[unlikely]]
+			return {{src + readIndex, spaceToEnd}, {src, availableBytes - spaceToEnd}};
+	}
 
 	/// Finalizes a read transaction by removing data from the front of the ring buffer.
 	/// @warning The behavior is undefined if count is greater than the available data in the read vector.
