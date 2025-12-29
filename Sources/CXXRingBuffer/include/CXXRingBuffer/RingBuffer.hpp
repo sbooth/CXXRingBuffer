@@ -346,7 +346,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool WriteValue(const T& value) noexcept
 	{
-		return Write(static_cast<const void *>(std::addressof(value)), sizeof(T), 1, false) == 1;
+		return Write(static_cast<const void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 	}
 
 	/// Reads a value and advances the read position.
@@ -357,7 +357,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool ReadValue(T& value) noexcept
 	{
-		return Read(static_cast<void *>(std::addressof(value)), sizeof(T), 1, false) == 1;
+		return Read(static_cast<void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 	}
 
 	/// Reads a value and advances the read position.
@@ -381,7 +381,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	[[nodiscard]] bool PeekValue(T& value) const noexcept
 	{
-		return Peek(static_cast<void *>(std::addressof(value)), sizeof(T), 1);
+		return Peek(static_cast<void *>(std::addressof(value)), sizeof value, 1);
 	}
 
 	/// Reads a value without advancing the read position.
