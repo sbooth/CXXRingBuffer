@@ -366,7 +366,7 @@ public:
 	/// @tparam T The type to read.
 	/// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
 	/// @throw Any exceptions thrown by the default constructor of T.
-	template <typename T> requires std::is_default_constructible_v<T>
+	template <typename T> requires std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>
 	std::optional<T> ReadValue() noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
 		if(T value{}; ReadValue(value))
@@ -390,7 +390,7 @@ public:
 	/// @tparam T The type to read.
 	/// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
 	/// @throw Any exceptions thrown by the default constructor of T.
-	template <typename T> requires std::is_default_constructible_v<T>
+	template <typename T> requires std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>
 	[[nodiscard]] std::optional<T> PeekValue() const noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
 		if(T value{}; PeekValue(value))
