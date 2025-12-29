@@ -8,6 +8,7 @@
 
 #import <algorithm>
 #import <atomic>
+#import <cassert>
 #import <cstddef>
 #import <cstring>
 #import <limits>
@@ -31,9 +32,9 @@ public:
 	using atomic_size_type = std::atomic<size_type>;
 
 	/// A write vector.
-	using write_vector = std::pair<std::span<uint8_t>, std::span<uint8_t>>;
+	using write_vector = std::pair<std::span<unsigned char>, std::span<unsigned char>>;
 	/// A read vector.
-	using read_vector = std::pair<std::span<const uint8_t>, std::span<const uint8_t>>;
+	using read_vector = std::pair<std::span<const unsigned char>, std::span<const unsigned char>>;
 
 	/// The minimum supported ring buffer capacity in bytes.
 	static constexpr size_type min_capacity = size_type{2};
@@ -86,6 +87,12 @@ public:
 	/// @note This method is not thread safe.
 	void Deallocate() noexcept;
 
+	/// Returns true if the ring buffer has allocated space for data.
+	explicit operator bool() const noexcept
+	{
+		return buffer_ != nullptr;
+	}
+
 	// MARK: Buffer Information
 
 	/// Returns the capacity of the ring buffer.
@@ -101,22 +108,42 @@ public:
 	/// Returns the amount of free space in the ring buffer.
 	/// @note The result of this method is only accurate when called from the producer.
 	/// @return The number of bytes of free space available for writing.
-	[[nodiscard]] size_type FreeSpace() const noexcept;
+	[[nodiscard]] size_type FreeSpace() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		const auto readPos = readPosition_.load(std::memory_order_acquire);
+		return capacity_ - (writePos - readPos);
+	}
 
 	/// Returns true if the ring buffer is full.
 	/// @note The result of this method is only accurate when called from the producer.
 	/// @return true if the buffer is full.
-	[[nodiscard]] bool IsFull() const noexcept;
+	[[nodiscard]] bool IsFull() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		const auto readPos = readPosition_.load(std::memory_order_acquire);
+		return (writePos - readPos) == capacity_;
+	}
 
 	/// Returns the amount of data in the ring buffer.
 	/// @note The result of this method is only accurate when called from the consumer.
 	/// @return The number of bytes available for reading.
-	[[nodiscard]] size_type AvailableBytes() const noexcept;
+	[[nodiscard]] size_type AvailableBytes() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+		return writePos - readPos;
+	}
 
 	/// Returns true if the ring buffer is empty.
 	/// @note The result of this method is only accurate when called from the consumer.
 	/// @return true if the buffer contains no data.
-	[[nodiscard]] bool IsEmpty() const noexcept;
+	[[nodiscard]] bool IsEmpty() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+		return writePos == readPos;
+	}
 
 	// MARK: Writing and Reading Data
 
@@ -127,7 +154,39 @@ public:
 	/// @param itemCount The desired number of items to write.
 	/// @param allowPartial Whether any items should be written if insufficient free space is available to write all items.
 	/// @return The number of items actually written.
-	size_type Write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
+	size_type Write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
+	{
+		if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
+			return 0;
+
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		const auto readPos = readPosition_.load(std::memory_order_acquire);
+
+		const auto bytesUsed = writePos - readPos;
+		const auto bytesFree = capacity_ - bytesUsed;
+		const auto slotsFree = bytesFree / itemSize;
+		if(slotsFree == 0 || (slotsFree < itemCount && !allowPartial))
+			return 0;
+
+		const auto itemsToWrite = std::min(slotsFree, itemCount);
+		const auto bytesToWrite = itemsToWrite * itemSize;
+
+		auto *dst = static_cast<unsigned char *>(buffer_);
+		const auto *src = static_cast<const unsigned char *>(ptr);
+
+		const auto writeIndex = writePos & capacityMask_;
+		const auto spaceToEnd = capacity_ - writeIndex;
+		if(bytesToWrite <= spaceToEnd) [[likely]]
+			std::memcpy(dst + writeIndex, src, bytesToWrite);
+		else [[unlikely]] {
+			std::memcpy(dst + writeIndex, src, spaceToEnd);
+			std::memcpy(dst, src + spaceToEnd, bytesToWrite - spaceToEnd);
+		}
+
+		writePosition_.store(writePos + bytesToWrite, std::memory_order_release);
+
+		return itemsToWrite;
+	}
 
 	/// Reads data and advances the read position.
 	/// @note This method is only safe to call from the consumer.
@@ -136,7 +195,38 @@ public:
 	/// @param itemCount The desired number of items to read.
 	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than count.
 	/// @return The number of items actually read.
-	size_type Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
+	size_type Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
+	{
+		if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
+			return 0;
+
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto availableBytes = writePos - readPos;
+		const auto availableItems = availableBytes / itemSize;
+		if(availableItems == 0 || (availableItems < itemCount && !allowPartial))
+			return 0;
+
+		const auto itemsToRead = std::min(availableItems, itemCount);
+		const auto bytesToRead = itemsToRead * itemSize;
+
+		auto *dst = static_cast<unsigned char *>(ptr);
+		const auto *src = static_cast<const unsigned char *>(buffer_);
+
+		const auto readIndex = readPos & capacityMask_;
+		const auto spaceToEnd = capacity_ - readIndex;
+		if(bytesToRead <= spaceToEnd) [[likely]]
+			std::memcpy(dst, src + readIndex, bytesToRead);
+		else [[unlikely]] {
+			std::memcpy(dst, src + readIndex, spaceToEnd);
+			std::memcpy(dst + spaceToEnd, src, bytesToRead - spaceToEnd);
+		}
+
+		readPosition_.store(readPos + bytesToRead, std::memory_order_release);
+
+		return itemsToRead;
+	}
 
 	/// Reads data without advancing the read position.
 	/// @note This method is only safe to call from the consumer.
@@ -144,7 +234,35 @@ public:
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to read.
 	/// @return True if the requested items were read, false otherwise.
-	[[nodiscard]] bool Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept;
+	[[nodiscard]] bool Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept
+	{
+		if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
+			return false;
+
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto availableBytes = writePos - readPos;
+		const auto availableItems = availableBytes / itemSize;
+		if(availableItems < itemCount)
+			return false;
+
+		const auto bytesToPeek = itemCount * itemSize;
+
+		auto *dst = static_cast<unsigned char *>(ptr);
+		const auto *src = static_cast<const unsigned char *>(buffer_);
+
+		const auto readIndex = readPos & capacityMask_;
+		const auto spaceToEnd = capacity_ - readIndex;
+		if(bytesToPeek <= spaceToEnd) [[likely]]
+			std::memcpy(dst, src + readIndex, bytesToPeek);
+		else [[unlikely]] {
+			std::memcpy(dst, src + readIndex, spaceToEnd);
+			std::memcpy(dst + spaceToEnd, src, bytesToPeek - spaceToEnd);
+		}
+
+		return true;
+	}
 
 	// MARK: Discarding Data
 
@@ -153,11 +271,34 @@ public:
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to skip.
 	/// @return The number of items actually skipped.
-	size_type Skip(size_type itemSize, size_type itemCount) noexcept;
+	size_type Skip(size_type itemSize, size_type itemCount) noexcept
+	{
+		if(itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
+			return 0;
+
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto availableBytes = writePos - readPos;
+		const auto availableItems = availableBytes / itemSize;
+		if(availableItems == 0) [[unlikely]]
+			return 0;
+
+		const auto itemsToSkip = std::min(availableItems, itemCount);
+		const auto bytesToSkip = itemsToSkip * itemSize;
+
+		readPosition_.store(readPos + bytesToSkip, std::memory_order_release);
+
+		return itemsToSkip;
+	}
 
 	/// Advances the read position to the write position, emptying the buffer.
 	/// @note This method is only safe to call from the consumer.
-	void Drain() noexcept;
+	void Drain() noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		readPosition_.store(writePos, std::memory_order_release);
+	}
 
 	// MARK: Writing and Reading Spans
 
@@ -206,7 +347,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool WriteValue(const T& value) noexcept
 	{
-		return Write(static_cast<const void *>(std::addressof(value)), sizeof(T), 1, false) == 1;
+		return Write(static_cast<const void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 	}
 
 	/// Reads a value and advances the read position.
@@ -217,7 +358,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	bool ReadValue(T& value) noexcept
 	{
-		return Read(static_cast<void *>(std::addressof(value)), sizeof(T), 1, false) == 1;
+		return Read(static_cast<void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 	}
 
 	/// Reads a value and advances the read position.
@@ -241,7 +382,7 @@ public:
 	template <typename T> requires std::is_trivially_copyable_v<T>
 	[[nodiscard]] bool PeekValue(T& value) const noexcept
 	{
-		return Peek(static_cast<void *>(std::addressof(value)), sizeof(T), 1);
+		return Peek(static_cast<void *>(std::addressof(value)), sizeof value, 1);
 	}
 
 	/// Reads a value without advancing the read position.
@@ -264,10 +405,10 @@ public:
 	/// @tparam Args The types to write.
 	/// @param args The values to write.
 	/// @return true if the values were successfully written.
-	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
 	bool WriteValues(const Args&... args) noexcept
 	{
-		const auto totalSize = (sizeof args + ...);
+		constexpr auto totalSize = (sizeof args + ...);
 		auto [front, back] = GetWriteVector();
 
 		const auto frontSize = front.size();
@@ -275,8 +416,8 @@ public:
 			return false;
 
 		std::size_t cursor = 0;
-		auto write_single_arg = [&](const void *arg, std::size_t len) noexcept {
-			const auto *src = static_cast<const uint8_t *>(arg);
+		const auto write_single_arg = [&](const void *arg, std::size_t len) noexcept {
+			const auto *src = static_cast<const unsigned char *>(arg);
 			if(cursor + len <= frontSize)
 				std::memcpy(front.data() + cursor, src, len);
 			else if(cursor >= frontSize)
@@ -289,7 +430,7 @@ public:
 			cursor += len;
 		};
 
-		(write_single_arg(std::addressof(args), sizeof(args)), ...);
+		(write_single_arg(std::addressof(args), sizeof args), ...);
 
 		CommitWrite(totalSize);
 		return true;
@@ -300,10 +441,108 @@ public:
 	/// @tparam Args The types to read.
 	/// @param args The destination values.
 	/// @return true if the values were successfully read.
-	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
 	bool ReadValues(Args&... args) noexcept
 	{
-		const auto totalSize = (sizeof args + ...);
+		if(!PeekValues(args...))
+			return false;
+		CommitRead((sizeof args + ...));
+		return true;
+	}
+
+	/// Reads values without advancing the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @tparam Args The types to read.
+	/// @param args The destination values.
+	/// @return true if the values were successfully read.
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
+	[[nodiscard]] bool PeekValues(Args&... args) const noexcept
+	{
+		return CopyFromReadVector<Args...>([&](auto&& copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
+	}
+
+	// MARK: Advanced Writing and Reading
+
+	/// Returns a write vector containing the current writable space.
+	/// @note This method is only safe to call from the producer.
+	/// @return A pair of spans containing the current writable space.
+	[[nodiscard]] write_vector GetWriteVector() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		const auto readPos = readPosition_.load(std::memory_order_acquire);
+
+		const auto usedBytes = writePos - readPos;
+		const auto freeBytes = capacity_ - usedBytes;
+		if(freeBytes == 0) [[unlikely]]
+			return {};
+
+		auto *dst = static_cast<unsigned char *>(buffer_);
+
+		const auto writeIndex = writePos & capacityMask_;
+		const auto spaceToEnd = capacity_ - writeIndex;
+		if(freeBytes <= spaceToEnd) [[likely]]
+			return {{dst + writeIndex, freeBytes}, {}};
+		else [[unlikely]]
+			return {{dst + writeIndex, spaceToEnd}, {dst, freeBytes - spaceToEnd}};
+	}
+
+	/// Finalizes a write transaction by writing staged data to the ring buffer.
+	/// @warning The behavior is undefined if count is greater than the free space in the write vector.
+	/// @note This method is only safe to call from the producer.
+	/// @param count The number of bytes that were successfully written to the write vector.
+	void CommitWrite(size_type count) noexcept
+	{
+		assert(count <= FreeSpace() && "Logic error: Write committing more than available free space");
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		writePosition_.store(writePos + count, std::memory_order_release);
+	}
+
+	/// Returns a read vector containing the current readable data.
+	/// @note This method is only safe to call from the consumer.
+	/// @return A pair of spans containing the current readable data.
+	[[nodiscard]] read_vector GetReadVector() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto availableBytes = writePos - readPos;
+		if(availableBytes == 0) [[unlikely]]
+			return {};
+
+		const auto *src = static_cast<const unsigned char *>(buffer_);
+
+		const auto readIndex = readPos & capacityMask_;
+		const auto spaceToEnd = capacity_ - readIndex;
+		if(availableBytes <= spaceToEnd) [[likely]]
+			return {{src + readIndex, availableBytes}, {}};
+		else [[unlikely]]
+			return {{src + readIndex, spaceToEnd}, {src, availableBytes - spaceToEnd}};
+	}
+
+	/// Finalizes a read transaction by removing data from the front of the ring buffer.
+	/// @warning The behavior is undefined if count is greater than the available data in the read vector.
+	/// @note This method is only safe to call from the consumer.
+	/// @param count The number of bytes that were successfully read from the read vector.
+	void CommitRead(size_type count) noexcept
+	{
+		assert(count <= AvailableBytes() && "Logic error: Read committing more than available data");
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+		readPosition_.store(readPos + count, std::memory_order_release);
+	}
+
+private:
+	/// Copies values from the read vector without advancing the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @tparam Args The types to read.
+	/// @param processor A lambda accepting a copier parameter.
+	/// @return true if the values were successfully copied.
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
+	bool CopyFromReadVector(auto&& processor) const noexcept
+	{
+		using copier_type = void(*)(void *, std::size_t) noexcept;
+		static_assert(std::is_nothrow_invocable_v<decltype(processor), copier_type>, "Processor must be callable with a noexcept copier without throwing");
+
+		constexpr auto totalSize = (sizeof(Args) + ...);
 		const auto [front, back] = GetReadVector();
 
 		const auto frontSize = front.size();
@@ -311,8 +550,8 @@ public:
 			return false;
 
 		std::size_t cursor = 0;
-		auto read_single_arg = [&](void *arg, std::size_t len) noexcept {
-			auto *dst = static_cast<uint8_t *>(arg);
+		const auto copier = [&](void *arg, std::size_t len) noexcept {
+			auto *dst = static_cast<unsigned char *>(arg);
 			if(cursor + len <= frontSize)
 				std::memcpy(dst, front.data() + cursor, len);
 			else if(cursor >= frontSize)
@@ -325,37 +564,10 @@ public:
 			cursor += len;
 		};
 
-		(read_single_arg(std::addressof(args), sizeof(args)), ...);
-
-		CommitRead(totalSize);
+		processor(copier);
 		return true;
 	}
 
-	// MARK: Advanced Writing and Reading
-
-	/// Returns a write vector containing the current writable space.
-	/// @note This method is only safe to call from the producer.
-	/// @return A pair of spans containing the current writable space.
-	[[nodiscard]] write_vector GetWriteVector() const noexcept;
-
-	/// Finalizes a write transaction by writing staged data to the ring buffer.
-	/// @warning The behavior is undefined if count is greater than the free space in the write vector.
-	/// @note This method is only safe to call from the producer.
-	/// @param count The number of bytes that were successfully written to the write vector.
-	void CommitWrite(size_type count) noexcept;
-
-	/// Returns a read vector containing the current readable data.
-	/// @note This method is only safe to call from the consumer.
-	/// @return A pair of spans containing the current readable data.
-	[[nodiscard]] read_vector GetReadVector() const noexcept;
-
-	/// Finalizes a read transaction by removing data from the front of the ring buffer.
-	/// @warning The behavior is undefined if count is greater than the available data in the read vector.
-	/// @note This method is only safe to call from the consumer.
-	/// @param count The number of bytes that were successfully read from the read vector.
-	void CommitRead(size_type count) noexcept;
-
-private:
 	/// The memory buffer holding the data.
 	void * _Nullable buffer_{nullptr};
 
