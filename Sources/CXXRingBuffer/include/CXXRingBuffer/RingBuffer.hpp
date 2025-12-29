@@ -333,32 +333,21 @@ public:
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
 	bool ReadValues(Args&... args) noexcept
 	{
-		constexpr auto totalSize = (sizeof args + ...);
-		const auto [front, back] = GetReadVector();
-
-		const auto frontSize = front.size();
-		if(frontSize + back.size() < totalSize)
+		if(!PeekValues(args...))
 			return false;
-
-		std::size_t cursor = 0;
-		const auto read_single_arg = [&](void *arg, std::size_t len) noexcept {
-			auto *dst = static_cast<unsigned char *>(arg);
-			if(cursor + len <= frontSize)
-				std::memcpy(dst, front.data() + cursor, len);
-			else if(cursor >= frontSize)
-				std::memcpy(dst, back.data() + (cursor - frontSize), len);
-			else [[unlikely]] {
-				const size_t fromFront = frontSize - cursor;
-				std::memcpy(dst, front.data() + cursor, fromFront);
-				std::memcpy(dst + fromFront, back.data(), len - fromFront);
-			}
-			cursor += len;
-		};
-
-		(read_single_arg(std::addressof(args), sizeof args), ...);
-
-		CommitRead(totalSize);
+		CommitRead((sizeof args + ...));
 		return true;
+	}
+
+	/// Reads values without advancing the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @tparam Args The types to read.
+	/// @param args The destination values.
+	/// @return true if the values were successfully read.
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
+	[[nodiscard]] bool PeekValues(Args&... args) const noexcept
+	{
+		return CopyFromReadVector<Args...>([&](auto&& copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
 	}
 
 	// MARK: Advanced Writing and Reading
@@ -396,6 +385,43 @@ public:
 	}
 
 private:
+	/// Copies values from the read vector without advancing the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @tparam Args The types to read.
+	/// @param processor A lambda accepting a copier parameter.
+	/// @return true if the values were successfully copied.
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
+	bool CopyFromReadVector(auto&& processor) const noexcept
+	{
+		using copier_type = void(*)(void *, std::size_t) noexcept;
+		static_assert(std::is_nothrow_invocable_v<decltype(processor), copier_type>, "Processor must be callable with a noexcept copier without throwing");
+
+		constexpr auto totalSize = (sizeof(Args) + ...);
+		const auto [front, back] = GetReadVector();
+
+		const auto frontSize = front.size();
+		if(frontSize + back.size() < totalSize)
+			return false;
+
+		std::size_t cursor = 0;
+		const auto copier = [&](void *arg, std::size_t len) noexcept {
+			auto *dst = static_cast<unsigned char *>(arg);
+			if(cursor + len <= frontSize)
+				std::memcpy(dst, front.data() + cursor, len);
+			else if(cursor >= frontSize)
+				std::memcpy(dst, back.data() + (cursor - frontSize), len);
+			else [[unlikely]] {
+				const size_t fromFront = frontSize - cursor;
+				std::memcpy(dst, front.data() + cursor, fromFront);
+				std::memcpy(dst + fromFront, back.data(), len - fromFront);
+			}
+			cursor += len;
+		};
+
+		processor(copier);
+		return true;
+	}
+
 	/// The memory buffer holding the data.
 	void * _Nullable buffer_{nullptr};
 
