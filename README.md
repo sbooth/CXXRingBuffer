@@ -2,7 +2,7 @@
 
 A lock-free SPSC ring buffer.
 
-This class is thread safe when used from one reader thread and one writer thread.
+This class is thread safe when used with a single producer and a single consumer.
 
 > [!NOTE]
 > C++20 is required.
