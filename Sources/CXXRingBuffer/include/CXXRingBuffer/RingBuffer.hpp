@@ -482,10 +482,10 @@ public:
 	/// @return A std::optional containing a tuple of the values if they were successfully read.
 	/// @throw Any exceptions thrown by the default constructors of Args.
 	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (std::is_default_constructible_v<Args> && ...) && (sizeof...(Args) > 0)
-	std::optional<std::tuple<Args...>> PeekValues() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
+	[[nodiscard]] std::optional<std::tuple<Args...>> PeekValues() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
 	{
 		std::tuple<Args...> result;
-		if(!CopyFromReadVector<Args...>([&](auto&& copier) noexcept { std::apply([&](Args&... args) noexcept { (copier(std::addressof(args), sizeof(Args)), ...); }, result); }))
+		if(!CopyFromReadVector<Args...>([&](auto&& copier) noexcept { std::apply([&](Args&... args) noexcept { (copier(std::addressof(args), sizeof args), ...); }, result); }))
 			return std::nullopt;
 		return result;
 	}
