@@ -179,7 +179,26 @@ public:
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to skip.
 	/// @return The number of items actually skipped.
-	size_type Skip(size_type itemSize, size_type itemCount) noexcept;
+	size_type Skip(size_type itemSize, size_type itemCount) noexcept
+	{
+		if(itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
+			return 0;
+
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto availableBytes = writePos - readPos;
+		const auto availableItems = availableBytes / itemSize;
+		if(availableItems == 0) [[unlikely]]
+			return 0;
+
+		const auto itemsToSkip = std::min(availableItems, itemCount);
+		const auto bytesToSkip = itemsToSkip * itemSize;
+
+		readPosition_.store(readPos + bytesToSkip, std::memory_order_release);
+
+		return itemsToSkip;
+	}
 
 	/// Advances the read position to the write position, emptying the buffer.
 	/// @note This method is only safe to call from the consumer.
@@ -355,7 +374,25 @@ public:
 	/// Returns a write vector containing the current writable space.
 	/// @note This method is only safe to call from the producer.
 	/// @return A pair of spans containing the current writable space.
-	[[nodiscard]] write_vector GetWriteVector() const noexcept;
+	[[nodiscard]] write_vector GetWriteVector() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_relaxed);
+		const auto readPos = readPosition_.load(std::memory_order_acquire);
+
+		const auto usedBytes = writePos - readPos;
+		const auto freeBytes = capacity_ - usedBytes;
+		if(freeBytes == 0) [[unlikely]]
+			return {};
+
+		auto dst = static_cast<unsigned char *>(buffer_);
+
+		const auto writeIndex = writePos & capacityMask_;
+		const auto spaceToEnd = capacity_ - writeIndex;
+		if(freeBytes <= spaceToEnd) [[likely]]
+			return {{dst + writeIndex, freeBytes}, {}};
+		else [[unlikely]]
+			return {{dst + writeIndex, spaceToEnd}, {dst, freeBytes - spaceToEnd}};
+	}
 
 	/// Finalizes a write transaction by writing staged data to the ring buffer.
 	/// @warning The behavior is undefined if count is greater than the free space in the write vector.
@@ -371,7 +408,24 @@ public:
 	/// Returns a read vector containing the current readable data.
 	/// @note This method is only safe to call from the consumer.
 	/// @return A pair of spans containing the current readable data.
-	[[nodiscard]] read_vector GetReadVector() const noexcept;
+	[[nodiscard]] read_vector GetReadVector() const noexcept
+	{
+		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto availableBytes = writePos - readPos;
+		if(availableBytes == 0) [[unlikely]]
+			return {};
+
+		const auto src = static_cast<const unsigned char *>(buffer_);
+
+		const auto readIndex = readPos & capacityMask_;
+		const auto spaceToEnd = capacity_ - readIndex;
+		if(availableBytes <= spaceToEnd) [[likely]]
+			return {{src + readIndex, availableBytes}, {}};
+		else [[unlikely]]
+			return {{src + readIndex, spaceToEnd}, {src, availableBytes - spaceToEnd}};
+	}
 
 	/// Finalizes a read transaction by removing data from the front of the ring buffer.
 	/// @warning The behavior is undefined if count is greater than the available data in the read vector.
