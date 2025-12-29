@@ -85,6 +85,12 @@ public:
 	/// @note This method is not thread safe.
 	void Deallocate() noexcept;
 
+	/// Returns true if the ring buffer has allocated space for data.
+	explicit operator bool() const noexcept
+	{
+		return buffer_ != nullptr;
+	}
+
 	// MARK: Buffer Information
 
 	/// Returns the capacity of the ring buffer.
