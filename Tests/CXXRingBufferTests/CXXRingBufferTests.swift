@@ -6,9 +6,10 @@ import Foundation
 	@Test func empty() async {
 		var rb = CXXRingBuffer.RingBuffer()
 
+		#expect(rb.__convertToBool() == false)
 		#expect(rb.Capacity() == 0)
 		#expect(rb.AvailableBytes() == 0)
-		#expect(rb.FreeSpace() == 0)
+		#expect(rb.FreeSpace() == rb.Capacity())
 
 		var d = Data(capacity: 1024)
 		d.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) in
@@ -17,16 +18,29 @@ import Foundation
 		}
 	}
 
+	@Test func nonempty() async {
+		var rb = CXXRingBuffer.RingBuffer()
+
+		let capacity = 256
+		#expect(rb.Allocate(capacity) == true)
+		#expect(rb.__convertToBool() == true)
+		#expect(rb.Capacity() == capacity)
+		#expect(rb.AvailableBytes() == 0)
+		#expect(rb.FreeSpace() == rb.Capacity())
+
+		rb.Deallocate()
+		#expect(rb.__convertToBool() == false)
+		#expect(rb.Capacity() == 0)
+		#expect(rb.AvailableBytes() == 0)
+		#expect(rb.FreeSpace() == rb.Capacity())
+	}
+
 	@Test func capacity() async {
 		var rb = CXXRingBuffer.RingBuffer()
 
 		#expect(rb.Allocate(1) == false)
 		#expect(rb.Allocate(2) == true)
-
 		#expect(rb.Allocate(1024) == true)
-		#expect(rb.Capacity() == 1024)
-		#expect(rb.AvailableBytes() == 0)
-		#expect(rb.FreeSpace() == rb.Capacity())
 	}
 
 	@Test func basic() async {
