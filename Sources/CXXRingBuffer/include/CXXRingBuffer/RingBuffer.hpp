@@ -269,7 +269,7 @@ public:
 	/// @tparam Args The types to write.
 	/// @param args The values to write.
 	/// @return true if the values were successfully written.
-	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
 	bool WriteValues(const Args&... args) noexcept
 	{
 		constexpr auto totalSize = (sizeof args + ...);
@@ -305,7 +305,7 @@ public:
 	/// @tparam Args The types to read.
 	/// @param args The destination values.
 	/// @return true if the values were successfully read.
-	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...)
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (sizeof...(Args) > 0)
 	bool ReadValues(Args&... args) noexcept
 	{
 		constexpr auto totalSize = (sizeof args + ...);
