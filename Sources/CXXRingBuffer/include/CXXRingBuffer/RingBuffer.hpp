@@ -174,12 +174,12 @@ public:
 		const auto *src = static_cast<const unsigned char *>(ptr);
 
 		const auto writeIndex = writePos & capacityMask_;
-		const auto spaceToEnd = capacity_ - writeIndex;
-		if(bytesToWrite <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - writeIndex;
+		if(bytesToWrite <= bytesToEnd) [[likely]]
 			std::memcpy(dst + writeIndex, src, bytesToWrite);
 		else [[unlikely]] {
-			std::memcpy(dst + writeIndex, src, spaceToEnd);
-			std::memcpy(dst, src + spaceToEnd, bytesToWrite - spaceToEnd);
+			std::memcpy(dst + writeIndex, src, bytesToEnd);
+			std::memcpy(dst, src + bytesToEnd, bytesToWrite - bytesToEnd);
 		}
 
 		writePosition_.store(writePos + bytesToWrite, std::memory_order_release);
@@ -214,12 +214,12 @@ public:
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
-		const auto spaceToEnd = capacity_ - readIndex;
-		if(bytesToRead <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - readIndex;
+		if(bytesToRead <= bytesToEnd) [[likely]]
 			std::memcpy(dst, src + readIndex, bytesToRead);
 		else [[unlikely]] {
-			std::memcpy(dst, src + readIndex, spaceToEnd);
-			std::memcpy(dst + spaceToEnd, src, bytesToRead - spaceToEnd);
+			std::memcpy(dst, src + readIndex, bytesToEnd);
+			std::memcpy(dst + bytesToEnd, src, bytesToRead - bytesToEnd);
 		}
 
 		readPosition_.store(readPos + bytesToRead, std::memory_order_release);
@@ -252,12 +252,12 @@ public:
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
-		const auto spaceToEnd = capacity_ - readIndex;
-		if(bytesToPeek <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - readIndex;
+		if(bytesToPeek <= bytesToEnd) [[likely]]
 			std::memcpy(dst, src + readIndex, bytesToPeek);
 		else [[unlikely]] {
-			std::memcpy(dst, src + readIndex, spaceToEnd);
-			std::memcpy(dst + spaceToEnd, src, bytesToPeek - spaceToEnd);
+			std::memcpy(dst, src + readIndex, bytesToEnd);
+			std::memcpy(dst + bytesToEnd, src, bytesToPeek - bytesToEnd);
 		}
 
 		return true;
@@ -478,11 +478,11 @@ public:
 		auto *dst = static_cast<unsigned char *>(buffer_);
 
 		const auto writeIndex = writePos & capacityMask_;
-		const auto spaceToEnd = capacity_ - writeIndex;
-		if(bytesFree <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - writeIndex;
+		if(bytesFree <= bytesToEnd) [[likely]]
 			return {{dst + writeIndex, bytesFree}, {}};
 		else [[unlikely]]
-			return {{dst + writeIndex, spaceToEnd}, {dst, bytesFree - spaceToEnd}};
+			return {{dst + writeIndex, bytesToEnd}, {dst, bytesFree - bytesToEnd}};
 	}
 
 	/// Finalizes a write transaction by writing staged data to the ring buffer.
@@ -511,11 +511,11 @@ public:
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
-		const auto spaceToEnd = capacity_ - readIndex;
-		if(bytesUsed <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - readIndex;
+		if(bytesUsed <= bytesToEnd) [[likely]]
 			return {{src + readIndex, bytesUsed}, {}};
 		else [[unlikely]]
-			return {{src + readIndex, spaceToEnd}, {src, bytesUsed - spaceToEnd}};
+			return {{src + readIndex, bytesToEnd}, {src, bytesUsed - bytesToEnd}};
 	}
 
 	/// Finalizes a read transaction by removing data from the front of the ring buffer.
