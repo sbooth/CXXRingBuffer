@@ -479,10 +479,10 @@ public:
 
 		const auto writeIndex = writePos & capacityMask_;
 		const auto spaceToEnd = capacity_ - writeIndex;
-		if(freeBytes <= spaceToEnd) [[likely]]
-			return {{dst + writeIndex, freeBytes}, {}};
-		else [[unlikely]]
-			return {{dst + writeIndex, spaceToEnd}, {dst, freeBytes - spaceToEnd}};
+		const auto firstLen = std::min(freeBytes, spaceToEnd);
+		const auto secondLen = freeBytes - firstLen;
+
+		return {{dst + writeIndex, firstLen}, {dst, secondLen}};
 	}
 
 	/// Finalizes a write transaction by writing staged data to the ring buffer.
@@ -504,18 +504,18 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_acquire);
 		const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-		const auto availableBytes = writePos - readPos;
-		if(availableBytes == 0) [[unlikely]]
+		const auto usedBytes = writePos - readPos;
+		if(usedBytes == 0) [[unlikely]]
 			return {};
 
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
 		const auto spaceToEnd = capacity_ - readIndex;
-		if(availableBytes <= spaceToEnd) [[likely]]
-			return {{src + readIndex, availableBytes}, {}};
-		else [[unlikely]]
-			return {{src + readIndex, spaceToEnd}, {src, availableBytes - spaceToEnd}};
+		const auto firstLen = std::min(usedBytes, spaceToEnd);
+		const auto secondLen = usedBytes - firstLen;
+
+		return {{src + readIndex, firstLen}, {src, secondLen}};
 	}
 
 	/// Finalizes a read transaction by removing data from the front of the ring buffer.
