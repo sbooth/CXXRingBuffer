@@ -174,12 +174,12 @@ public:
 		const auto *src = static_cast<const unsigned char *>(ptr);
 
 		const auto writeIndex = writePos & capacityMask_;
-		const auto spaceToEnd = capacity_ - writeIndex;
-		if(bytesToWrite <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - writeIndex;
+		if(bytesToWrite <= bytesToEnd) [[likely]]
 			std::memcpy(dst + writeIndex, src, bytesToWrite);
 		else [[unlikely]] {
-			std::memcpy(dst + writeIndex, src, spaceToEnd);
-			std::memcpy(dst, src + spaceToEnd, bytesToWrite - spaceToEnd);
+			std::memcpy(dst + writeIndex, src, bytesToEnd);
+			std::memcpy(dst, src + bytesToEnd, bytesToWrite - bytesToEnd);
 		}
 
 		writePosition_.store(writePos + bytesToWrite, std::memory_order_release);
@@ -214,12 +214,12 @@ public:
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
-		const auto spaceToEnd = capacity_ - readIndex;
-		if(bytesToRead <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - readIndex;
+		if(bytesToRead <= bytesToEnd) [[likely]]
 			std::memcpy(dst, src + readIndex, bytesToRead);
 		else [[unlikely]] {
-			std::memcpy(dst, src + readIndex, spaceToEnd);
-			std::memcpy(dst + spaceToEnd, src, bytesToRead - spaceToEnd);
+			std::memcpy(dst, src + readIndex, bytesToEnd);
+			std::memcpy(dst + bytesToEnd, src, bytesToRead - bytesToEnd);
 		}
 
 		readPosition_.store(readPos + bytesToRead, std::memory_order_release);
@@ -252,12 +252,12 @@ public:
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
-		const auto spaceToEnd = capacity_ - readIndex;
-		if(bytesToPeek <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - readIndex;
+		if(bytesToPeek <= bytesToEnd) [[likely]]
 			std::memcpy(dst, src + readIndex, bytesToPeek);
 		else [[unlikely]] {
-			std::memcpy(dst, src + readIndex, spaceToEnd);
-			std::memcpy(dst + spaceToEnd, src, bytesToPeek - spaceToEnd);
+			std::memcpy(dst, src + readIndex, bytesToEnd);
+			std::memcpy(dst + bytesToEnd, src, bytesToPeek - bytesToEnd);
 		}
 
 		return true;
@@ -478,8 +478,8 @@ public:
 		auto *dst = static_cast<unsigned char *>(buffer_);
 
 		const auto writeIndex = writePos & capacityMask_;
-		const auto spaceToEnd = capacity_ - writeIndex;
-		const auto firstLen = std::min(bytesFree, spaceToEnd);
+		const auto bytesToEnd = capacity_ - writeIndex;
+		const auto firstLen = std::min(bytesFree, bytesToEnd);
 		const auto secondLen = bytesFree - firstLen;
 
 		return {{dst + writeIndex, firstLen}, {dst, secondLen}};
@@ -511,8 +511,8 @@ public:
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
-		const auto spaceToEnd = capacity_ - readIndex;
-		const auto firstLen = std::min(bytesUsed, spaceToEnd);
+		const auto bytesToEnd = capacity_ - readIndex;
+		const auto firstLen = std::min(bytesUsed, bytesToEnd);
 		const auto secondLen = bytesUsed - firstLen;
 
 		return {{src + readIndex, firstLen}, {src, secondLen}};
