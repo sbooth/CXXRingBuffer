@@ -163,11 +163,11 @@ public:
 
 		const auto bytesUsed = writePos - readPos;
 		const auto bytesFree = capacity_ - bytesUsed;
-		const auto slotsFree = bytesFree / itemSize;
-		if(slotsFree == 0 || (slotsFree < itemCount && !allowPartial))
+		const auto itemsFree = bytesFree / itemSize;
+		if(itemsFree == 0 || (itemsFree < itemCount && !allowPartial))
 			return 0;
 
-		const auto itemsToWrite = std::min(slotsFree, itemCount);
+		const auto itemsToWrite = std::min(itemsFree, itemCount);
 		const auto bytesToWrite = itemsToWrite * itemSize;
 
 		auto *dst = static_cast<unsigned char *>(buffer_);
@@ -202,12 +202,12 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_acquire);
 		const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-		const auto availableBytes = writePos - readPos;
-		const auto availableItems = availableBytes / itemSize;
-		if(availableItems == 0 || (availableItems < itemCount && !allowPartial))
+		const auto bytesUsed = writePos - readPos;
+		const auto itemsAvailable = bytesUsed / itemSize;
+		if(itemsAvailable == 0 || (itemsAvailable < itemCount && !allowPartial))
 			return 0;
 
-		const auto itemsToRead = std::min(availableItems, itemCount);
+		const auto itemsToRead = std::min(itemsAvailable, itemCount);
 		const auto bytesToRead = itemsToRead * itemSize;
 
 		auto *dst = static_cast<unsigned char *>(ptr);
@@ -241,9 +241,9 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_acquire);
 		const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-		const auto availableBytes = writePos - readPos;
-		const auto availableItems = availableBytes / itemSize;
-		if(availableItems < itemCount)
+		const auto bytesUsed = writePos - readPos;
+		const auto itemsAvailable = bytesUsed / itemSize;
+		if(itemsAvailable < itemCount)
 			return false;
 
 		const auto bytesToPeek = itemCount * itemSize;
@@ -278,12 +278,12 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_acquire);
 		const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-		const auto availableBytes = writePos - readPos;
-		const auto availableItems = availableBytes / itemSize;
-		if(availableItems == 0) [[unlikely]]
+		const auto bytesUsed = writePos - readPos;
+		const auto itemsAvailable = bytesUsed / itemSize;
+		if(itemsAvailable == 0) [[unlikely]]
 			return 0;
 
-		const auto itemsToSkip = std::min(availableItems, itemCount);
+		const auto itemsToSkip = std::min(itemsAvailable, itemCount);
 		const auto bytesToSkip = itemsToSkip * itemSize;
 
 		readPosition_.store(readPos + bytesToSkip, std::memory_order_release);
@@ -470,17 +470,17 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_relaxed);
 		const auto readPos = readPosition_.load(std::memory_order_acquire);
 
-		const auto usedBytes = writePos - readPos;
-		const auto freeBytes = capacity_ - usedBytes;
-		if(freeBytes == 0) [[unlikely]]
+		const auto bytesUsed = writePos - readPos;
+		const auto bytesFree = capacity_ - bytesUsed;
+		if(bytesFree == 0) [[unlikely]]
 			return {};
 
 		auto *dst = static_cast<unsigned char *>(buffer_);
 
 		const auto writeIndex = writePos & capacityMask_;
 		const auto spaceToEnd = capacity_ - writeIndex;
-		const auto firstLen = std::min(freeBytes, spaceToEnd);
-		const auto secondLen = freeBytes - firstLen;
+		const auto firstLen = std::min(bytesFree, spaceToEnd);
+		const auto secondLen = bytesFree - firstLen;
 
 		return {{dst + writeIndex, firstLen}, {dst, secondLen}};
 	}
@@ -504,16 +504,16 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_acquire);
 		const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-		const auto usedBytes = writePos - readPos;
-		if(usedBytes == 0) [[unlikely]]
+		const auto bytesUsed = writePos - readPos;
+		if(bytesUsed == 0) [[unlikely]]
 			return {};
 
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
 		const auto spaceToEnd = capacity_ - readIndex;
-		const auto firstLen = std::min(usedBytes, spaceToEnd);
-		const auto secondLen = usedBytes - firstLen;
+		const auto firstLen = std::min(bytesUsed, spaceToEnd);
+		const auto secondLen = bytesUsed - firstLen;
 
 		return {{src + readIndex, firstLen}, {src, secondLen}};
 	}
