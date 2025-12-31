@@ -164,23 +164,23 @@ public:
 
 		const auto bytesUsed = writePos - readPos;
 		const auto bytesFree = capacity_ - bytesUsed;
-		const auto slotsFree = bytesFree / itemSize;
-		if(slotsFree == 0 || (slotsFree < itemCount && !allowPartial))
+		const auto itemsFree = bytesFree / itemSize;
+		if(itemsFree == 0 || (itemsFree < itemCount && !allowPartial))
 			return 0;
 
-		const auto itemsToWrite = std::min(slotsFree, itemCount);
+		const auto itemsToWrite = std::min(itemsFree, itemCount);
 		const auto bytesToWrite = itemsToWrite * itemSize;
 
 		auto *dst = static_cast<unsigned char *>(buffer_);
 		const auto *src = static_cast<const unsigned char *>(ptr);
 
 		const auto writeIndex = writePos & capacityMask_;
-		const auto spaceToEnd = capacity_ - writeIndex;
-		if(bytesToWrite <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - writeIndex;
+		if(bytesToWrite <= bytesToEnd) [[likely]]
 			std::memcpy(dst + writeIndex, src, bytesToWrite);
 		else [[unlikely]] {
-			std::memcpy(dst + writeIndex, src, spaceToEnd);
-			std::memcpy(dst, src + spaceToEnd, bytesToWrite - spaceToEnd);
+			std::memcpy(dst + writeIndex, src, bytesToEnd);
+			std::memcpy(dst, src + bytesToEnd, bytesToWrite - bytesToEnd);
 		}
 
 		writePosition_.store(writePos + bytesToWrite, std::memory_order_release);
@@ -203,24 +203,24 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_acquire);
 		const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-		const auto availableBytes = writePos - readPos;
-		const auto availableItems = availableBytes / itemSize;
-		if(availableItems == 0 || (availableItems < itemCount && !allowPartial))
+		const auto bytesUsed = writePos - readPos;
+		const auto itemsAvailable = bytesUsed / itemSize;
+		if(itemsAvailable == 0 || (itemsAvailable < itemCount && !allowPartial))
 			return 0;
 
-		const auto itemsToRead = std::min(availableItems, itemCount);
+		const auto itemsToRead = std::min(itemsAvailable, itemCount);
 		const auto bytesToRead = itemsToRead * itemSize;
 
 		auto *dst = static_cast<unsigned char *>(ptr);
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
-		const auto spaceToEnd = capacity_ - readIndex;
-		if(bytesToRead <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - readIndex;
+		if(bytesToRead <= bytesToEnd) [[likely]]
 			std::memcpy(dst, src + readIndex, bytesToRead);
 		else [[unlikely]] {
-			std::memcpy(dst, src + readIndex, spaceToEnd);
-			std::memcpy(dst + spaceToEnd, src, bytesToRead - spaceToEnd);
+			std::memcpy(dst, src + readIndex, bytesToEnd);
+			std::memcpy(dst + bytesToEnd, src, bytesToRead - bytesToEnd);
 		}
 
 		readPosition_.store(readPos + bytesToRead, std::memory_order_release);
@@ -242,9 +242,9 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_acquire);
 		const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-		const auto availableBytes = writePos - readPos;
-		const auto availableItems = availableBytes / itemSize;
-		if(availableItems < itemCount)
+		const auto bytesUsed = writePos - readPos;
+		const auto itemsAvailable = bytesUsed / itemSize;
+		if(itemsAvailable < itemCount)
 			return false;
 
 		const auto bytesToPeek = itemCount * itemSize;
@@ -253,12 +253,12 @@ public:
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
-		const auto spaceToEnd = capacity_ - readIndex;
-		if(bytesToPeek <= spaceToEnd) [[likely]]
+		const auto bytesToEnd = capacity_ - readIndex;
+		if(bytesToPeek <= bytesToEnd) [[likely]]
 			std::memcpy(dst, src + readIndex, bytesToPeek);
 		else [[unlikely]] {
-			std::memcpy(dst, src + readIndex, spaceToEnd);
-			std::memcpy(dst + spaceToEnd, src, bytesToPeek - spaceToEnd);
+			std::memcpy(dst, src + readIndex, bytesToEnd);
+			std::memcpy(dst + bytesToEnd, src, bytesToPeek - bytesToEnd);
 		}
 
 		return true;
@@ -279,12 +279,12 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_acquire);
 		const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-		const auto availableBytes = writePos - readPos;
-		const auto availableItems = availableBytes / itemSize;
-		if(availableItems == 0) [[unlikely]]
+		const auto bytesUsed = writePos - readPos;
+		const auto itemsAvailable = bytesUsed / itemSize;
+		if(itemsAvailable == 0) [[unlikely]]
 			return 0;
 
-		const auto itemsToSkip = std::min(availableItems, itemCount);
+		const auto itemsToSkip = std::min(itemsAvailable, itemCount);
 		const auto bytesToSkip = itemsToSkip * itemSize;
 
 		readPosition_.store(readPos + bytesToSkip, std::memory_order_release);
@@ -294,10 +294,18 @@ public:
 
 	/// Advances the read position to the write position, emptying the buffer.
 	/// @note This method is only safe to call from the consumer.
-	void Drain() noexcept
+	/// @return The number of bytes discarded.
+	size_type Drain() noexcept
 	{
 		const auto writePos = writePosition_.load(std::memory_order_acquire);
+		const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+		const auto bytesUsed = writePos - readPos;
+		if(bytesUsed == 0) [[unlikely]]
+			return 0;
+
 		readPosition_.store(writePos, std::memory_order_release);
+		return bytesUsed;
 	}
 
 	// MARK: Writing and Reading Spans
@@ -366,7 +374,7 @@ public:
 	/// @tparam T The type to read.
 	/// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
 	/// @throw Any exceptions thrown by the default constructor of T.
-	template <typename T> requires std::is_default_constructible_v<T>
+	template <typename T> requires std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>
 	std::optional<T> ReadValue() noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
 		if(T value{}; ReadValue(value))
@@ -390,7 +398,7 @@ public:
 	/// @tparam T The type to read.
 	/// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
 	/// @throw Any exceptions thrown by the default constructor of T.
-	template <typename T> requires std::is_default_constructible_v<T>
+	template <typename T> requires std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>
 	[[nodiscard]] std::optional<T> PeekValue() const noexcept(std::is_nothrow_default_constructible_v<T>)
 	{
 		if(T value{}; PeekValue(value))
@@ -471,19 +479,19 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_relaxed);
 		const auto readPos = readPosition_.load(std::memory_order_acquire);
 
-		const auto usedBytes = writePos - readPos;
-		const auto freeBytes = capacity_ - usedBytes;
-		if(freeBytes == 0) [[unlikely]]
+		const auto bytesUsed = writePos - readPos;
+		const auto bytesFree = capacity_ - bytesUsed;
+		if(bytesFree == 0) [[unlikely]]
 			return {};
 
 		auto *dst = static_cast<unsigned char *>(buffer_);
 
 		const auto writeIndex = writePos & capacityMask_;
-		const auto spaceToEnd = capacity_ - writeIndex;
-		if(freeBytes <= spaceToEnd) [[likely]]
-			return {{dst + writeIndex, freeBytes}, {}};
+		const auto bytesToEnd = capacity_ - writeIndex;
+		if(bytesFree <= bytesToEnd) [[likely]]
+			return {{dst + writeIndex, bytesFree}, {}};
 		else [[unlikely]]
-			return {{dst + writeIndex, spaceToEnd}, {dst, freeBytes - spaceToEnd}};
+			return {{dst + writeIndex, bytesToEnd}, {dst, bytesFree - bytesToEnd}};
 	}
 
 	/// Finalizes a write transaction by writing staged data to the ring buffer.
@@ -505,18 +513,18 @@ public:
 		const auto writePos = writePosition_.load(std::memory_order_acquire);
 		const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
-		const auto availableBytes = writePos - readPos;
-		if(availableBytes == 0) [[unlikely]]
+		const auto bytesUsed = writePos - readPos;
+		if(bytesUsed == 0) [[unlikely]]
 			return {};
 
 		const auto *src = static_cast<const unsigned char *>(buffer_);
 
 		const auto readIndex = readPos & capacityMask_;
-		const auto spaceToEnd = capacity_ - readIndex;
-		if(availableBytes <= spaceToEnd) [[likely]]
-			return {{src + readIndex, availableBytes}, {}};
+		const auto bytesToEnd = capacity_ - readIndex;
+		if(bytesUsed <= bytesToEnd) [[likely]]
+			return {{src + readIndex, bytesUsed}, {}};
 		else [[unlikely]]
-			return {{src + readIndex, spaceToEnd}, {src, availableBytes - spaceToEnd}};
+			return {{src + readIndex, bytesToEnd}, {src, bytesUsed - bytesToEnd}};
 	}
 
 	/// Finalizes a read transaction by removing data from the front of the ring buffer.
