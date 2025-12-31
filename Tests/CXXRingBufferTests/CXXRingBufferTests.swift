@@ -43,6 +43,16 @@ import Foundation
 		#expect(rb.Allocate(1024) == true)
 	}
 
+	@Test func drain() async {
+		var rb = CXXRingBuffer.RingBuffer()
+
+		#expect(rb.Allocate(128) == true)
+
+		let x = 0
+		#expect(rb.WriteValue(x) == true)
+		#expect(rb.Drain() == MemoryLayout.stride(ofValue: x))
+	}
+
 	@Test func basic() async {
 		var rb = CXXRingBuffer.RingBuffer()
 
