@@ -487,10 +487,9 @@ public:
 
 		const auto writeIndex = writePos & capacityMask_;
 		const auto bytesToEnd = capacity_ - writeIndex;
-		if(bytesFree <= bytesToEnd) [[likely]]
-			return {{dst + writeIndex, bytesFree}, {}};
-		else [[unlikely]]
+		if(bytesFree > bytesToEnd) [[unlikely]]
 			return {{dst + writeIndex, bytesToEnd}, {dst, bytesFree - bytesToEnd}};
+		return {{dst + writeIndex, bytesFree}, {}};
 	}
 
 	/// Finalizes a write transaction by writing staged data to the ring buffer.
@@ -520,10 +519,9 @@ public:
 
 		const auto readIndex = readPos & capacityMask_;
 		const auto bytesToEnd = capacity_ - readIndex;
-		if(bytesUsed <= bytesToEnd) [[likely]]
-			return {{src + readIndex, bytesUsed}, {}};
-		else [[unlikely]]
+		if(bytesUsed > bytesToEnd) [[unlikely]]
 			return {{src + readIndex, bytesToEnd}, {src, bytesUsed - bytesToEnd}};
+		return {{src + readIndex, bytesUsed}, {}};
 	}
 
 	/// Finalizes a read transaction by removing data from the front of the ring buffer.
