@@ -48,9 +48,13 @@ import Foundation
 
 		#expect(rb.Allocate(128) == true)
 
+		#expect(rb.Drain() == 0)
+
 		let x = 0
 		#expect(rb.WriteValue(x) == true)
 		#expect(rb.Drain() == MemoryLayout.stride(ofValue: x))
+
+		#expect(rb.Drain() == 0)
 	}
 
 	@Test func basic() async {
