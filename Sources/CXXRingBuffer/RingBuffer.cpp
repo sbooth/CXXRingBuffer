@@ -1,7 +1,6 @@
 //
-// Copyright © 2014-2025 Stephen F. Booth
-// Part of https://github.com/sbooth/CXXRingBuffer
-// MIT license
+// SPDX-FileCopyrightText: 2014 Stephen F. Booth <https://github.com/sbooth/CXXRingBuffer>
+// SPDX-License-Identifier: MIT
 //
 
 #import <bit>
