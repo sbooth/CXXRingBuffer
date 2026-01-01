@@ -15,6 +15,7 @@
 #import <memory>
 #import <optional>
 #import <span>
+#import <tuple>
 #import <type_traits>
 #import <utility>
 
@@ -477,6 +478,35 @@ public:
 		return CopyFromReadVector<Args...>([&](auto&& copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
 	}
 
+	/// Reads values and advances the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @tparam Args The types to read.
+	/// @return A std::optional containing a std::tuple of the values if they were successfully read.
+	/// @throw Any exceptions thrown by the default constructors of Args.
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (std::is_default_constructible_v<Args> && ...) && (sizeof...(Args) > 0)
+	std::optional<std::tuple<Args...>> ReadValues() noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
+	{
+		auto result = PeekValues<Args...>();
+		if(!result)
+			return std::nullopt;
+		CommitRead((sizeof(Args) + ...));
+		return result;
+	}
+
+	/// Reads values without advancing the read position.
+	/// @note This method is only safe to call from the consumer.
+	/// @tparam Args The types to read.
+	/// @return A std::optional containing a std::tuple of the values if they were successfully read.
+	/// @throw Any exceptions thrown by the default constructors of Args.
+	template <typename... Args> requires (std::is_trivially_copyable_v<Args> && ...) && (std::is_default_constructible_v<Args> && ...) && (sizeof...(Args) > 0)
+	[[nodiscard]] std::optional<std::tuple<Args...>> PeekValues() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
+	{
+		std::tuple<Args...> result;
+		if(!CopyFromReadVector<Args...>([&](auto&& copier) noexcept { std::apply([&](Args&... args) noexcept { (copier(std::addressof(args), sizeof args), ...); }, result); }))
+			return std::nullopt;
+		return result;
+	}
+
 	// MARK: Advanced Writing and Reading
 
 	/// Returns a write vector containing the current writable space.
@@ -496,10 +526,9 @@ public:
 
 		const auto writeIndex = writePos & capacityMask_;
 		const auto bytesToEnd = capacity_ - writeIndex;
-		if(bytesFree <= bytesToEnd) [[likely]]
-			return {{dst + writeIndex, bytesFree}, {}};
-		else [[unlikely]]
+		if(bytesFree > bytesToEnd) [[unlikely]]
 			return {{dst + writeIndex, bytesToEnd}, {dst, bytesFree - bytesToEnd}};
+		return {{dst + writeIndex, bytesFree}, {}};
 	}
 
 	/// Finalizes a write transaction by writing staged data to the ring buffer.
@@ -529,10 +558,9 @@ public:
 
 		const auto readIndex = readPos & capacityMask_;
 		const auto bytesToEnd = capacity_ - readIndex;
-		if(bytesUsed <= bytesToEnd) [[likely]]
-			return {{src + readIndex, bytesUsed}, {}};
-		else [[unlikely]]
+		if(bytesUsed > bytesToEnd) [[unlikely]]
 			return {{src + readIndex, bytesToEnd}, {src, bytesUsed - bytesToEnd}};
+		return {{src + readIndex, bytesUsed}, {}};
 	}
 
 	/// Finalizes a read transaction by removing data from the front of the ring buffer.
