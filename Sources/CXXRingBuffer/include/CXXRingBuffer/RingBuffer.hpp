@@ -374,6 +374,7 @@ inline bool RingBuffer::IsEmpty() const noexcept
 	const auto readPos = readPosition_.load(std::memory_order_relaxed);
 	return writePos == readPos;
 }
+
 // MARK: Writing and Reading Data
 
 inline RingBuffer::size_type RingBuffer::Write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
@@ -688,11 +689,13 @@ inline void RingBuffer::CommitRead(size_type count) noexcept
 	readPosition_.store(readPos + count, std::memory_order_release);
 }
 
+// MARK: Private
+
 template <TriviallyCopyable... Args> requires (sizeof...(Args) > 0)
 inline bool RingBuffer::CopyFromReadVector(auto&& processor) const noexcept
 {
 	using copier_type = void(*)(void *, std::size_t) noexcept;
-	static_assert(std::is_nothrow_invocable_v<decltype(processor), copier_type>, "Processor must be callable with a noexcept copier without throwing");
+	static_assert(std::invocable<decltype(processor), copier_type> && noexcept(processor(std::declval<copier_type>())), "Processor must be callable with a noexcept copier without throwing");
 
 	constexpr auto totalSize = (sizeof(Args) + ...);
 	const auto [front, back] = GetReadVector();
