@@ -369,7 +369,7 @@ inline bool RingBuffer::IsEmpty() const noexcept
 }
 // MARK: Writing and Reading Data
 
-inline RingBuffer::size_type RingBuffer::Write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
+inline RingBuffer::size_type RingBuffer::Write(const void * const ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
 {
 	if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
 		return 0;
@@ -403,7 +403,7 @@ inline RingBuffer::size_type RingBuffer::Write(const void * const _Nonnull ptr, 
 	return itemsToWrite;
 }
 
-inline RingBuffer::size_type RingBuffer::Read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
+inline RingBuffer::size_type RingBuffer::Read(void * const ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
 {
 	if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
 		return 0;
@@ -436,7 +436,7 @@ inline RingBuffer::size_type RingBuffer::Read(void * const _Nonnull ptr, size_ty
 	return itemsToRead;
 }
 
-inline bool RingBuffer::Peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept
+inline bool RingBuffer::Peek(void * const ptr, size_type itemSize, size_type itemCount) const noexcept
 {
 	if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
 		return false;
