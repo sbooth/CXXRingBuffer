@@ -653,9 +653,10 @@ inline RingBuffer::write_vector RingBuffer::GetWriteVector() const noexcept
 
 	const auto writeIndex = writePos & capacityMask_;
 	const auto bytesToEnd = capacity_ - writeIndex;
-	if(bytesFree > bytesToEnd) [[unlikely]]
-		return {{dst + writeIndex, bytesToEnd}, {dst, bytesFree - bytesToEnd}};
-	return {{dst + writeIndex, bytesFree}, {}};
+	const auto firstLen = std::min(bytesFree, bytesToEnd);
+	const auto secondLen = bytesFree - firstLen;
+
+	return {{dst + writeIndex, firstLen}, {dst, secondLen}};
 }
 
 inline void RingBuffer::CommitWrite(size_type count) noexcept
@@ -678,9 +679,10 @@ inline RingBuffer::read_vector RingBuffer::GetReadVector() const noexcept
 
 	const auto readIndex = readPos & capacityMask_;
 	const auto bytesToEnd = capacity_ - readIndex;
-	if(bytesUsed > bytesToEnd) [[unlikely]]
-		return {{src + readIndex, bytesToEnd}, {src, bytesUsed - bytesToEnd}};
-	return {{src + readIndex, bytesUsed}, {}};
+	const auto firstLen = std::min(bytesUsed, bytesToEnd);
+	const auto secondLen = bytesUsed - firstLen;
+
+	return {{src + readIndex, firstLen}, {src, secondLen}};
 }
 
 inline void RingBuffer::CommitRead(size_type count) noexcept
