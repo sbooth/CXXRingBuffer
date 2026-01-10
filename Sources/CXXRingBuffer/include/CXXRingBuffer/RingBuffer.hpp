@@ -96,7 +96,7 @@ public:
 	void Deallocate() noexcept;
 
 	/// Returns true if the ring buffer has allocated space for data.
-	explicit operator bool() const noexcept;
+	[[nodiscard]] explicit operator bool() const noexcept;
 
 	// MARK: Buffer Information
 
