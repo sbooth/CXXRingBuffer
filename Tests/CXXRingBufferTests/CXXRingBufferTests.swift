@@ -14,14 +14,14 @@ import Foundation
 		var rb = CXXRingBuffer.RingBuffer()
 
 		#expect(rb.__convertToBool() == false)
-		#expect(rb.Capacity() == 0)
-		#expect(rb.AvailableBytes() == 0)
-		#expect(rb.FreeSpace() == rb.Capacity())
+		#expect(rb.capacity() == 0)
+		#expect(rb.availableBytes() == 0)
+		#expect(rb.freeSpace() == rb.capacity())
 
 		var d = Data(capacity: 1024)
 		d.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) in
-			#expect(rb.Read(ptr.baseAddress!, 1, 1024, true) == 0)
-			#expect(rb.Write(ptr.baseAddress!, 1, 1024, true) == 0)
+			#expect(rb.read(ptr.baseAddress!, 1, 1024, true) == 0)
+			#expect(rb.write(ptr.baseAddress!, 1, 1024, true) == 0)
 		}
 	}
 
@@ -29,59 +29,59 @@ import Foundation
 		var rb = CXXRingBuffer.RingBuffer()
 
 		let capacity = 256
-		#expect(rb.Allocate(capacity) == true)
+		#expect(rb.allocate(capacity) == true)
 		#expect(rb.__convertToBool() == true)
-		#expect(rb.Capacity() == capacity)
-		#expect(rb.AvailableBytes() == 0)
-		#expect(rb.FreeSpace() == rb.Capacity())
+		#expect(rb.capacity() == capacity)
+		#expect(rb.availableBytes() == 0)
+		#expect(rb.freeSpace() == rb.capacity())
 
-		rb.Deallocate()
+		rb.deallocate()
 		#expect(rb.__convertToBool() == false)
-		#expect(rb.Capacity() == 0)
-		#expect(rb.AvailableBytes() == 0)
-		#expect(rb.FreeSpace() == rb.Capacity())
+		#expect(rb.capacity() == 0)
+		#expect(rb.availableBytes() == 0)
+		#expect(rb.freeSpace() == rb.capacity())
 	}
 
 	@Test func capacity() async {
 		var rb = CXXRingBuffer.RingBuffer()
 
-		#expect(rb.Allocate(1) == false)
-		#expect(rb.Allocate(2) == true)
-		#expect(rb.Allocate(1024) == true)
+		#expect(rb.allocate(1) == false)
+		#expect(rb.allocate(2) == true)
+		#expect(rb.allocate(1024) == true)
 	}
 
 	@Test func drain() async {
 		var rb = CXXRingBuffer.RingBuffer()
 
-		#expect(rb.Allocate(128) == true)
+		#expect(rb.allocate(128) == true)
 
-		#expect(rb.Drain() == 0)
+		#expect(rb.drain() == 0)
 
 		let x = 0
-		#expect(rb.WriteValue(x) == true)
-		#expect(rb.Drain() == MemoryLayout.stride(ofValue: x))
+		#expect(rb.writeValue(x) == true)
+		#expect(rb.drain() == MemoryLayout.stride(ofValue: x))
 
-		#expect(rb.Drain() == 0)
+		#expect(rb.drain() == 0)
 	}
 
 	@Test func basic() async {
 		var rb = CXXRingBuffer.RingBuffer()
 
-		#expect(rb.Allocate(128) == true)
+		#expect(rb.allocate(128) == true)
 
 		let written = Data(stride(from: 0, through: 15, by: 1))
 		written.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
-			#expect(rb.Write(ptr.baseAddress!, 1, written.count, true) == 16)
+			#expect(rb.write(ptr.baseAddress!, 1, written.count, true) == 16)
 		}
-		#expect(rb.AvailableBytes() == written.count)
+		#expect(rb.availableBytes() == written.count)
 
 		var read = Data(count: written.count)
 		read.withUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) in
-			#expect(rb.Read(ptr.baseAddress!, 1, 16, true) == 16)
+			#expect(rb.read(ptr.baseAddress!, 1, 16, true) == 16)
 		}
 
 		#expect(read == written)
-		#expect(rb.AvailableBytes() == 0)
+		#expect(rb.availableBytes() == 0)
 	}
 
 	@Test func multi() async {
@@ -89,7 +89,7 @@ import Foundation
 
 		let data_size = 255
 		let buf_size = 128
-		#expect(rb.Allocate(buf_size) == true)
+		#expect(rb.allocate(buf_size) == true)
 
 		let producer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
 		let consumer_buf = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: Int(data_size))
@@ -100,46 +100,46 @@ import Foundation
 		var read = 0
 
 		var addr = producer_buf.baseAddress
-		var length = rb.Write(addr!, 1, 64, true)
+		var length = rb.write(addr!, 1, 64, true)
 		written += length
 		#expect(length == 64)
-		#expect(rb.AvailableBytes() == 64)
-		#expect(rb.FreeSpace() == rb.Capacity() - 64)
+		#expect(rb.availableBytes() == 64)
+		#expect(rb.freeSpace() == rb.capacity() - 64)
 
 		addr = consumer_buf.baseAddress
-		length = rb.Read(addr!, 1, 64, true)
+		length = rb.read(addr!, 1, 64, true)
 		read += length
 		#expect(length == 64)
-		#expect(rb.AvailableBytes() == 0)
-		#expect(rb.FreeSpace() == rb.Capacity())
+		#expect(rb.availableBytes() == 0)
+		#expect(rb.freeSpace() == rb.capacity())
 
 		addr = producer_buf.baseAddress?.advanced(by: Int(written))
-		length = rb.Write(addr!, 1, 64, true)
+		length = rb.write(addr!, 1, 64, true)
 		written += length
 		#expect(length == 64)
-		#expect(rb.AvailableBytes() == 64)
-		#expect(rb.FreeSpace() == rb.Capacity() - 64)
+		#expect(rb.availableBytes() == 64)
+		#expect(rb.freeSpace() == rb.capacity() - 64)
 
 		addr = consumer_buf.baseAddress?.advanced(by: Int(read))
-		length = rb.Read(addr!, 1, 64, true)
+		length = rb.read(addr!, 1, 64, true)
 		read += length
 		#expect(length == 64)
-		#expect(rb.AvailableBytes() == 0)
-		#expect(rb.FreeSpace() == rb.Capacity())
+		#expect(rb.availableBytes() == 0)
+		#expect(rb.freeSpace() == rb.capacity())
 
 		addr = producer_buf.baseAddress?.advanced(by: Int(written))
-		length = rb.Write(addr!, 1, 127, true)
+		length = rb.write(addr!, 1, 127, true)
 		written += length
 		#expect(length == 127)
-		#expect(rb.AvailableBytes() == 127)
-		#expect(rb.FreeSpace() == rb.Capacity() - 127)
+		#expect(rb.availableBytes() == 127)
+		#expect(rb.freeSpace() == rb.capacity() - 127)
 
 		addr = consumer_buf.baseAddress?.advanced(by: Int(read))
-		length = rb.Read(addr!, 1, 127, true)
+		length = rb.read(addr!, 1, 127, true)
 		read += length
 		#expect(length == 127)
-		#expect(rb.AvailableBytes() == 0)
-		#expect(rb.FreeSpace() == rb.Capacity())
+		#expect(rb.availableBytes() == 0)
+		#expect(rb.freeSpace() == rb.capacity())
 
 		#expect(written == data_size)
 		#expect(read == data_size)
@@ -155,7 +155,7 @@ import Foundation
 		let data_size = 8192
 
 		let buf_size = data_size / 4
-		#expect(rb.Allocate(buf_size) == true)
+		#expect(rb.allocate(buf_size) == true)
 
 		let group = DispatchGroup()
 
@@ -170,7 +170,7 @@ import Foundation
 			while remaining > 0 {
 				let n = Int.random(in: 0...remaining)
 				let addr = producer_buf.baseAddress?.advanced(by: Int(written))
-				let length = rb.Write(addr!, 1, n, true)
+				let length = rb.write(addr!, 1, n, true)
 				remaining -= length
 				written += length
 				usleep(useconds_t.random(in: 0..<10))
@@ -187,7 +187,7 @@ import Foundation
 			while remaining > 0 {
 				let n = Int.random(in: 0...remaining)
 				let addr = consumer_buf.baseAddress?.advanced(by: Int(read))
-				let length = rb.Read(addr!, 1, n, true)
+				let length = rb.read(addr!, 1, n, true)
 				remaining -= length
 				read += length
 				usleep(useconds_t.random(in: 0..<10))
