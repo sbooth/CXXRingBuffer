@@ -35,9 +35,9 @@ concept TriviallyCopyableAndDefaultInitializable = TriviallyCopyable<T> && std::
 class RingBuffer final {
 public:
 	/// Unsigned integer type.
-	using size_type = std::size_t;
+	using SizeType = std::size_t;
 	/// Atomic unsigned integer type.
-	using atomic_size_type = std::atomic<size_type>;
+	using AtomicSizeType = std::atomic<SizeType>;
 
 	/// A write vector.
 	using WriteVector = std::pair<std::span<unsigned char>, std::span<unsigned char>>;
@@ -45,9 +45,9 @@ public:
 	using ReadVector = std::pair<std::span<const unsigned char>, std::span<const unsigned char>>;
 
 	/// The minimum supported ring buffer capacity in bytes.
-	static constexpr size_type minCapacity = size_type{2};
+	static constexpr SizeType minCapacity = SizeType{2};
 	/// The maximum supported ring buffer capacity in bytes.
-	static constexpr size_type maxCapacity = size_type{1} << (std::numeric_limits<size_type>::digits - 1);
+	static constexpr SizeType maxCapacity = SizeType{1} << (std::numeric_limits<SizeType>::digits - 1);
 
 	// MARK: Creation and Destruction
 
@@ -60,7 +60,7 @@ public:
 	/// The actual ring buffer capacity will be the smallest integral power of two that is not less than the specified minimum capacity.
 	/// @param minCapacity The desired minimum capacity in bytes.
 	/// @throw std::bad_alloc if memory could not be allocated or std::invalid_argument if the buffer capacity is not supported.
-	explicit RingBuffer(size_type minCapacity);
+	explicit RingBuffer(SizeType minCapacity);
 
 	// This class is non-copyable
 	RingBuffer(const RingBuffer&) = delete;
@@ -89,7 +89,7 @@ public:
 	/// @note This method is not thread safe.
 	/// @param minCapacity The desired minimum capacity in bytes.
 	/// @return true on success, false if memory could not be allocated or the buffer capacity is not supported.
-	bool allocate(size_type minCapacity) noexcept;
+	bool allocate(SizeType minCapacity) noexcept;
 
 	/// Frees any space allocated for data.
 	/// @note This method is not thread safe.
@@ -103,14 +103,14 @@ public:
 	/// Returns the capacity of the ring buffer.
 	/// @note This method is safe to call from both producer and consumer.
 	/// @return The ring buffer capacity in bytes.
-	[[nodiscard]] size_type capacity() const noexcept;
+	[[nodiscard]] SizeType capacity() const noexcept;
 
 	// MARK: Buffer Usage
 
 	/// Returns the amount of free space in the ring buffer.
 	/// @note The result of this method is only accurate when called from the producer.
 	/// @return The number of bytes of free space available for writing.
-	[[nodiscard]] size_type freeSpace() const noexcept;
+	[[nodiscard]] SizeType freeSpace() const noexcept;
 
 	/// Returns true if the ring buffer is full.
 	/// @note The result of this method is only accurate when called from the producer.
@@ -120,7 +120,7 @@ public:
 	/// Returns the amount of data in the ring buffer.
 	/// @note The result of this method is only accurate when called from the consumer.
 	/// @return The number of bytes available for reading.
-	[[nodiscard]] size_type availableBytes() const noexcept;
+	[[nodiscard]] SizeType availableBytes() const noexcept;
 
 	/// Returns true if the ring buffer is empty.
 	/// @note The result of this method is only accurate when called from the consumer.
@@ -136,7 +136,7 @@ public:
 	/// @param itemCount The desired number of items to write.
 	/// @param allowPartial Whether any items should be written if insufficient free space is available to write all items.
 	/// @return The number of items actually written.
-	size_type write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
+	SizeType write(const void * const _Nonnull ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
 
 	/// Reads data and advances the read position.
 	/// @note This method is only safe to call from the consumer.
@@ -145,7 +145,7 @@ public:
 	/// @param itemCount The desired number of items to read.
 	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than count.
 	/// @return The number of items actually read.
-	size_type read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept;
+	SizeType read(void * const _Nonnull ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
 
 	/// Reads data without advancing the read position.
 	/// @note This method is only safe to call from the consumer.
@@ -153,7 +153,7 @@ public:
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to read.
 	/// @return True if the requested items were read, false otherwise.
-	[[nodiscard]] bool peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept;
+	[[nodiscard]] bool peek(void * const _Nonnull ptr, SizeType itemSize, SizeType itemCount) const noexcept;
 
 	// MARK: Discarding Data
 
@@ -162,12 +162,12 @@ public:
 	/// @param itemSize The size of an individual item in bytes.
 	/// @param itemCount The desired number of items to skip.
 	/// @return The number of items actually skipped.
-	size_type skip(size_type itemSize, size_type itemCount) noexcept;
+	SizeType skip(SizeType itemSize, SizeType itemCount) noexcept;
 
 	/// Advances the read position to the write position, emptying the buffer.
 	/// @note This method is only safe to call from the consumer.
 	/// @return The number of bytes discarded.
-	size_type drain() noexcept;
+	SizeType drain() noexcept;
 
 	// MARK: Writing and Reading Spans
 
@@ -178,7 +178,7 @@ public:
 	/// @param allowPartial Whether any items should be written if insufficient free space is available to write all items.
 	/// @return The number of items actually written.
 	template <TriviallyCopyable T>
-	size_type write(std::span<const T> data, bool allowPartial = true) noexcept;
+	SizeType write(std::span<const T> data, bool allowPartial = true) noexcept;
 
 	/// Reads items and advances the read position.
 	/// @note This method is only safe to call from the consumer.
@@ -187,7 +187,7 @@ public:
 	/// @param allowPartial Whether any items should be read if the number of items available for reading is less than buffer.size().
 	/// @return The number of items actually read.
 	template <TriviallyCopyable T>
-	size_type read(std::span<T> buffer, bool allowPartial = true) noexcept;
+	SizeType read(std::span<T> buffer, bool allowPartial = true) noexcept;
 
 	/// Reads items without advancing the read position.
 	/// @note This method is only safe to call from the consumer.
@@ -292,7 +292,7 @@ public:
 	/// @warning The behavior is undefined if count is greater than the free space in the write vector.
 	/// @note This method is only safe to call from the producer.
 	/// @param count The number of bytes that were successfully written to the write vector.
-	void commitWrite(size_type count) noexcept;
+	void commitWrite(SizeType count) noexcept;
 
 	/// Returns a read vector containing the current readable data.
 	/// @note This method is only safe to call from the consumer.
@@ -303,7 +303,7 @@ public:
 	/// @warning The behavior is undefined if count is greater than the available data in the read vector.
 	/// @note This method is only safe to call from the consumer.
 	/// @param count The number of bytes that were successfully read from the read vector.
-	void commitRead(size_type count) noexcept;
+	void commitRead(SizeType count) noexcept;
 
 private:
 	/// Copies values from the read vector without advancing the read position.
@@ -318,16 +318,16 @@ private:
 	void * _Nullable buffer_{nullptr};
 
 	/// The capacity of buffer_ in bytes.
-	size_type capacity_{0};
+	SizeType capacity_{0};
 	/// The capacity of buffer_ in bytes minus one.
-	size_type capacityMask_{0};
+	SizeType capacityMask_{0};
 
 	/// The free-running write location.
-	atomic_size_type writePosition_{0};
+	AtomicSizeType writePosition_{0};
 	/// The free-running read location.
-	atomic_size_type readPosition_{0};
+	AtomicSizeType readPosition_{0};
 
-	static_assert(atomic_size_type::is_always_lock_free, "Lock-free atomic_size_type required");
+	static_assert(AtomicSizeType::is_always_lock_free, "Lock-free AtomicSizeType required");
 };
 
 // MARK: - Implementation -
@@ -341,14 +341,14 @@ inline RingBuffer::operator bool() const noexcept
 
 // MARK: Buffer Information
 
-inline RingBuffer::size_type RingBuffer::capacity() const noexcept
+inline RingBuffer::SizeType RingBuffer::capacity() const noexcept
 {
 	return capacity_;
 }
 
 // MARK: Buffer Usage
 
-inline RingBuffer::size_type RingBuffer::freeSpace() const noexcept
+inline RingBuffer::SizeType RingBuffer::freeSpace() const noexcept
 {
 	const auto writePos = writePosition_.load(std::memory_order_relaxed);
 	const auto readPos = readPosition_.load(std::memory_order_acquire);
@@ -362,7 +362,7 @@ inline bool RingBuffer::isFull() const noexcept
 	return (writePos - readPos) == capacity_;
 }
 
-inline RingBuffer::size_type RingBuffer::availableBytes() const noexcept
+inline RingBuffer::SizeType RingBuffer::availableBytes() const noexcept
 {
 	const auto writePos = writePosition_.load(std::memory_order_acquire);
 	const auto readPos = readPosition_.load(std::memory_order_relaxed);
@@ -378,7 +378,7 @@ inline bool RingBuffer::isEmpty() const noexcept
 
 // MARK: Writing and Reading Data
 
-inline RingBuffer::size_type RingBuffer::write(const void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
+inline RingBuffer::SizeType RingBuffer::write(const void * const _Nonnull ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept
 {
 	if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
 		return 0;
@@ -412,7 +412,7 @@ inline RingBuffer::size_type RingBuffer::write(const void * const _Nonnull ptr, 
 	return itemsToWrite;
 }
 
-inline RingBuffer::size_type RingBuffer::read(void * const _Nonnull ptr, size_type itemSize, size_type itemCount, bool allowPartial) noexcept
+inline RingBuffer::SizeType RingBuffer::read(void * const _Nonnull ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept
 {
 	if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
 		return 0;
@@ -445,7 +445,7 @@ inline RingBuffer::size_type RingBuffer::read(void * const _Nonnull ptr, size_ty
 	return itemsToRead;
 }
 
-inline bool RingBuffer::peek(void * const _Nonnull ptr, size_type itemSize, size_type itemCount) const noexcept
+inline bool RingBuffer::peek(void * const _Nonnull ptr, SizeType itemSize, SizeType itemCount) const noexcept
 {
 	if(!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
 		return false;
@@ -477,7 +477,7 @@ inline bool RingBuffer::peek(void * const _Nonnull ptr, size_type itemSize, size
 
 // MARK: Discarding Data
 
-inline RingBuffer::size_type RingBuffer::skip(size_type itemSize, size_type itemCount) noexcept
+inline RingBuffer::SizeType RingBuffer::skip(SizeType itemSize, SizeType itemCount) noexcept
 {
 	if(itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
 		return 0;
@@ -498,7 +498,7 @@ inline RingBuffer::size_type RingBuffer::skip(size_type itemSize, size_type item
 	return itemsToSkip;
 }
 
-inline RingBuffer::size_type RingBuffer::drain() noexcept
+inline RingBuffer::SizeType RingBuffer::drain() noexcept
 {
 	if(capacity_ == 0) [[unlikely]]
 		return 0;
@@ -517,13 +517,13 @@ inline RingBuffer::size_type RingBuffer::drain() noexcept
 // MARK: Writing and Reading Spans
 
 template <TriviallyCopyable T>
-inline RingBuffer::size_type RingBuffer::write(std::span<const T> data, bool allowPartial) noexcept
+inline RingBuffer::SizeType RingBuffer::write(std::span<const T> data, bool allowPartial) noexcept
 {
 	return write(data.data(), sizeof(T), data.size(), allowPartial);
 }
 
 template <TriviallyCopyable T>
-inline RingBuffer::size_type RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept
+inline RingBuffer::SizeType RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept
 {
 	return read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
 }
@@ -658,7 +658,7 @@ inline RingBuffer::WriteVector RingBuffer::writeVector() const noexcept
 	return {{dst + writeIndex, bytesFree}, {}};
 }
 
-inline void RingBuffer::commitWrite(size_type count) noexcept
+inline void RingBuffer::commitWrite(SizeType count) noexcept
 {
 	assert(count <= freeSpace() && "Logic error: Write committing more than available free space");
 	const auto writePos = writePosition_.load(std::memory_order_relaxed);
@@ -683,7 +683,7 @@ inline RingBuffer::ReadVector RingBuffer::readVector() const noexcept
 	return {{src + readIndex, bytesUsed}, {}};
 }
 
-inline void RingBuffer::commitRead(size_type count) noexcept
+inline void RingBuffer::commitRead(SizeType count) noexcept
 {
 	assert(count <= availableBytes() && "Logic error: Read committing more than available data");
 	const auto readPos = readPosition_.load(std::memory_order_relaxed);
