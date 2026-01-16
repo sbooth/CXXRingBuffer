@@ -7,11 +7,11 @@
 
 import Testing
 import Foundation
-@testable import CXXRingBuffer
+@testable import cxx_rb
 
 @Suite struct CXXRingBufferTests {
 	@Test func empty() async {
-		var rb = CXXRingBuffer.RingBuffer()
+		var rb = cxx_rb.RingBuffer()
 
 		#expect(rb.__convertToBool() == false)
 		#expect(rb.capacity() == 0)
@@ -26,7 +26,7 @@ import Foundation
 	}
 
 	@Test func nonempty() async {
-		var rb = CXXRingBuffer.RingBuffer()
+		var rb = cxx_rb.RingBuffer()
 
 		let capacity = 256
 		#expect(rb.allocate(capacity) == true)
@@ -43,7 +43,7 @@ import Foundation
 	}
 
 	@Test func capacity() async {
-		var rb = CXXRingBuffer.RingBuffer()
+		var rb = cxx_rb.RingBuffer()
 
 		#expect(rb.allocate(1) == false)
 		#expect(rb.allocate(2) == true)
@@ -51,7 +51,7 @@ import Foundation
 	}
 
 	@Test func drain() async {
-		var rb = CXXRingBuffer.RingBuffer()
+		var rb = cxx_rb.RingBuffer()
 
 		#expect(rb.allocate(128) == true)
 
@@ -65,7 +65,7 @@ import Foundation
 	}
 
 	@Test func basic() async {
-		var rb = CXXRingBuffer.RingBuffer()
+		var rb = cxx_rb.RingBuffer()
 
 		#expect(rb.allocate(128) == true)
 
@@ -85,7 +85,7 @@ import Foundation
 	}
 
 	@Test func multi() async {
-		var rb = CXXRingBuffer.RingBuffer()
+		var rb = cxx_rb.RingBuffer()
 
 		let data_size = 255
 		let buf_size = 128
@@ -150,7 +150,7 @@ import Foundation
 	}
 
 	@Test func spsc() {
-		var rb = CXXRingBuffer.RingBuffer()
+		var rb = cxx_rb.RingBuffer()
 
 		let data_size = 8192
 

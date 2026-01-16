@@ -21,7 +21,7 @@
 #import <type_traits>
 #import <utility>
 
-namespace CXXRingBuffer {
+namespace cxx_rb {
 
 template <typename T>
 concept TriviallyCopyable = std::is_trivially_copyable_v<T>;
@@ -724,4 +724,4 @@ inline bool RingBuffer::copyFromReadVector(auto&& processor) const noexcept
 	return true;
 }
 
-} /* namespace CXXRingBuffer */
+} /* namespace cxx_rb */
