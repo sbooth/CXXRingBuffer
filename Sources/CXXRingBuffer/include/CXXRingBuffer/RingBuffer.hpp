@@ -519,19 +519,19 @@ inline RingBuffer::size_type RingBuffer::drain() noexcept
 template <TriviallyCopyable T>
 inline RingBuffer::size_type RingBuffer::write(std::span<const T> data, bool allowPartial) noexcept
 {
-	return Write(data.data(), sizeof(T), data.size(), allowPartial);
+	return write(data.data(), sizeof(T), data.size(), allowPartial);
 }
 
 template <TriviallyCopyable T>
 inline RingBuffer::size_type RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept
 {
-	return Read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
+	return read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
 }
 
 template <TriviallyCopyable T>
 inline bool RingBuffer::peek(std::span<T> buffer) const noexcept
 {
-	return Peek(buffer.data(), sizeof(T), buffer.size());
+	return peek(buffer.data(), sizeof(T), buffer.size());
 }
 
 // MARK: Writing and Reading Single Values
@@ -599,7 +599,7 @@ inline bool RingBuffer::writeValues(const Args&... args) noexcept
 
 	(write_single_arg(std::addressof(args), sizeof args), ...);
 
-	CommitWrite(totalSize);
+	commitWrite(totalSize);
 	return true;
 }
 
@@ -608,7 +608,7 @@ inline bool RingBuffer::readValues(Args&... args) noexcept
 {
 	if(!peekValues(args...))
 		return false;
-	CommitRead((sizeof args + ...));
+	commitRead((sizeof args + ...));
 	return true;
 }
 
@@ -624,7 +624,7 @@ inline std::optional<std::tuple<Args...>> RingBuffer::readValues() noexcept((std
 	auto result = peekValues<Args...>();
 	if(!result)
 		return std::nullopt;
-	CommitRead((sizeof(Args) + ...));
+	commitRead((sizeof(Args) + ...));
 	return result;
 }
 
