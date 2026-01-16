@@ -327,7 +327,7 @@ private:
 	/// The free-running read location.
 	AtomicSizeType readPosition_{0};
 
-	static_assert(AtomicSizeType::is_always_lock_free, "Lock-free atomic_size_type required");
+	static_assert(AtomicSizeType::is_always_lock_free, "Lock-free AtomicSizeType required");
 };
 
 // MARK: - Implementation -
