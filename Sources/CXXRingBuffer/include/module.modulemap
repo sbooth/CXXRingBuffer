@@ -5,7 +5,7 @@
 // Part of https://github.com/sbooth/CXXRingBuffer
 //
 
-module cxx_rb {
+module CXXRingBuffer {
 	requires cplusplus20
 	header "cxx_rb/RingBuffer.hpp"
 	export *

@@ -7,7 +7,7 @@
 
 import Testing
 import Foundation
-@testable import cxx_rb
+@testable import CXXRingBuffer
 
 @Suite struct CXXRingBufferTests {
 	@Test func empty() async {
