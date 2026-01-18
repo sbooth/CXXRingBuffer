@@ -19,7 +19,7 @@ IncludeBlocks: Regroup
 IncludeCategories:
   - Regex:           '^".*\.(h|hpp|hh|m|mm)"$'
     Priority:        1
-  - Regex:           '^<(Foundation|AppKit|UIKit|Cocoa|Core[A-Z]|AVFoundation|Metal|GameKit|SceneKit|SwiftUI|Combine|QuartzCore|Accelerate)/'
+  - Regex:           '^<(Foundation|AppKit|UIKit|Cocoa|Core[A-Z]+|AVFoundation|Metal|GameKit|SceneKit|SwiftUI|Combine|QuartzCore|Accelerate)/'
     Priority:        2
   - Regex:           '^<(Foundation|AppKit|UIKit|CoreFoundation|CoreGraphics|CoreText|CoreAudio|Metal|CoreML|Dispatch|mach-o|objc)/'
     Priority:        2
