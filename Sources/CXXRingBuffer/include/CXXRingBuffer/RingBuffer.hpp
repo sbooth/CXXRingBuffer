@@ -409,9 +409,9 @@ inline RingBuffer::size_type RingBuffer::Write(const void *const _Nonnull ptr, s
 
     const auto writeIndex = writePos & capacityMask_;
     const auto bytesToEnd = capacity_ - writeIndex;
-    if (bytesToWrite <= bytesToEnd) [[likely]]
+    if (bytesToWrite <= bytesToEnd) [[likely]] {
         std::memcpy(dst + writeIndex, src, bytesToWrite);
-    else [[unlikely]] {
+    } else [[unlikely]] {
         std::memcpy(dst + writeIndex, src, bytesToEnd);
         std::memcpy(dst, src + bytesToEnd, bytesToWrite - bytesToEnd);
     }
@@ -442,9 +442,9 @@ inline RingBuffer::size_type RingBuffer::Read(void *const _Nonnull ptr, size_typ
 
     const auto readIndex = readPos & capacityMask_;
     const auto bytesToEnd = capacity_ - readIndex;
-    if (bytesToRead <= bytesToEnd) [[likely]]
+    if (bytesToRead <= bytesToEnd) [[likely]] {
         std::memcpy(dst, src + readIndex, bytesToRead);
-    else [[unlikely]] {
+    } else [[unlikely]] {
         std::memcpy(dst, src + readIndex, bytesToEnd);
         std::memcpy(dst + bytesToEnd, src, bytesToRead - bytesToEnd);
     }
@@ -473,9 +473,9 @@ inline bool RingBuffer::Peek(void *const _Nonnull ptr, size_type itemSize, size_
 
     const auto readIndex = readPos & capacityMask_;
     const auto bytesToEnd = capacity_ - readIndex;
-    if (bytesToPeek <= bytesToEnd) [[likely]]
+    if (bytesToPeek <= bytesToEnd) [[likely]] {
         std::memcpy(dst, src + readIndex, bytesToPeek);
-    else [[unlikely]] {
+    } else [[unlikely]] {
         std::memcpy(dst, src + readIndex, bytesToEnd);
         std::memcpy(dst + bytesToEnd, src, bytesToPeek - bytesToEnd);
     }
@@ -583,11 +583,11 @@ inline bool RingBuffer::WriteValues(const Args &...args) noexcept {
     std::size_t cursor = 0;
     const auto write_single_arg = [&](const void *arg, std::size_t len) noexcept {
         const auto *src = static_cast<const unsigned char *>(arg);
-        if (cursor + len <= frontSize)
+        if (cursor + len <= frontSize) {
             std::memcpy(front.data() + cursor, src, len);
-        else if (cursor >= frontSize)
+        } else if (cursor >= frontSize) {
             std::memcpy(back.data() + (cursor - frontSize), src, len);
-        else [[unlikely]] {
+        } else [[unlikely]] {
             const size_t toFront = frontSize - cursor;
             std::memcpy(front.data() + cursor, src, toFront);
             std::memcpy(back.data(), src + toFront, len - toFront);
@@ -708,11 +708,11 @@ inline bool RingBuffer::CopyFromReadVector(auto &&processor) const noexcept {
     std::size_t cursor = 0;
     const auto copier = [&](void *arg, std::size_t len) noexcept {
         auto *dst = static_cast<unsigned char *>(arg);
-        if (cursor + len <= frontSize)
+        if (cursor + len <= frontSize) {
             std::memcpy(dst, front.data() + cursor, len);
-        else if (cursor >= frontSize)
+        } else if (cursor >= frontSize) {
             std::memcpy(dst, back.data() + (cursor - frontSize), len);
-        else [[unlikely]] {
+        } else [[unlikely]] {
             const size_t fromFront = frontSize - cursor;
             std::memcpy(dst, front.data() + cursor, fromFront);
             std::memcpy(dst + fromFront, back.data(), len - fromFront);
