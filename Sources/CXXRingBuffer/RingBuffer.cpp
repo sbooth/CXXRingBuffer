@@ -22,14 +22,14 @@ CXXRingBuffer::RingBuffer::RingBuffer(size_type minCapacity) {
         throw std::bad_alloc();
 }
 
-CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer &&other) noexcept
+CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
   : buffer_{std::exchange(other.buffer_, nullptr)},
     capacity_{std::exchange(other.capacity_, 0)},
     capacityMask_{std::exchange(other.capacityMask_, 0)},
     writePosition_{other.writePosition_.exchange(0, std::memory_order_relaxed)},
     readPosition_{other.readPosition_.exchange(0, std::memory_order_relaxed)} {}
 
-CXXRingBuffer::RingBuffer &CXXRingBuffer::RingBuffer::operator=(RingBuffer &&other) noexcept {
+CXXRingBuffer::RingBuffer& CXXRingBuffer::RingBuffer::operator=(RingBuffer&& other) noexcept {
     if (this != &other) [[likely]] {
         std::free(buffer_);
         buffer_ = std::exchange(other.buffer_, nullptr);

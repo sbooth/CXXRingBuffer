@@ -65,20 +65,20 @@ class RingBuffer final {
     explicit RingBuffer(size_type minCapacity);
 
     // This class is non-copyable
-    RingBuffer(const RingBuffer &) = delete;
+    RingBuffer(const RingBuffer&) = delete;
 
     /// Creates a ring buffer by moving the contents of another ring buffer.
     /// @note This method is not thread safe for the ring buffer being moved.
     /// @param other The ring buffer to move.
-    RingBuffer(RingBuffer &&other) noexcept;
+    RingBuffer(RingBuffer&& other) noexcept;
 
     // This class is non-assignable
-    RingBuffer &operator=(const RingBuffer &) = delete;
+    RingBuffer& operator=(const RingBuffer&) = delete;
 
     /// Moves the contents of another ring buffer into this ring buffer.
     /// @note This method is not thread safe.
     /// @param other The ring buffer to move.
-    RingBuffer &operator=(RingBuffer &&other) noexcept;
+    RingBuffer& operator=(RingBuffer&& other) noexcept;
 
     /// Destroys the ring buffer and releases all associated resources.
     ~RingBuffer() noexcept;
@@ -213,7 +213,7 @@ class RingBuffer final {
     /// @param value The value to write.
     /// @return true if value was successfully written.
     template <TriviallyCopyable T>
-    bool WriteValue(const T &value) noexcept;
+    bool WriteValue(const T& value) noexcept;
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -221,7 +221,7 @@ class RingBuffer final {
     /// @param value The destination value.
     /// @return true on success, false otherwise.
     template <TriviallyCopyable T>
-    bool ReadValue(T &value) noexcept;
+    bool ReadValue(T& value) noexcept;
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -237,7 +237,7 @@ class RingBuffer final {
     /// @param value The destination value.
     /// @return true on success, false otherwise.
     template <TriviallyCopyable T>
-    [[nodiscard]] bool PeekValue(T &value) const noexcept;
+    [[nodiscard]] bool PeekValue(T& value) const noexcept;
 
     /// Reads a value without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -256,7 +256,7 @@ class RingBuffer final {
     /// @return true if the values were successfully written.
     template <TriviallyCopyable... Args>
         requires(sizeof...(Args) > 0)
-    bool WriteValues(const Args &...args) noexcept;
+    bool WriteValues(const Args&...args) noexcept;
 
     /// Reads values and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -265,7 +265,7 @@ class RingBuffer final {
     /// @return true if the values were successfully read.
     template <TriviallyCopyable... Args>
         requires(sizeof...(Args) > 0)
-    bool ReadValues(Args &...args) noexcept;
+    bool ReadValues(Args&...args) noexcept;
 
     /// Reads values without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -274,7 +274,7 @@ class RingBuffer final {
     /// @return true if the values were successfully read.
     template <TriviallyCopyable... Args>
         requires(sizeof...(Args) > 0)
-    [[nodiscard]] bool PeekValues(Args &...args) const noexcept;
+    [[nodiscard]] bool PeekValues(Args&...args) const noexcept;
 
     /// Reads values and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -327,7 +327,7 @@ class RingBuffer final {
     /// @return true if the values were successfully copied.
     template <TriviallyCopyable... Args>
         requires(sizeof...(Args) > 0)
-    bool CopyFromReadVector(auto &&processor) const noexcept;
+    bool CopyFromReadVector(auto&& processor) const noexcept;
 
     /// The memory buffer holding the data.
     void *_Nullable buffer_{nullptr};
@@ -540,12 +540,12 @@ inline bool RingBuffer::Peek(std::span<T> buffer) const noexcept {
 // MARK: Writing and Reading Single Values
 
 template <TriviallyCopyable T>
-inline bool RingBuffer::WriteValue(const T &value) noexcept {
+inline bool RingBuffer::WriteValue(const T& value) noexcept {
     return Write(static_cast<const void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 }
 
 template <TriviallyCopyable T>
-inline bool RingBuffer::ReadValue(T &value) noexcept {
+inline bool RingBuffer::ReadValue(T& value) noexcept {
     return Read(static_cast<void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 }
 
@@ -557,7 +557,7 @@ inline std::optional<T> RingBuffer::ReadValue() noexcept(std::is_nothrow_default
 }
 
 template <TriviallyCopyable T>
-inline bool RingBuffer::PeekValue(T &value) const noexcept {
+inline bool RingBuffer::PeekValue(T& value) const noexcept {
     return Peek(static_cast<void *>(std::addressof(value)), sizeof value, 1);
 }
 
@@ -572,7 +572,7 @@ inline std::optional<T> RingBuffer::PeekValue() const noexcept(std::is_nothrow_d
 
 template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
-inline bool RingBuffer::WriteValues(const Args &...args) noexcept {
+inline bool RingBuffer::WriteValues(const Args&...args) noexcept {
     constexpr auto totalSize = (sizeof args + ...);
     auto [front, back] = GetWriteVector();
 
@@ -603,7 +603,7 @@ inline bool RingBuffer::WriteValues(const Args &...args) noexcept {
 
 template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
-inline bool RingBuffer::ReadValues(Args &...args) noexcept {
+inline bool RingBuffer::ReadValues(Args&...args) noexcept {
     if (!PeekValues(args...))
         return false;
     CommitRead((sizeof args + ...));
@@ -612,9 +612,9 @@ inline bool RingBuffer::ReadValues(Args &...args) noexcept {
 
 template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
-inline bool RingBuffer::PeekValues(Args &...args) const noexcept {
+inline bool RingBuffer::PeekValues(Args&...args) const noexcept {
     return CopyFromReadVector<Args...>(
-        [&](auto &&copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
+        [&](auto&& copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
 }
 
 template <TriviallyCopyableAndDefaultInitializable... Args>
@@ -633,8 +633,8 @@ template <TriviallyCopyableAndDefaultInitializable... Args>
 inline std::optional<std::tuple<Args...>> RingBuffer::PeekValues() const
     noexcept((std::is_nothrow_default_constructible_v<Args> && ...)) {
     std::tuple<Args...> result;
-    if (!CopyFromReadVector<Args...>([&](auto &&copier) noexcept {
-            std::apply([&](Args &...args) noexcept { (copier(std::addressof(args), sizeof args), ...); }, result);
+    if (!CopyFromReadVector<Args...>([&](auto&& copier) noexcept {
+            std::apply([&](Args&...args) noexcept { (copier(std::addressof(args), sizeof args), ...); }, result);
         }))
         return std::nullopt;
     return result;
@@ -693,7 +693,7 @@ inline void RingBuffer::CommitRead(size_type count) noexcept {
 
 template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
-inline bool RingBuffer::CopyFromReadVector(auto &&processor) const noexcept {
+inline bool RingBuffer::CopyFromReadVector(auto&& processor) const noexcept {
     using copier_type = void (*)(void *, std::size_t) noexcept;
     static_assert(std::invocable<decltype(processor), copier_type> && noexcept(processor(std::declval<copier_type>())),
                   "Processor must be callable with a noexcept copier without throwing");

@@ -1,19 +1,19 @@
-BasedOnStyle:             LLVM
-BreakBeforeBraces:        Attach
-IndentWidth:              4
-ColumnLimit:              120
+BasedOnStyle: LLVM
 
+IndentWidth: 4
+ColumnLimit: 120
+
+AllowShortBlocksOnASingleLine: Empty
 AllowShortFunctionsOnASingleLine: Empty
-AllowShortBlocksOnASingleLine:    Empty
 
 ConstructorInitializerIndentWidth: 2
-BreakConstructorInitializers: BeforeColon
-PackConstructorInitializers:  NextLine
+PackConstructorInitializers: NextLine
 
-BreakTemplateDeclarations: true
+PointerAlignment: Right
+ReferenceAlignment: Left
+DerivePointerAlignment: No
 
-ReflowComments: true
-MaxEmptyLinesToKeep: 1
+BreakTemplateDeclarations: Yes
 
 IncludeBlocks: Regroup    
 IncludeCategories:
