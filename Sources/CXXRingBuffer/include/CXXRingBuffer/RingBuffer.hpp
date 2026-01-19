@@ -339,11 +339,9 @@ class RingBuffer final {
     size_type capacityMask_{0};
 
     /// The free-running write location.
-    alignas(std::hardware_destructive_interference_size)
-    atomic_size_type writePosition_{0};
+    alignas(std::hardware_destructive_interference_size) atomic_size_type writePosition_{0};
     /// The free-running read location.
-    alignas(std::hardware_destructive_interference_size)
-    atomic_size_type readPosition_{0};
+    alignas(std::hardware_destructive_interference_size) atomic_size_type readPosition_{0};
 
     static_assert(atomic_size_type::is_always_lock_free, "Lock-free atomic_size_type required");
     static_assert(std::hardware_destructive_interference_size >= alignof(atomic_size_type));
