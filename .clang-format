@@ -1,0 +1,27 @@
+BasedOnStyle: LLVM
+
+Standard: c++20
+
+IndentWidth: 4
+ContinuationIndentWidth: 6
+TabWidth: 4
+UseTab: Never
+
+ColumnLimit: 120
+
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortBlocksOnASingleLine: Empty
+
+ConstructorInitializerIndentWidth: 2
+PackConstructorInitializers: NextLineOnly
+
+ReferenceAlignment: Left
+
+BreakTemplateDeclarations: true
+
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<[^./>]+>$'
+    Priority: 10
+  - Regex: '.*'
+    Priority: 20
