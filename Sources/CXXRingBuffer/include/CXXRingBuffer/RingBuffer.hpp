@@ -299,7 +299,7 @@ class RingBuffer final {
     /// Returns a write vector containing the current writable space.
     /// @note This method is only safe to call from the producer.
     /// @return A pair of spans containing the current writable space.
-    [[nodiscard]] WriteVector getWriteVector() const noexcept;
+    [[nodiscard]] WriteVector writeVector() const noexcept;
 
     /// Finalizes a write transaction by writing staged data to the ring buffer.
     /// @warning The behavior is undefined if count is greater than the free space in the write vector.
@@ -310,7 +310,7 @@ class RingBuffer final {
     /// Returns a read vector containing the current readable data.
     /// @note This method is only safe to call from the consumer.
     /// @return A pair of spans containing the current readable data.
-    [[nodiscard]] ReadVector getReadVector() const noexcept;
+    [[nodiscard]] ReadVector readVector() const noexcept;
 
     /// Finalizes a read transaction by removing data from the front of the ring buffer.
     /// @warning The behavior is undefined if count is greater than the available data in the read vector.
@@ -573,7 +573,7 @@ template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
 inline bool RingBuffer::writeValues(const Args&...args) noexcept {
     constexpr auto totalSize = (sizeof args + ...);
-    auto [front, back] = getWriteVector();
+    auto [front, back] = writeVector();
 
     const auto frontSize = front.size();
     if (frontSize + back.size() < totalSize)
@@ -641,7 +641,7 @@ inline std::optional<std::tuple<Args...>> RingBuffer::peekValues() const
 
 // MARK: Advanced Writing and Reading
 
-inline RingBuffer::WriteVector RingBuffer::getWriteVector() const noexcept {
+inline RingBuffer::WriteVector RingBuffer::writeVector() const noexcept {
     const auto writePos = writePosition_.load(std::memory_order_relaxed);
     const auto readPos = readPosition_.load(std::memory_order_acquire);
 
@@ -665,7 +665,7 @@ inline void RingBuffer::commitWrite(SizeType count) noexcept {
     writePosition_.store(writePos + count, std::memory_order_release);
 }
 
-inline RingBuffer::ReadVector RingBuffer::getReadVector() const noexcept {
+inline RingBuffer::ReadVector RingBuffer::readVector() const noexcept {
     const auto writePos = writePosition_.load(std::memory_order_acquire);
     const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
@@ -698,7 +698,7 @@ inline bool RingBuffer::copyFromReadVector(auto&& processor) const noexcept {
                   "Processor must be callable with a noexcept copier without throwing");
 
     constexpr auto totalSize = (sizeof(Args) + ...);
-    const auto [front, back] = getReadVector();
+    const auto [front, back] = readVector();
 
     const auto frontSize = front.size();
     if (frontSize + back.size() < totalSize)
