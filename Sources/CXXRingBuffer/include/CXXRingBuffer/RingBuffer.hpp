@@ -612,7 +612,7 @@ inline bool RingBuffer::readValues(Args&...args) noexcept {
 template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
 inline bool RingBuffer::peekValues(Args&...args) const noexcept {
-    return CopyFromReadVector<Args...>(
+    return copyFromReadVector<Args...>(
           [&](auto&& copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
 }
 
@@ -620,7 +620,7 @@ template <TriviallyCopyableAndDefaultInitializable... Args>
     requires(sizeof...(Args) > 0)
 inline std::optional<std::tuple<Args...>>
 RingBuffer::readValues() noexcept((std::is_nothrow_default_constructible_v<Args> && ...)) {
-    auto result = PeekValues<Args...>();
+    auto result = peekValues<Args...>();
     if (!result)
         return std::nullopt;
     commitRead((sizeof(Args) + ...));
@@ -632,7 +632,7 @@ template <TriviallyCopyableAndDefaultInitializable... Args>
 inline std::optional<std::tuple<Args...>> RingBuffer::peekValues() const
       noexcept((std::is_nothrow_default_constructible_v<Args> && ...)) {
     std::tuple<Args...> result;
-    if (!CopyFromReadVector<Args...>([&](auto&& copier) noexcept {
+    if (!copyFromReadVector<Args...>([&](auto&& copier) noexcept {
             std::apply([&](Args&...args) noexcept { (copier(std::addressof(args), sizeof args), ...); }, result);
         }))
         return std::nullopt;
