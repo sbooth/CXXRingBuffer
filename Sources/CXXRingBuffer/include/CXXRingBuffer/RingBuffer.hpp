@@ -140,8 +140,7 @@ class RingBuffer final {
     /// @param allowPartial Whether any items should be written if insufficient free space is available to write all
     /// items.
     /// @return The number of items actually written.
-    SizeType write(const void *const _Nonnull ptr, SizeType itemSize, SizeType itemCount,
-                    bool allowPartial) noexcept;
+    SizeType write(const void *const _Nonnull ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
 
     /// Reads data and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -388,7 +387,7 @@ inline bool RingBuffer::isEmpty() const noexcept {
 // MARK: Writing and Reading Data
 
 inline RingBuffer::SizeType RingBuffer::write(const void *const _Nonnull ptr, SizeType itemSize, SizeType itemCount,
-                                               bool allowPartial) noexcept {
+                                              bool allowPartial) noexcept {
     if (!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
         return 0;
 
@@ -422,7 +421,7 @@ inline RingBuffer::SizeType RingBuffer::write(const void *const _Nonnull ptr, Si
 }
 
 inline RingBuffer::SizeType RingBuffer::read(void *const _Nonnull ptr, SizeType itemSize, SizeType itemCount,
-                                              bool allowPartial) noexcept {
+                                             bool allowPartial) noexcept {
     if (!ptr || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]]
         return 0;
 
