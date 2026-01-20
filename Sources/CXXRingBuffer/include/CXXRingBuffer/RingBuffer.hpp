@@ -45,9 +45,9 @@ class RingBuffer final {
     using read_vector = std::pair<std::span<const unsigned char>, std::span<const unsigned char>>;
 
     /// The minimum supported ring buffer capacity in bytes.
-    static constexpr size_type min_capacity = size_type{2};
+    static constexpr size_type minCapacity = size_type{2};
     /// The maximum supported ring buffer capacity in bytes.
-    static constexpr size_type max_capacity = size_type{1} << (std::numeric_limits<size_type>::digits - 1);
+    static constexpr size_type maxCapacity = size_type{1} << (std::numeric_limits<size_type>::digits - 1);
 
     // MARK: Creation and Destruction
 
