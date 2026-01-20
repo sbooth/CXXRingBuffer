@@ -52,7 +52,7 @@ class RingBuffer final {
     // MARK: Creation and Destruction
 
     /// Creates an empty ring buffer.
-    /// @note ``Allocate`` must be called before the object may be used.
+    /// @note ``allocate`` must be called before the object may be used.
     RingBuffer() noexcept = default;
 
     /// Creates a ring buffer with the specified minimum capacity.
