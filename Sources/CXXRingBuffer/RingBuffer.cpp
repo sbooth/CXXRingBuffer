@@ -15,10 +15,12 @@
 // MARK: Creation and Destruction
 
 CXXRingBuffer::RingBuffer::RingBuffer(SizeType minCapacity) {
-    if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]]
+    if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]] {
         throw std::invalid_argument("capacity out of range");
-    if (!allocate(minCapacity)) [[unlikely]]
+    }
+    if (!allocate(minCapacity)) [[unlikely]] {
         throw std::bad_alloc();
+    }
 }
 
 CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
@@ -28,7 +30,7 @@ CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
     writePosition_{other.writePosition_.exchange(0, std::memory_order_relaxed)},
     readPosition_{other.readPosition_.exchange(0, std::memory_order_relaxed)} {}
 
-CXXRingBuffer::RingBuffer& CXXRingBuffer::RingBuffer::operator=(RingBuffer&& other) noexcept {
+auto CXXRingBuffer::RingBuffer::operator=(RingBuffer&& other) noexcept -> RingBuffer& {
     if (this != &other) [[likely]] {
         std::free(buffer_);
         buffer_ = std::exchange(other.buffer_, nullptr);
@@ -48,9 +50,10 @@ CXXRingBuffer::RingBuffer::~RingBuffer() noexcept {
 
 // MARK: Buffer Management
 
-bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
-    if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]]
+auto CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept -> bool {
+    if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]] {
         return false;
+    }
 
     deallocate();
 
@@ -66,8 +69,9 @@ bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
 #endif
 
     buffer_ = std::malloc(capacity);
-    if (!buffer_) [[unlikely]]
+    if (buffer_ == nullptr) [[unlikely]] {
         return false;
+    }
 
     capacity_ = capacity;
     capacityMask_ = capacity - 1;
@@ -79,7 +83,7 @@ bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
 }
 
 void CXXRingBuffer::RingBuffer::deallocate() noexcept {
-    if (buffer_) [[likely]] {
+    if (buffer_ != nullptr) [[likely]] {
         std::free(buffer_);
         buffer_ = nullptr;
 
