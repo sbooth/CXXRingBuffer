@@ -15,7 +15,7 @@
 
 // MARK: Creation and Destruction
 
-CXXRingBuffer::RingBuffer::RingBuffer(size_type minCapacity) {
+CXXRingBuffer::RingBuffer::RingBuffer(SizeType minCapacity) {
     if (minCapacity < min_capacity || minCapacity > max_capacity) [[unlikely]]
         throw std::invalid_argument("capacity out of range");
     if (!Allocate(minCapacity)) [[unlikely]]
@@ -49,7 +49,7 @@ CXXRingBuffer::RingBuffer::~RingBuffer() noexcept {
 
 // MARK: Buffer Management
 
-bool CXXRingBuffer::RingBuffer::Allocate(size_type minCapacity) noexcept {
+bool CXXRingBuffer::RingBuffer::Allocate(SizeType minCapacity) noexcept {
     if (minCapacity < min_capacity || minCapacity > max_capacity) [[unlikely]]
         return false;
 
