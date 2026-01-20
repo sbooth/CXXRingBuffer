@@ -7,6 +7,13 @@
 
 #pragma once
 
+#if defined(__has_include) && __has_include(<CoreFoundation/CFData.h>)
+#import <CoreFoundation/CFData.h>
+#if defined(__OBJC__)
+#import <Foundation/NSData.h>
+#endif
+#endif
+
 #import <algorithm>
 #import <atomic>
 #import <cassert>
@@ -317,6 +324,59 @@ class RingBuffer final {
     /// @note This method is only safe to call from the consumer.
     /// @param count The number of bytes that were successfully read from the read vector.
     void commitRead(SizeType count) noexcept;
+
+    // MARK: Extensions
+
+#if defined(__has_include) && __has_include(<CoreFoundation/CFData.h>)
+    /// Writes data and advances the write position.
+    /// @param data The data to copy to the ring buffer.
+    /// @return @c true if the data was successfully written or @c false if there is insufficient write space available.
+    bool WriteData(CFDataRef _Nonnull data) noexcept {
+        if (!data)
+            return false;
+        const auto length = CFDataGetLength(data);
+        const auto count = static_cast<size_type>(length);
+        return Write(CFDataGetBytePtr(data), 1, count, false) == count;
+    }
+
+    /// Reads data and advances the read position.
+    /// @param data The destination data object.
+    /// @param count The desired number of bytes to read.
+    void ReadData(CFMutableDataRef _Nonnull data, CFIndex count) noexcept {
+        if (!data || count < 0)
+            return;
+        CFDataSetLength(data, count);
+        const auto length = Read(CFDataGetMutableBytePtr(data), 1, count, false);
+        if (length != count)
+            CFDataSetLength(data, length);
+    }
+
+#if defined(__OBJC__)
+    /// Writes data and advances the write position.
+    /// @param data The data to copy to the ring buffer.
+    /// @return @c true if the data was successfully written or @c false if there is insufficient write space available.
+    bool WriteData(NSData *_Nonnull data) noexcept {
+        return WriteData((__bridge CFDataRef)data);
+    }
+
+    /// Reads data and advances the read position.
+    /// @param data The destination data object.
+    /// @param count The desired number of bytes to read.
+    void ReadData(NSMutableData *_Nonnull data, NSUInteger count) noexcept {
+        ReadData((__bridge CFMutableDataRef)data, count);
+    }
+
+    /// Reads data and advances the read position.
+    /// @param count The desired number of bytes to read.
+    /// @return An @c NSData object or @c nil if an error occurred.
+    NSData *_Nullable ReadData(NSUInteger count) noexcept {
+        NSMutableData *data = [NSMutableData dataWithCapacity:count];
+        ReadData((__bridge CFMutableDataRef)data, count);
+        return data;
+    }
+#endif
+
+#endif
 
   private:
     /// Copies values from the read vector without advancing the read position.
