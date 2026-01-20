@@ -9,8 +9,6 @@
 
 #import <bit>
 #import <cstdlib>
-#import <limits>
-#import <new>
 #import <stdexcept>
 
 // MARK: Creation and Destruction
