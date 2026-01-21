@@ -15,10 +15,12 @@
 // MARK: Creation and Destruction
 
 CXXRingBuffer::RingBuffer::RingBuffer(SizeType minCapacity) {
-    if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]]
+    if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]] {
         throw std::invalid_argument("capacity out of range");
-    if (!allocate(minCapacity)) [[unlikely]]
+    }
+    if (!allocate(minCapacity)) [[unlikely]] {
         throw std::bad_alloc();
+    }
 }
 
 CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
@@ -49,8 +51,9 @@ CXXRingBuffer::RingBuffer::~RingBuffer() noexcept {
 // MARK: Buffer Management
 
 bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
-    if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]]
+    if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]] {
         return false;
+    }
 
     deallocate();
 
@@ -66,8 +69,9 @@ bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
 #endif
 
     buffer_ = std::malloc(capacity);
-    if (!buffer_) [[unlikely]]
+    if (buffer_ == nullptr) [[unlikely]] {
         return false;
+    }
 
     capacity_ = capacity;
     capacityMask_ = capacity - 1;
@@ -79,7 +83,7 @@ bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
 }
 
 void CXXRingBuffer::RingBuffer::deallocate() noexcept {
-    if (buffer_) [[likely]] {
+    if (buffer_ != nullptr) [[likely]] {
         std::free(buffer_);
         buffer_ = nullptr;
 
