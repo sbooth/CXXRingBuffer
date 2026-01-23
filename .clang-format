@@ -9,6 +9,8 @@ UseTab: Never
 
 ColumnLimit: 120
 
+InsertBraces: true
+
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortBlocksOnASingleLine: Empty
 
