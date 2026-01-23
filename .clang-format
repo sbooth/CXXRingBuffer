@@ -1,7 +1,5 @@
 BasedOnStyle: LLVM
 
-Standard: c++20
-
 IndentWidth: 4
 ContinuationIndentWidth: 6
 TabWidth: 4
@@ -19,7 +17,7 @@ PackConstructorInitializers: NextLineOnly
 
 ReferenceAlignment: Left
 
-BreakTemplateDeclarations: true
+BreakTemplateDeclarations: Yes
 
 IncludeBlocks: Regroup
 IncludeCategories:
