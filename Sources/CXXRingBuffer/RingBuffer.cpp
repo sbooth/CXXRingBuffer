@@ -12,7 +12,7 @@
 #include <new>
 #include <stdexcept>
 
-// MARK: Creation and Destruction
+// MARK: Construction and Destruction
 
 CXXRingBuffer::RingBuffer::RingBuffer(SizeType minCapacity) {
     if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]] {
