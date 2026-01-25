@@ -5,12 +5,12 @@
 // Part of https://github.com/sbooth/CXXRingBuffer
 //
 
-#import "RingBuffer.hpp"
+#include "RingBuffer.hpp"
 
-#import <bit>
-#import <cstdlib>
-#import <new>
-#import <stdexcept>
+#include <bit>
+#include <cstdlib>
+#include <new>
+#include <stdexcept>
 
 // MARK: Creation and Destruction
 

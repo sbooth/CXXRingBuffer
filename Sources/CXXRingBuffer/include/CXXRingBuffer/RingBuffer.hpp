@@ -7,19 +7,19 @@
 
 #pragma once
 
-#import <algorithm>
-#import <atomic>
-#import <cassert>
-#import <concepts>
-#import <cstddef>
-#import <cstring>
-#import <limits>
-#import <memory>
-#import <optional>
-#import <span>
-#import <tuple>
-#import <type_traits>
-#import <utility>
+#include <algorithm>
+#include <atomic>
+#include <cassert>
+#include <concepts>
+#include <cstddef>
+#include <cstring>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <span>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 
 namespace CXXRingBuffer {
 
