@@ -11,10 +11,6 @@ charset = utf-8
 trim_trailing_whitespace = true
 
 # 4 space indentation
-[*.{hpp,cpp}]
+[*.{hpp,cpp,swift}]
 indent_style = space
 indent_size = 4
-
-# Tab indentation (no size specified)
-[Makefile]
-indent_style = tab
