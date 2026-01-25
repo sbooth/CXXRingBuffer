@@ -21,7 +21,7 @@ let package = Package(
     targets: [
         .target(
             name: "CXXRingBuffer",
-            cSettings: [
+            cxxSettings: [
                 .headerSearchPath("include/CXXRingBuffer"),
             ]
         ),
