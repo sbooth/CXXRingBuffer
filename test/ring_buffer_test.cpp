@@ -209,6 +209,10 @@ TEST_F(RingBufferTest, AllocateRoundsToPowerOfTwo) {
     EXPECT_TRUE(rb);
     EXPECT_GE(rb.capacity(), 3);
     EXPECT_TRUE((rb.capacity() & (rb.capacity() - 1)) == 0);
+
+    EXPECT_TRUE(rb.allocate(100));
+    EXPECT_EQ(rb.capacity(), 128); // Next power of 2
+    EXPECT_TRUE(rb);
 }
 
 TEST_F(RingBufferTest, AllocateMinimumCapacity) {
@@ -348,9 +352,9 @@ TEST_F(RingBufferTest, WriteAndReadValuesVariadic) {
     uint8_t cc;
 
     EXPECT_TRUE(rb.readValues(aa, bb, cc));
-    EXPECT_EQ(aa, a);
-    EXPECT_EQ(bb, b);
-    EXPECT_EQ(cc, c);
+    EXPECT_EQ(aa, 1);
+    EXPECT_EQ(bb, 2.5);
+    EXPECT_EQ(cc, 9);
 }
 
 TEST_F(RingBufferTest, PeekValuesTuple) {
@@ -444,16 +448,6 @@ TEST_F(RingBufferTest, ThroughputBenchmarkSingleThreaded) {
 }
 
 // MARK: -
-
-TEST_F(RingBufferTest, AllocationAndCapacity) {
-    // Test power-of-two rounding
-    EXPECT_TRUE(rb.allocate(100));
-    EXPECT_EQ(rb.capacity(), 128); // Next power of 2
-    EXPECT_TRUE(rb);
-
-    rb.deallocate();
-    EXPECT_FALSE(rb);
-}
 
 TEST_F(RingBufferTest, BasicReadWrite) {
     EXPECT_TRUE(rb.allocate(64));
