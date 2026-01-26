@@ -5,10 +5,6 @@
 // Part of https://github.com/sbooth/CXXRingBuffer
 //
 
-#include "RingBuffer.hpp"
-
-#include <gtest/gtest.h>
-
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -18,6 +14,9 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+
+#include "RingBuffer.hpp"
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -33,7 +32,7 @@ struct POD {
 static_assert(std::is_trivially_copyable_v<POD>);
 
 class RingBufferTest : public ::testing::Test {
-protected:
+  protected:
     CXXRingBuffer::RingBuffer rb;
 };
 
@@ -44,7 +43,9 @@ struct ThrowingDefault {
 
     // Must be default initializable
     ThrowingDefault() noexcept(false) {
-        if (should_throw) throw std::runtime_error("ctor failed");
+        if (should_throw) {
+            throw std::runtime_error("ctor failed");
+        }
     }
 
     // Logic to keep it trivially copyable (C++17/20 requirements)
@@ -57,7 +58,7 @@ static_assert(std::is_trivially_copyable_v<ThrowingDefault>);
 static_assert(std::default_initializable<ThrowingDefault>);
 
 class RingBufferExceptionTest : public ::testing::Test {
-protected:
+  protected:
     CXXRingBuffer::RingBuffer rb;
     void SetUp() override {
         rb.allocate(1 * KB);
@@ -75,23 +76,28 @@ struct StressParams {
 };
 
 class RingBufferStressTest : public ::testing::TestWithParam<StressParams> {
-public:
+  public:
     // Helper to print nice parameter names in the test runner
     static std::string ParamNameGenerator(const ::testing::TestParamInfo<StressParams>& info) {
         const auto cap = info.param.capacity;
-        if (cap >= MB) return std::to_string(cap / MB) + "MB";
-        if (cap >= KB) return std::to_string(cap / KB) + "KB";
+        if (cap >= MB) {
+            return std::to_string(cap / MB) + "MB";
+        }
+        if (cap >= KB) {
+            return std::to_string(cap / KB) + "KB";
+        }
         return std::to_string(cap) + "Bytes";
     }
-protected:
+
+  protected:
     CXXRingBuffer::RingBuffer rb;
 };
 
 // A mixed-type structure to stress alignment and multi-value logic
 struct PacketHeader {
     uint32_t sequence;
-    uint8_t  type;
-    double   timestamp;
+    uint8_t type;
+    double timestamp;
 };
 
 } // namespace
@@ -125,8 +131,9 @@ TEST_F(RingBufferTest, Functional) {
 
     constexpr size_t size = 10;
     std::vector<int> vec(size);
-    for(auto& v : vec)
+    for (auto& v : vec) {
         v = dist(gen);
+    }
 
     EXPECT_EQ(rb.write(vec.data(), sizeof(int), vec.size(), true), vec.size());
     EXPECT_EQ(rb.availableBytes(), vec.size() * sizeof(int));
@@ -139,9 +146,9 @@ TEST_F(RingBufferTest, Functional) {
 }
 
 TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
-    constexpr std::size_t bufferSize = 1 * MB; // 1MB buffer
+    constexpr std::size_t bufferSize = 1 * MB;          // 1MB buffer
     constexpr std::size_t totalDataToMove = 10ULL * GB; // 10GB
-    constexpr std::size_t chunkSize = 4 * KB; // 4KB chunks (page size)
+    constexpr std::size_t chunkSize = 4 * KB;           // 4KB chunks (page size)
 
     EXPECT_TRUE(rb.allocate(bufferSize));
 
@@ -156,7 +163,9 @@ TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
         while (sent < totalDataToMove) {
             size_t written = rb.write(std::span<const uint8_t>{data}, false);
             sent += written;
-            if (written == 0) std::this_thread::yield();
+            if (written == 0) {
+                std::this_thread::yield();
+            }
         }
     });
 
@@ -166,7 +175,9 @@ TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
         while (received < totalDataToMove) {
             size_t read = rb.read(std::span{sink}, false);
             received += read;
-            if (read == 0) std::this_thread::yield();
+            if (read == 0) {
+                std::this_thread::yield();
+            }
         }
     });
 
@@ -182,8 +193,8 @@ TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
     RecordProperty("TotalGB", std::to_string(gigabytes));
     RecordProperty("GB_per_sec", std::to_string(throughput));
 
-    std::cout << "[ BENCH    ] Transferred " << gigabytes << " GB in "
-    << diff.count() << "sec (" << throughput << " GB/sec)" << std::endl;
+    std::cout << "[ BENCH    ] Transferred " << gigabytes << " GB in " << diff.count() << "sec (" << throughput
+              << " GB/sec)" << std::endl;
 }
 
 // MARK: -
@@ -228,7 +239,7 @@ TEST_F(RingBufferTest, WriteAndReadSingleValue) {
 TEST_F(RingBufferTest, WriteReadMultipleItems) {
     EXPECT_TRUE(rb.allocate(128));
 
-    std::vector<int> input{1,2,3,4,5};
+    std::vector<int> input{1, 2, 3, 4, 5};
     std::vector<int> output(5);
 
     EXPECT_EQ(rb.write(std::span<const int>{input}), input.size());
@@ -295,7 +306,7 @@ TEST_F(RingBufferTest, PeekDoesNotAdvance) {
 TEST_F(RingBufferTest, SkipAndDrain) {
     EXPECT_TRUE(rb.allocate(64));
 
-    std::array<int, 4> data{1,2,3,4};
+    std::array<int, 4> data{1, 2, 3, 4};
     rb.write(std::span<const int>{data});
 
     EXPECT_EQ(rb.skip(sizeof(int), 2), 2);
@@ -384,7 +395,7 @@ TEST_F(RingBufferTest, SPSCStressTestOne) {
     std::atomic<bool> producerDone{false};
 
     std::thread producer([&] {
-        for (std::size_t i = 0; i < iterations; ) {
+        for (std::size_t i = 0; i < iterations;) {
             if (rb.writeValue(i)) {
                 ++i;
             }
@@ -479,11 +490,16 @@ TEST_F(RingBufferTest, WrapAroundBehavior) {
 
 TEST_F(RingBufferTest, VariadicValues) {
     EXPECT_TRUE(rb.allocate(1 * KB));
-    struct Foo { int a; float b; };
+    struct Foo {
+        int a;
+        float b;
+    };
 
     EXPECT_TRUE(rb.writeValues(10, 20.5f, Foo{1, 2.0f}));
 
-    int out1; float out2; Foo out3;
+    int out1;
+    float out2;
+    Foo out3;
     EXPECT_TRUE(rb.readValues(out1, out2, out3));
 
     EXPECT_EQ(out1, 10);
@@ -556,10 +572,9 @@ TEST_F(RingBufferTest, ThroughputBenchmarkMultiThreaded) {
     RecordProperty("TotalGB", std::to_string(gigabytes));
     RecordProperty("GB_per_sec", std::to_string(throughput));
 
-    std::cout << "[ BENCH    ] Transferred " << gigabytes << " GB in "
-    << diff.count() << "sec (" << throughput << " GB/sec)" << std::endl;
+    std::cout << "[ BENCH    ] Transferred " << gigabytes << " GB in " << diff.count() << "sec (" << throughput
+              << " GB/sec)" << std::endl;
 }
-
 
 TEST_F(RingBufferExceptionTest, ReadValueMaintainsStateOnException) {
     // 1. Prepare data
@@ -624,7 +639,9 @@ TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
         while (keepRunning.load(std::memory_order_relaxed)) {
             std::size_t itemsToWrite = dist(gen);
             std::vector<uint64_t> data(itemsToWrite);
-            for (auto& val : data) val = counter++;
+            for (auto& val : data) {
+                val = counter++;
+            }
 
             // Using the template span-based write
             std::size_t written = rb.write<uint64_t>(std::span<const uint64_t>{data}, true);
@@ -669,8 +686,12 @@ TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
     std::this_thread::sleep_for(duration);
 
     keepRunning = false;
-    if (producer.joinable()) producer.join();
-    if (consumer.joinable()) consumer.join();
+    if (producer.joinable()) {
+        producer.join();
+    }
+    if (consumer.joinable()) {
+        consumer.join();
+    }
 
     // Report performance
     double totalMB = totalBytesProcessed.load() / MB;
@@ -693,7 +714,7 @@ TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
     std::thread producer([&]() {
         uint32_t seq = 0;
         while (keepRunning.load(std::memory_order_relaxed)) {
-            PacketHeader header{ seq, 0xAB, 1.234 };
+            PacketHeader header{seq, 0xAB, 1.234};
             uint64_t payload = static_cast<uint64_t>(seq) * 2;
 
             // Stress the writeValues variadic template
@@ -736,8 +757,12 @@ TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
     std::this_thread::sleep_for(duration);
 
     keepRunning = false;
-    if (producer.joinable()) producer.join();
-    if (consumer.joinable()) consumer.join();
+    if (producer.joinable()) {
+        producer.join();
+    }
+    if (consumer.joinable()) {
+        consumer.join();
+    }
 
     // Report performance
     double totalMB = totalBytesProcessed.load() / MB;
@@ -750,13 +775,9 @@ TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
 }
 
 // Instantiate the test with different configurations
-INSTANTIATE_TEST_SUITE_P(
-                         VariedCapacities,
-                         RingBufferStressTest,
-                         ::testing::Values(
-                                           StressParams{1 * KB, 2s},       // Small: Stress-test wrap-around logic
-                                           StressParams{1 * MB, 5s},       // Large: Stress-test memory throughput
-                                           StressParams{64 * KB, 3s}       // Medium
+INSTANTIATE_TEST_SUITE_P(VariedCapacities, RingBufferStressTest,
+                         ::testing::Values(StressParams{1 * KB, 2s}, // Small: Stress-test wrap-around logic
+                                           StressParams{1 * MB, 5s}, // Large: Stress-test memory throughput
+                                           StressParams{64 * KB, 3s} // Medium
                                            ),
-                         RingBufferStressTest::ParamNameGenerator
-                         );
+                         RingBufferStressTest::ParamNameGenerator);
