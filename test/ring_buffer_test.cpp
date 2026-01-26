@@ -722,7 +722,7 @@ TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
             uint64_t p;
             if (rb.readValues(h, p)) {
                 if (h.sequence != expectedSeq || p != (uint64_t)expectedSeq * 2) {
-                    FAIL() << "Data Corruption! Expected: " << h.sequence << ", got: " << expectedSeq;
+                    FAIL() << "Data Corruption! Expected: " << expectedSeq << ", got: " << h.sequence;
                 }
                 expectedSeq++;
             }
