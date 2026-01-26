@@ -392,7 +392,7 @@ TEST_F(RingBufferTest, ReadVectorAndCommit) {
     EXPECT_TRUE(rb.isEmpty());
 }
 
-TEST_F(RingBufferTest, SPSCStressTestOne) {
+TEST_F(RingBufferTest, SPSCStressTestSequentialValues) {
     constexpr std::size_t iterations = 1'000'000;
     EXPECT_TRUE(rb.allocate(64 * KB));
 
@@ -501,7 +501,7 @@ TEST_F(RingBufferTest, VariadicValues) {
     EXPECT_EQ(out3.a, 1);
 }
 
-TEST_F(RingBufferTest, SPSCStressTestTwo) {
+TEST_F(RingBufferTest, SPSCStressTestWithYield) {
     constexpr std::size_t bufferSize = 4 * KB;
     constexpr std::size_t totalItems = 1'000'000;
     EXPECT_TRUE(rb.allocate(bufferSize));
