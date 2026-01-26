@@ -123,7 +123,7 @@ TEST_F(RingBufferTest, Capacity) {
 }
 
 TEST_F(RingBufferTest, Functional) {
-    EXPECT_TRUE(rb.allocate(128));
+    ASSERT_TRUE(rb.allocate(128));
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -150,7 +150,7 @@ TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
     constexpr std::size_t totalDataToMove = 10ULL * GB; // 10GB
     constexpr std::size_t chunkSize = 4 * KB;           // 4KB chunks (page size)
 
-    EXPECT_TRUE(rb.allocate(bufferSize));
+    ASSERT_TRUE(rb.allocate(bufferSize));
 
     std::vector<uint8_t> data(chunkSize, 0xAA);
     std::vector<uint8_t> sink(chunkSize, 0x00);
@@ -229,7 +229,7 @@ TEST_F(RingBufferTest, DeallocateResetsState) {
 }
 
 TEST_F(RingBufferTest, WriteAndReadSingleValue) {
-    EXPECT_TRUE(rb.allocate(64));
+    ASSERT_TRUE(rb.allocate(64));
 
     int value = 42;
     EXPECT_TRUE(rb.writeValue(value));
@@ -241,7 +241,7 @@ TEST_F(RingBufferTest, WriteAndReadSingleValue) {
 }
 
 TEST_F(RingBufferTest, WriteReadMultipleItems) {
-    EXPECT_TRUE(rb.allocate(128));
+    ASSERT_TRUE(rb.allocate(128));
 
     std::vector<int> input{1, 2, 3, 4, 5};
     std::vector<int> output(5);
@@ -252,7 +252,7 @@ TEST_F(RingBufferTest, WriteReadMultipleItems) {
 }
 
 TEST_F(RingBufferTest, WriteFailsWhenNoPartialAllowed) {
-    EXPECT_TRUE(rb.allocate(16)); // fits only 4 ints
+    ASSERT_TRUE(rb.allocate(16)); // fits only 4 ints
     std::array<int, 5> data{};
 
     EXPECT_EQ(rb.write(data.data(), sizeof(int), 5, false), 0);
@@ -260,7 +260,7 @@ TEST_F(RingBufferTest, WriteFailsWhenNoPartialAllowed) {
 }
 
 TEST_F(RingBufferTest, ReadFailsWhenNoPartialAllowed) {
-    EXPECT_TRUE(rb.allocate(32));
+    ASSERT_TRUE(rb.allocate(32));
     int x = 1;
     rb.writeValue(x);
 
@@ -269,7 +269,7 @@ TEST_F(RingBufferTest, ReadFailsWhenNoPartialAllowed) {
 }
 
 TEST_F(RingBufferTest, WrapAroundReadWrite) {
-    EXPECT_TRUE(rb.allocate(16));
+    ASSERT_TRUE(rb.allocate(16));
     // 16 bytes total
     // 4 ints max
 
@@ -292,7 +292,7 @@ TEST_F(RingBufferTest, WrapAroundReadWrite) {
 }
 
 TEST_F(RingBufferTest, PeekDoesNotAdvance) {
-    EXPECT_TRUE(rb.allocate(64));
+    ASSERT_TRUE(rb.allocate(64));
 
     int x = 7;
     rb.writeValue(x);
@@ -308,7 +308,7 @@ TEST_F(RingBufferTest, PeekDoesNotAdvance) {
 }
 
 TEST_F(RingBufferTest, SkipAndDrain) {
-    EXPECT_TRUE(rb.allocate(64));
+    ASSERT_TRUE(rb.allocate(64));
 
     std::array<int, 4> data{1, 2, 3, 4};
     rb.write(std::span<const int>{data});
@@ -321,7 +321,7 @@ TEST_F(RingBufferTest, SkipAndDrain) {
 }
 
 TEST_F(RingBufferTest, PODWriteRead) {
-    EXPECT_TRUE(rb.allocate(64));
+    ASSERT_TRUE(rb.allocate(64));
 
     POD in{1, 2};
     EXPECT_TRUE(rb.writeValue(in));
@@ -339,7 +339,7 @@ TEST_F(RingBufferTest, PeekOptionalFailsWhenInsufficientData) {
 }
 
 TEST_F(RingBufferTest, WriteAndReadValuesVariadic) {
-    EXPECT_TRUE(rb.allocate(64));
+    ASSERT_TRUE(rb.allocate(64));
 
     int a = 1;
     double b = 2.5;
@@ -368,7 +368,7 @@ TEST_F(RingBufferTest, PeekValuesTuple) {
 }
 
 TEST_F(RingBufferTest, WriteVectorAndCommit) {
-    EXPECT_TRUE(rb.allocate(32));
+    ASSERT_TRUE(rb.allocate(32));
 
     auto [front, back] = rb.writeVector();
     ASSERT_GT(front.size(), 0);
@@ -380,7 +380,7 @@ TEST_F(RingBufferTest, WriteVectorAndCommit) {
 }
 
 TEST_F(RingBufferTest, ReadVectorAndCommit) {
-    EXPECT_TRUE(rb.allocate(32));
+    ASSERT_TRUE(rb.allocate(32));
 
     std::array<uint8_t, 8> data{};
     rb.write(std::span<const uint8_t>{data});
@@ -394,7 +394,7 @@ TEST_F(RingBufferTest, ReadVectorAndCommit) {
 
 TEST_F(RingBufferTest, SPSCStressTestSequentialValues) {
     constexpr std::size_t iterations = 1'000'000;
-    EXPECT_TRUE(rb.allocate(64 * KB));
+    ASSERT_TRUE(rb.allocate(64 * KB));
 
     std::atomic<bool> producerDone{false};
 
@@ -426,7 +426,7 @@ TEST_F(RingBufferTest, SPSCStressTestSequentialValues) {
 
 TEST_F(RingBufferTest, ThroughputBenchmarkSingleThreaded) {
     constexpr std::size_t iterations = 10'000'000;
-    EXPECT_TRUE(rb.allocate(1 * MB));
+    ASSERT_TRUE(rb.allocate(1 * MB));
 
     const auto start = std::chrono::high_resolution_clock::now();
 
@@ -450,7 +450,7 @@ TEST_F(RingBufferTest, ThroughputBenchmarkSingleThreaded) {
 // MARK: -
 
 TEST_F(RingBufferTest, BasicReadWrite) {
-    EXPECT_TRUE(rb.allocate(64));
+    ASSERT_TRUE(rb.allocate(64));
     int input = 42;
     int output = 0;
 
@@ -462,7 +462,7 @@ TEST_F(RingBufferTest, BasicReadWrite) {
 }
 
 TEST_F(RingBufferTest, WrapAroundBehavior) {
-    EXPECT_TRUE(rb.allocate(16));
+    ASSERT_TRUE(rb.allocate(16));
     std::vector<uint8_t> data(10, 0xA);
 
     // Write 10 bytes
@@ -483,7 +483,7 @@ TEST_F(RingBufferTest, WrapAroundBehavior) {
 }
 
 TEST_F(RingBufferTest, VariadicValues) {
-    EXPECT_TRUE(rb.allocate(1 * KB));
+    ASSERT_TRUE(rb.allocate(1 * KB));
     struct Foo {
         int a;
         float b;
@@ -504,7 +504,7 @@ TEST_F(RingBufferTest, VariadicValues) {
 TEST_F(RingBufferTest, SPSCStressTestWithYield) {
     constexpr std::size_t bufferSize = 4 * KB;
     constexpr std::size_t totalItems = 1'000'000;
-    EXPECT_TRUE(rb.allocate(bufferSize));
+    ASSERT_TRUE(rb.allocate(bufferSize));
 
     std::thread producer([&]() {
         for (size_t i = 0; i < totalItems; ++i) {
@@ -533,7 +533,7 @@ TEST_F(RingBufferTest, SPSCStressTestWithYield) {
 TEST_F(RingBufferTest, ThroughputBenchmarkMultiThreaded) {
     constexpr std::size_t capacity = 1 * MB; // 1MB buffer
     constexpr std::size_t dataSize = 1 * GB; // 1GB total transfer
-    EXPECT_TRUE(rb.allocate(capacity));
+    ASSERT_TRUE(rb.allocate(capacity));
 
     std::vector<uint8_t> batch(64 * KB, 0xFF); // 64KB chunks
 
@@ -619,7 +619,7 @@ using namespace std::chrono_literals;
 TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
     const auto& [bufferCapacity, duration] = GetParam();
 
-    EXPECT_TRUE(rb.allocate(bufferCapacity));
+    ASSERT_TRUE(rb.allocate(bufferCapacity));
 
     std::atomic<bool> keepRunning{true};
     std::atomic<uint64_t> totalBytesProcessed{0};
@@ -699,7 +699,7 @@ TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
 
 TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
     const auto& [bufferCapacity, duration] = GetParam();
-    EXPECT_TRUE(rb.allocate(bufferCapacity));
+    ASSERT_TRUE(rb.allocate(bufferCapacity));
 
     std::atomic<bool> keepRunning{true};
     std::atomic<uint64_t> totalBytesProcessed{0};
