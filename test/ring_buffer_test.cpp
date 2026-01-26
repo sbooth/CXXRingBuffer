@@ -63,6 +63,9 @@ protected:
         rb.allocate(1 * KB);
         ThrowingDefault::should_throw = false;
     }
+    void TearDown() override {
+        ThrowingDefault::should_throw = false;
+    }
 };
 
 // Structure to hold our test parameters
