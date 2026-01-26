@@ -21,16 +21,18 @@
 #include <type_traits>
 #include <utility>
 
-// Check for nullability support
 #if defined(__has_feature)
-#if !__has_feature(nullability)
-#ifndef _Nullable
-#define _Nullable
-#endif
-#ifndef _Nonnull
-#define _Nonnull
+#if __has_feature(nullability)
+#define RB_HAS_NULLABILITY 1
 #endif
 #endif
+
+#if defined(RB_HAS_NULLABILITY)
+#define RB_NONNULL _Nonnull
+#define RB_NULLABLE _Nullable
+#else
+#define RB_NONNULL
+#define RB_NULLABLE
 #endif
 
 namespace CXXRingBuffer {
@@ -152,7 +154,7 @@ class RingBuffer final {
     /// @param allowPartial Whether any items should be written if insufficient free space is available to write all
     /// items.
     /// @return The number of items actually written.
-    SizeType write(const void *const _Nonnull ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
+    SizeType write(const void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
 
     /// Reads data and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -162,7 +164,7 @@ class RingBuffer final {
     /// @param allowPartial Whether any items should be read if the number of items available for reading is less than
     /// count.
     /// @return The number of items actually read.
-    SizeType read(void *const _Nonnull ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
+    SizeType read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
 
     /// Reads data without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -170,7 +172,7 @@ class RingBuffer final {
     /// @param itemSize The size of an individual item in bytes.
     /// @param itemCount The desired number of items to read.
     /// @return True if the requested items were read, false otherwise.
-    [[nodiscard]] bool peek(void *const _Nonnull ptr, SizeType itemSize, SizeType itemCount) const noexcept;
+    [[nodiscard]] bool peek(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount) const noexcept;
 
     // MARK: Discarding Data
 
@@ -341,7 +343,7 @@ class RingBuffer final {
     bool copyFromReadVector(auto&& processor) const noexcept;
 
     /// The memory buffer holding the data.
-    void *_Nullable buffer_{nullptr};
+    void *RB_NULLABLE buffer_{nullptr};
 
     /// The capacity of buffer_ in bytes.
     SizeType capacity_{0};
@@ -398,7 +400,7 @@ inline bool RingBuffer::isEmpty() const noexcept {
 
 // MARK: Writing and Reading Data
 
-inline RingBuffer::SizeType RingBuffer::write(const void *const _Nonnull ptr, SizeType itemSize, SizeType itemCount,
+inline RingBuffer::SizeType RingBuffer::write(const void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
                                               bool allowPartial) noexcept {
     if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return 0;
@@ -434,7 +436,7 @@ inline RingBuffer::SizeType RingBuffer::write(const void *const _Nonnull ptr, Si
     return itemsToWrite;
 }
 
-inline RingBuffer::SizeType RingBuffer::read(void *const _Nonnull ptr, SizeType itemSize, SizeType itemCount,
+inline RingBuffer::SizeType RingBuffer::read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
                                              bool allowPartial) noexcept {
     if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return 0;
@@ -469,7 +471,7 @@ inline RingBuffer::SizeType RingBuffer::read(void *const _Nonnull ptr, SizeType 
     return itemsToRead;
 }
 
-inline bool RingBuffer::peek(void *const _Nonnull ptr, SizeType itemSize, SizeType itemCount) const noexcept {
+inline bool RingBuffer::peek(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount) const noexcept {
     if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return false;
     }
