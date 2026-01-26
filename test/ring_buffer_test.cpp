@@ -330,12 +330,12 @@ TEST_F(RingBufferTest, WriteAndReadValuesVariadic) {
     EXPECT_TRUE(rb.writeValues(a, b, c));
 
     int ra;
-    double rbv;
+    double rb;
     uint8_t rc;
 
-    EXPECT_TRUE(rb.readValues(ra, rbv, rc));
+    EXPECT_TRUE(rb.readValues(ra, rb, rc));
     EXPECT_EQ(ra, 1);
-    EXPECT_EQ(rbv, 2.5);
+    EXPECT_EQ(rb, 2.5);
     EXPECT_EQ(rc, 9);
 }
 
