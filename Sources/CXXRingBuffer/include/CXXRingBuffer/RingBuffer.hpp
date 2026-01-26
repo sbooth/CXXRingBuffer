@@ -23,14 +23,14 @@
 
 // Check for nullability support
 #if defined(__has_feature)
-#   if !__has_feature(nullability)
-#       ifndef _Nullable
-#           define _Nullable
-#       endif
-#       ifndef _Nonnull
-#           define _Nonnull
-#       endif
-#   endif
+#if !__has_feature(nullability)
+#ifndef _Nullable
+#define _Nullable
+#endif
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#endif
 #endif
 
 namespace CXXRingBuffer {
