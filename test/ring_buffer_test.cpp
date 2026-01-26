@@ -138,7 +138,7 @@ TEST_F(RingBufferTest, Functional) {
     EXPECT_EQ(rb.availableBytes(), 0);
 }
 
-TEST_F(RingBufferTest, ThroughputBenchmark) {
+TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
     constexpr std::size_t bufferSize = 1 * MB; // 1MB buffer
     constexpr std::size_t totalDataToMove = 10ULL * GB; // 10GB
     constexpr std::size_t chunkSize = 4 * KB; // 4KB chunks (page size)
@@ -409,7 +409,7 @@ TEST_F(RingBufferTest, SPSCStressTestOne) {
     EXPECT_TRUE(rb.isEmpty());
 }
 
-TEST_F(RingBufferTest, ThroughputBenchmarkOne) {
+TEST_F(RingBufferTest, ThroughputBenchmarkSingleThreaded) {
     constexpr std::size_t iterations = 10'000'000;
     EXPECT_TRUE(rb.allocate(1 * MB));
 
@@ -520,7 +520,7 @@ TEST_F(RingBufferTest, SPSCStressTestTwo) {
     EXPECT_TRUE(rb.isEmpty());
 }
 
-TEST_F(RingBufferTest, ThroughputBenchmarkTwo) {
+TEST_F(RingBufferTest, ThroughputBenchmarkMultiThreaded) {
     constexpr std::size_t capacity = 1 * MB; // 1MB buffer
     constexpr std::size_t dataSize = 1 * GB; // 1GB total transfer
     EXPECT_TRUE(rb.allocate(capacity));
