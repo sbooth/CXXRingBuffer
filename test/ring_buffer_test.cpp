@@ -5,7 +5,7 @@
 // Part of https://github.com/sbooth/CXXRingBuffer
 //
 
-#include "RingBuffer.hpp"
+#include "CXXRingBuffer/RingBuffer.hpp"
 
 #include <gtest/gtest.h>
 
