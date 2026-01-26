@@ -6,15 +6,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(CXXRingBuffer
     Sources/CXXRingBuffer/RingBuffer.cpp
+    Sources/CXXRingBuffer/include/CXXRingBuffer/RingBuffer.hpp
 )
 add_library(CXXRingBuffer::RingBuffer ALIAS CXXRingBuffer)
 
 target_include_directories(CXXRingBuffer PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CXXRingBuffer/include/CXXRingBuffer>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CXXRingBuffer/include>
     $<INSTALL_INTERFACE:include>
 )
 
-target_compile_options(CXXRingBuffer PRIVATE -Wall -Wextra)
+if(MSVC)
+    target_compile_options(CXXRingBuffer PRIVATE /W4)
+else()
+    target_compile_options(CXXRingBuffer PRIVATE -Wall -Wextra)
+endif()
 
 include(GNUInstallDirs)
 
