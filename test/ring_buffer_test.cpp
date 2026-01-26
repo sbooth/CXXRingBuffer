@@ -181,8 +181,12 @@ TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
         }
     });
 
-    producer.join();
-    consumer.join();
+    if (producer.joinable()) {
+        producer.join();
+    }
+    if (consumer.joinable()) {
+        consumer.join();
+    }
 
     const auto end = std::chrono::high_resolution_clock::now();
     const std::chrono::duration<double> diff = end - start;
@@ -419,8 +423,13 @@ TEST_F(RingBufferTest, SPSCStressTestSequentialValues) {
         EXPECT_EQ(expected, iterations);
     });
 
-    producer.join();
-    consumer.join();
+    if (producer.joinable()) {
+        producer.join();
+    }
+    if (consumer.joinable()) {
+        consumer.join();
+    }
+
     EXPECT_TRUE(rb.isEmpty());
 }
 
@@ -524,8 +533,12 @@ TEST_F(RingBufferTest, SPSCStressTestWithYield) {
         }
     });
 
-    producer.join();
-    consumer.join();
+    if (producer.joinable()) {
+        producer.join();
+    }
+    if (consumer.joinable()) {
+        consumer.join();
+    }
 
     EXPECT_TRUE(rb.isEmpty());
 }
@@ -554,8 +567,12 @@ TEST_F(RingBufferTest, ThroughputBenchmarkMultiThreaded) {
         }
     });
 
-    producer.join();
-    consumer.join();
+    if (producer.joinable()) {
+        producer.join();
+    }
+    if (consumer.joinable()) {
+        consumer.join();
+    }
 
     const auto end = std::chrono::high_resolution_clock::now();
     const std::chrono::duration<double> diff = end - start;
