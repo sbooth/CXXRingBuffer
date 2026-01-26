@@ -343,14 +343,14 @@ TEST_F(RingBufferTest, WriteAndReadValuesVariadic) {
 
     EXPECT_TRUE(rb.writeValues(a, b, c));
 
-    int ra;
-    double rb;
-    uint8_t rc;
+    int aa;
+    double bb;
+    uint8_t cc;
 
-    EXPECT_TRUE(rb.readValues(ra, rb, rc));
-    EXPECT_EQ(ra, 1);
-    EXPECT_EQ(rb, 2.5);
-    EXPECT_EQ(rc, 9);
+    EXPECT_TRUE(rb.readValues(aa, bb, cc));
+    EXPECT_EQ(aa, a);
+    EXPECT_EQ(bb, b);
+    EXPECT_EQ(cc, c);
 }
 
 TEST_F(RingBufferTest, PeekValuesTuple) {
