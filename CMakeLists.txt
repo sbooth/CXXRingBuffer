@@ -25,7 +25,7 @@ install(TARGETS CXXRingBuffer
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(DIRECTORY Sources/CXXRingBuffer/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(EXPORT CXXRingBufferTargets
     FILE CXXRingBufferTargets.cmake
