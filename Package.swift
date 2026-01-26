@@ -20,10 +20,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "CXXRingBuffer",
-            cxxSettings: [
-                .headerSearchPath("include/CXXRingBuffer"),
-            ]
+            name: "CXXRingBuffer"
         ),
         .testTarget(
             name: "CXXRingBufferTests",
