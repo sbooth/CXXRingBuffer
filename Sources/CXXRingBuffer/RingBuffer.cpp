@@ -5,21 +5,22 @@
 // Part of https://github.com/sbooth/CXXRingBuffer
 //
 
-#import "RingBuffer.hpp"
+#include "CXXRingBuffer/RingBuffer.hpp"
 
-#import <bit>
-#import <cstdlib>
-#import <limits>
-#import <new>
-#import <stdexcept>
+#include <bit>
+#include <cstdlib>
+#include <new>
+#include <stdexcept>
 
-// MARK: Creation and Destruction
+// MARK: Construction and Destruction
 
 CXXRingBuffer::RingBuffer::RingBuffer(SizeType minCapacity) {
-    if (minCapacity < min_capacity || minCapacity > max_capacity) [[unlikely]]
+    if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]] {
         throw std::invalid_argument("capacity out of range");
-    if (!Allocate(minCapacity)) [[unlikely]]
+    }
+    if (!allocate(minCapacity)) [[unlikely]] {
         throw std::bad_alloc();
+    }
 }
 
 CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
@@ -49,11 +50,12 @@ CXXRingBuffer::RingBuffer::~RingBuffer() noexcept {
 
 // MARK: Buffer Management
 
-bool CXXRingBuffer::RingBuffer::Allocate(SizeType minCapacity) noexcept {
-    if (minCapacity < min_capacity || minCapacity > max_capacity) [[unlikely]]
+bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
+    if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]] {
         return false;
+    }
 
-    Deallocate();
+    deallocate();
 
     const auto capacity = std::bit_ceil(minCapacity);
 
@@ -67,8 +69,9 @@ bool CXXRingBuffer::RingBuffer::Allocate(SizeType minCapacity) noexcept {
 #endif
 
     buffer_ = std::malloc(capacity);
-    if (!buffer_) [[unlikely]]
+    if (buffer_ == nullptr) [[unlikely]] {
         return false;
+    }
 
     capacity_ = capacity;
     capacityMask_ = capacity - 1;
@@ -79,8 +82,8 @@ bool CXXRingBuffer::RingBuffer::Allocate(SizeType minCapacity) noexcept {
     return true;
 }
 
-void CXXRingBuffer::RingBuffer::Deallocate() noexcept {
-    if (buffer_) [[likely]] {
+void CXXRingBuffer::RingBuffer::deallocate() noexcept {
+    if (buffer_ != nullptr) [[likely]] {
         std::free(buffer_);
         buffer_ = nullptr;
 
