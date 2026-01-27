@@ -39,12 +39,12 @@
 namespace CXXRingBuffer {
 
 #ifdef __cpp_lib_hardware_interference_size
-inline constexpr std::size_t destructive_interference_size = std::hardware_destructive_interference_size;
+inline constexpr std::size_t destructiveInterferenceSize = std::hardware_destructive_interference_size;
 #else
 #if defined(__APPLE__) && defined(__aarch64__)
-inline constexpr std::size_t destructive_interference_size = 128;
+inline constexpr std::size_t destructiveInterferenceSize = 128;
 #else
-inline constexpr std::size_t destructive_interference_size = 64;
+inline constexpr std::size_t destructiveInterferenceSize = 64;
 #endif
 #endif
 
@@ -362,12 +362,12 @@ class RingBuffer final {
     SizeType capacityMask_{0};
 
     /// The free-running write location.
-    alignas(destructive_interference_size) AtomicSizeType writePosition_{0};
+    alignas(destructiveInterferenceSize) AtomicSizeType writePosition_{0};
     /// The free-running read location.
-    alignas(destructive_interference_size) AtomicSizeType readPosition_{0};
+    alignas(destructiveInterferenceSize) AtomicSizeType readPosition_{0};
 
     static_assert(AtomicSizeType::is_always_lock_free, "Lock-free AtomicSizeType required");
-    static_assert(std::hardware_destructive_interference_size >= alignof(AtomicSizeType));
+    static_assert(destructiveInterferenceSize >= alignof(AtomicSizeType));
 };
 
 // MARK: - Implementation -
