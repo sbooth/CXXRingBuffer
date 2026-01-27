@@ -607,29 +607,27 @@ inline bool RingBuffer::writeValues(const Args&...args) noexcept {
     constexpr auto totalSize = (sizeof args + ...);
     auto [front, back] = writeVector();
 
-    if (front.size() + back.size() < totalSize) {
+    const auto frontSize = front.size();
+    if (frontSize + back.size() < totalSize) {
         return false;
     }
 
-    auto copyBytes = [front, back, cursor = std::size_t{0}](const void *arg, std::size_t len) mutable noexcept {
+    std::size_t cursor = 0;
+    const auto writeArg = [&](const void *arg, std::size_t len) noexcept {
         const auto *src = static_cast<const unsigned char *>(arg);
-
-        if (cursor < front.size()) {
-            const auto toFront = std::min(len, front.size() - cursor);
+        if (cursor + len <= frontSize) {
+            std::memcpy(front.data() + cursor, src, len);
+        } else if (cursor >= frontSize) {
+            std::memcpy(back.data() + (cursor - frontSize), src, len);
+        } else [[unlikely]] {
+            const std::size_t toFront = frontSize - cursor;
             std::memcpy(front.data() + cursor, src, toFront);
-            cursor += toFront;
-            src += toFront;
-            len -= toFront;
+            std::memcpy(back.data(), src + toFront, len - toFront);
         }
-
-        if (len > 0) [[unlikely]] {
-            const auto backOffset = (cursor >= front.size()) ? (cursor - front.size()) : 0;
-            std::memcpy(back.data() + backOffset, src, len);
-            cursor += len;
-        }
+        cursor += len;
     };
 
-    (copyBytes(std::addressof(args), sizeof args), ...);
+    (writeArg(std::addressof(args), sizeof args), ...);
 
     commitWrite(totalSize);
     return true;
@@ -651,29 +649,27 @@ inline bool RingBuffer::peekValues(Args&...args) const noexcept {
     constexpr auto totalSize = (sizeof args + ...);
     auto [front, back] = readVector();
 
-    if (front.size() + back.size() < totalSize) {
+    const auto frontSize = front.size();
+    if (frontSize + back.size() < totalSize) {
         return false;
     }
 
-    auto readBytes = [front, back, cursor = std::size_t{0}](void *arg, std::size_t len) mutable noexcept {
+    std::size_t cursor = 0;
+    const auto readArg = [&](void *arg, std::size_t len) noexcept {
         auto *dst = static_cast<unsigned char *>(arg);
-
-        if (cursor < front.size()) {
-            const auto fromFront = std::min(len, front.size() - cursor);
+        if (cursor + len <= frontSize) {
+            std::memcpy(dst, front.data() + cursor, len);
+        } else if (cursor >= frontSize) {
+            std::memcpy(dst, back.data() + (cursor - frontSize), len);
+        } else [[unlikely]] {
+            const std::size_t fromFront = frontSize - cursor;
             std::memcpy(dst, front.data() + cursor, fromFront);
-            cursor += fromFront;
-            dst += fromFront;
-            len -= fromFront;
+            std::memcpy(dst + fromFront, back.data(), len - fromFront);
         }
-
-        if (len > 0) [[unlikely]] {
-            const auto backOffset = (cursor >= front.size()) ? (cursor - front.size()) : 0;
-            std::memcpy(dst, back.data() + backOffset, len);
-            cursor += len;
-        }
+        cursor += len;
     };
 
-    (readBytes(std::addressof(args), sizeof args), ...);
+    (readArg(std::addressof(args), sizeof args), ...);
     return true;
 }
 
