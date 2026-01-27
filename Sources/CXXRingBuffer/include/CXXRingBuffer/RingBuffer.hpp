@@ -368,6 +368,7 @@ class RingBuffer final {
 
     static_assert(AtomicSizeType::is_always_lock_free, "Lock-free AtomicSizeType required");
     static_assert(destructiveInterferenceSize >= alignof(AtomicSizeType));
+    static_assert((destructiveInterferenceSize % alignof(AtomicSizeType)) == 0);
 };
 
 // MARK: - Implementation -
