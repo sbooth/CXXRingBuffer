@@ -1,15 +1,15 @@
 BasedOnStyle: LLVM
 
+ColumnLimit: 120
+
 IndentWidth: 4
-ContinuationIndentWidth: 6
 TabWidth: 4
 UseTab: Never
 
-ColumnLimit: 120
+ContinuationIndentWidth: 8
+ConstructorInitializerIndentWidth: 4
 
 InsertBraces: true
-
-ConstructorInitializerIndentWidth: 8
 
 IncludeBlocks: Regroup
 IncludeCategories:

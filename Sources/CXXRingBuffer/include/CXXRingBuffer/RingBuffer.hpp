@@ -302,7 +302,7 @@ class RingBuffer final {
     template <TriviallyCopyableAndDefaultInitializable... Args>
         requires(sizeof...(Args) > 0)
     [[nodiscard]] std::optional<std::tuple<Args...>> peekValues() const
-          noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
+            noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
 
     // MARK: Advanced Writing and Reading
 
@@ -643,7 +643,7 @@ inline bool RingBuffer::peekValues(Args &...args) const noexcept {
 template <TriviallyCopyableAndDefaultInitializable... Args>
     requires(sizeof...(Args) > 0)
 inline auto RingBuffer::readValues() noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
-      -> std::optional<std::tuple<Args...>> {
+        -> std::optional<std::tuple<Args...>> {
     auto result = peekValues<Args...>();
     if (!result) {
         return std::nullopt;
@@ -655,7 +655,7 @@ inline auto RingBuffer::readValues() noexcept((std::is_nothrow_default_construct
 template <TriviallyCopyableAndDefaultInitializable... Args>
     requires(sizeof...(Args) > 0)
 inline auto RingBuffer::peekValues() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
-      -> std::optional<std::tuple<Args...>> {
+        -> std::optional<std::tuple<Args...>> {
     if (std::tuple<Args...> result; std::apply([&](Args &...args) noexcept { return peekValues(args...); }, result)) {
         return result;
     }
