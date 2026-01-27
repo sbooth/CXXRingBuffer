@@ -17,7 +17,6 @@ PackConstructorInitializers: NextLineOnly
 
 ReferenceAlignment: Left
 
-BreakTemplateDeclarations: MultiLine
 AlignConsecutiveDeclarations: AcrossEmptyLines
 
 AlignConsecutiveAssignments:
