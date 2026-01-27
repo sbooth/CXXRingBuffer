@@ -607,7 +607,7 @@ inline bool RingBuffer::writeValues(const Args&...args) noexcept {
         } else if (cursor >= frontSize) {
             std::memcpy(back.data() + (cursor - frontSize), src, len);
         } else [[unlikely]] {
-            const size_t toFront = frontSize - cursor;
+            const std::size_t toFront = frontSize - cursor;
             std::memcpy(front.data() + cursor, src, toFront);
             std::memcpy(back.data(), src + toFront, len - toFront);
         }
@@ -649,7 +649,7 @@ inline bool RingBuffer::peekValues(Args&...args) const noexcept {
         } else if (cursor >= frontSize) {
             std::memcpy(dst, back.data() + (cursor - frontSize), len);
         } else [[unlikely]] {
-            const size_t fromFront = frontSize - cursor;
+            const std::size_t fromFront = frontSize - cursor;
             std::memcpy(dst, front.data() + cursor, fromFront);
             std::memcpy(dst + fromFront, back.data(), len - fromFront);
         }
