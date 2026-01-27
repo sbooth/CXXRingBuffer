@@ -46,6 +46,8 @@ concept TriviallyCopyableAndDefaultInitializable = TriviallyCopyable<T> && std::
 /// A lock-free SPSC ring buffer.
 ///
 /// This class is thread safe when used with a single producer and a single consumer.
+///
+/// This ring buffer performs raw byte copies; it does not provide serialization.
 class RingBuffer final {
   public:
     /// Unsigned integer type.
@@ -333,15 +335,6 @@ class RingBuffer final {
     void commitRead(SizeType count) noexcept;
 
   private:
-    /// Copies values from the read vector without advancing the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam Args The types to read.
-    /// @param processor A lambda accepting a copier parameter.
-    /// @return true if the values were successfully copied.
-    template <TriviallyCopyable... Args>
-        requires(sizeof...(Args) > 0)
-    bool copyFromReadVector(auto&& processor) const noexcept;
-
     /// The memory buffer holding the data.
     void *RB_NULLABLE buffer_{nullptr};
 
@@ -574,8 +567,8 @@ inline bool RingBuffer::readValue(T& value) noexcept {
 
 template <TriviallyCopyableAndDefaultInitializable T>
 inline std::optional<T> RingBuffer::readValue() noexcept(std::is_nothrow_default_constructible_v<T>) {
-    if (T value{}; readValue(value)) {
-        return value;
+    if (std::optional<T> result; readValue(result.emplace())) {
+        return result;
     }
     return std::nullopt;
 }
@@ -587,8 +580,8 @@ inline bool RingBuffer::peekValue(T& value) const noexcept {
 
 template <TriviallyCopyableAndDefaultInitializable T>
 inline std::optional<T> RingBuffer::peekValue() const noexcept(std::is_nothrow_default_constructible_v<T>) {
-    if (T value{}; peekValue(value)) {
-        return value;
+    if (std::optional<T> result; peekValue(result.emplace())) {
+        return result;
     }
     return std::nullopt;
 }
@@ -607,21 +600,21 @@ inline bool RingBuffer::writeValues(const Args&...args) noexcept {
     }
 
     std::size_t cursor = 0;
-    const auto write_single_arg = [&](const void *arg, std::size_t len) noexcept {
+    const auto writeArg = [&](const void *arg, std::size_t len) noexcept {
         const auto *src = static_cast<const unsigned char *>(arg);
         if (cursor + len <= frontSize) {
             std::memcpy(front.data() + cursor, src, len);
         } else if (cursor >= frontSize) {
             std::memcpy(back.data() + (cursor - frontSize), src, len);
         } else [[unlikely]] {
-            const size_t toFront = frontSize - cursor;
+            const std::size_t toFront = frontSize - cursor;
             std::memcpy(front.data() + cursor, src, toFront);
             std::memcpy(back.data(), src + toFront, len - toFront);
         }
         cursor += len;
     };
 
-    (write_single_arg(std::addressof(args), sizeof args), ...);
+    (writeArg(std::addressof(args), sizeof args), ...);
 
     commitWrite(totalSize);
     return true;
@@ -640,8 +633,31 @@ inline bool RingBuffer::readValues(Args&...args) noexcept {
 template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
 inline bool RingBuffer::peekValues(Args&...args) const noexcept {
-    return copyFromReadVector<Args...>(
-          [&](auto&& copier) noexcept { (copier(std::addressof(args), sizeof args), ...); });
+    constexpr auto totalSize = (sizeof args + ...);
+    auto [front, back] = readVector();
+
+    const auto frontSize = front.size();
+    if (frontSize + back.size() < totalSize) {
+        return false;
+    }
+
+    std::size_t cursor = 0;
+    const auto readArg = [&](void *arg, std::size_t len) noexcept {
+        auto *dst = static_cast<unsigned char *>(arg);
+        if (cursor + len <= frontSize) {
+            std::memcpy(dst, front.data() + cursor, len);
+        } else if (cursor >= frontSize) {
+            std::memcpy(dst, back.data() + (cursor - frontSize), len);
+        } else [[unlikely]] {
+            const std::size_t fromFront = frontSize - cursor;
+            std::memcpy(dst, front.data() + cursor, fromFront);
+            std::memcpy(dst + fromFront, back.data(), len - fromFront);
+        }
+        cursor += len;
+    };
+
+    (readArg(std::addressof(args), sizeof args), ...);
+    return true;
 }
 
 template <TriviallyCopyableAndDefaultInitializable... Args>
@@ -660,13 +676,10 @@ template <TriviallyCopyableAndDefaultInitializable... Args>
     requires(sizeof...(Args) > 0)
 inline std::optional<std::tuple<Args...>> RingBuffer::peekValues() const
       noexcept((std::is_nothrow_default_constructible_v<Args> && ...)) {
-    std::tuple<Args...> result;
-    if (!copyFromReadVector<Args...>([&](auto&& copier) noexcept {
-            std::apply([&](Args&...args) noexcept { (copier(std::addressof(args), sizeof args), ...); }, result);
-        })) {
-        return std::nullopt;
+    if (std::tuple<Args...> result; std::apply([&](Args&...args) noexcept { return peekValues(args...); }, result)) {
+        return result;
     }
-    return result;
+    return std::nullopt;
 }
 
 // MARK: Advanced Writing and Reading
@@ -720,42 +733,6 @@ inline void RingBuffer::commitRead(SizeType count) noexcept {
     assert(count <= availableBytes() && "Logic error: Read committing more than available data");
     const auto readPos = readPosition_.load(std::memory_order_relaxed);
     readPosition_.store(readPos + count, std::memory_order_release);
-}
-
-// MARK: Private
-
-template <TriviallyCopyable... Args>
-    requires(sizeof...(Args) > 0)
-inline bool RingBuffer::copyFromReadVector(auto&& processor) const noexcept {
-    using copier_type = void (*)(void *, std::size_t) noexcept;
-    static_assert(std::invocable<decltype(processor), copier_type> && noexcept(processor(std::declval<copier_type>())),
-                  "Processor must be callable with a noexcept copier without throwing");
-
-    constexpr auto totalSize = (sizeof(Args) + ...);
-    const auto [front, back] = readVector();
-
-    const auto frontSize = front.size();
-    if (frontSize + back.size() < totalSize) {
-        return false;
-    }
-
-    std::size_t cursor = 0;
-    const auto copier = [&](void *arg, std::size_t len) noexcept {
-        auto *dst = static_cast<unsigned char *>(arg);
-        if (cursor + len <= frontSize) {
-            std::memcpy(dst, front.data() + cursor, len);
-        } else if (cursor >= frontSize) {
-            std::memcpy(dst, back.data() + (cursor - frontSize), len);
-        } else [[unlikely]] {
-            const size_t fromFront = frontSize - cursor;
-            std::memcpy(dst, front.data() + cursor, fromFront);
-            std::memcpy(dst + fromFront, back.data(), len - fromFront);
-        }
-        cursor += len;
-    };
-
-    processor(copier);
-    return true;
 }
 
 } /* namespace CXXRingBuffer */
