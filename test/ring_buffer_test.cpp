@@ -39,7 +39,7 @@ class RingBufferTest : public ::testing::Test {
 
 // A type that is trivially copyable but might throw during default construction
 struct ThrowingDefault {
-    int                value{0};
+    int value{0};
     static inline bool should_throw = false;
 
     // Must be default initializable
@@ -50,8 +50,8 @@ struct ThrowingDefault {
     }
 
     // Logic to keep it trivially copyable (C++17/20 requirements)
-    ThrowingDefault(const ThrowingDefault&)            = default;
-    ThrowingDefault& operator=(const ThrowingDefault&) = default;
+    ThrowingDefault(const ThrowingDefault &) = default;
+    ThrowingDefault &operator=(const ThrowingDefault &) = default;
 };
 
 // Ensure test type meets RingBuffer concepts
@@ -65,21 +65,19 @@ class RingBufferExceptionTest : public ::testing::Test {
         rb.allocate(1 * KB);
         ThrowingDefault::should_throw = false;
     }
-    void TearDown() override {
-        ThrowingDefault::should_throw = false;
-    }
+    void TearDown() override { ThrowingDefault::should_throw = false; }
 };
 
 // Structure to hold our test parameters
 struct StressParams {
-    std::size_t          capacity;
+    std::size_t capacity;
     std::chrono::seconds duration;
 };
 
 class RingBufferStressTest : public ::testing::TestWithParam<StressParams> {
   public:
     // Helper to print nice parameter names in the test runner
-    static std::string ParamNameGenerator(const ::testing::TestParamInfo<StressParams>& info) {
+    static std::string ParamNameGenerator(const ::testing::TestParamInfo<StressParams> &info) {
         const auto cap = info.param.capacity;
         if (cap >= MB) {
             return std::to_string(cap / MB) + "MB";
@@ -97,8 +95,8 @@ class RingBufferStressTest : public ::testing::TestWithParam<StressParams> {
 // A mixed-type structure to stress alignment and multi-value logic
 struct PacketHeader {
     uint32_t sequence;
-    uint8_t  type;
-    double   timestamp;
+    uint8_t type;
+    double timestamp;
 };
 
 } // namespace
@@ -126,13 +124,13 @@ TEST_F(RingBufferTest, Capacity) {
 TEST_F(RingBufferTest, Functional) {
     ASSERT_TRUE(rb.allocate(128));
 
-    std::random_device                 rd;
-    std::mt19937                       gen(rd());
+    std::random_device rd;
+    std::mt19937 gen(rd());
     std::uniform_int_distribution<int> dist(-100, 100);
 
     constexpr size_t size = 10;
     std::vector<int> vec(size);
-    for (auto& v : vec) {
+    for (auto &v : vec) {
         v = dist(gen);
     }
 
@@ -147,9 +145,9 @@ TEST_F(RingBufferTest, Functional) {
 }
 
 TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
-    constexpr std::size_t bufferSize      = 1 * MB;     // 1MB buffer
+    constexpr std::size_t bufferSize = 1 * MB;          // 1MB buffer
     constexpr std::size_t totalDataToMove = 10ULL * GB; // 10GB
-    constexpr std::size_t chunkSize       = 4 * KB;     // 4KB chunks (page size)
+    constexpr std::size_t chunkSize = 4 * KB;           // 4KB chunks (page size)
 
     ASSERT_TRUE(rb.allocate(bufferSize));
 
@@ -162,8 +160,8 @@ TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
     std::thread producer([&]() {
         size_t sent = 0;
         while (sent < totalDataToMove) {
-            size_t written  = rb.write(std::span<const uint8_t>{data}, false);
-            sent           += written;
+            size_t written = rb.write(std::span<const uint8_t>{data}, false);
+            sent += written;
             if (written == 0) {
                 std::this_thread::yield();
             }
@@ -174,8 +172,8 @@ TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
     std::thread consumer([&]() {
         size_t received = 0;
         while (received < totalDataToMove) {
-            size_t read  = rb.read(std::span{sink}, false);
-            received    += read;
+            size_t read = rb.read(std::span{sink}, false);
+            received += read;
             if (read == 0) {
                 std::this_thread::yield();
             }
@@ -189,11 +187,11 @@ TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
         consumer.join();
     }
 
-    const auto                          end  = std::chrono::high_resolution_clock::now();
+    const auto end = std::chrono::high_resolution_clock::now();
     const std::chrono::duration<double> diff = end - start;
 
-    const double gigabytes                   = static_cast<double>(totalDataToMove) / GB;
-    const double throughput                  = gigabytes / diff.count();
+    const double gigabytes = static_cast<double>(totalDataToMove) / GB;
+    const double throughput = gigabytes / diff.count();
 
     RecordProperty("TotalGB", std::to_string(gigabytes));
     RecordProperty("GB_per_sec", std::to_string(throughput));
@@ -346,14 +344,14 @@ TEST_F(RingBufferTest, PeekOptionalFailsWhenInsufficientData) {
 TEST_F(RingBufferTest, WriteAndReadValuesVariadic) {
     ASSERT_TRUE(rb.allocate(64));
 
-    int     a = 1;
-    double  b = 2.5;
+    int a = 1;
+    double b = 2.5;
     uint8_t c = 9;
 
     EXPECT_TRUE(rb.writeValues(a, b, c));
 
-    int     aa;
-    double  bb;
+    int aa;
+    double bb;
     uint8_t cc;
 
     EXPECT_TRUE(rb.readValues(aa, bb, cc));
@@ -441,15 +439,17 @@ TEST_F(RingBufferTest, ThroughputBenchmarkSingleThreaded) {
     const auto start = std::chrono::high_resolution_clock::now();
 
     for (std::size_t i = 0; i < iterations; ++i) {
-        while (!rb.writeValue(i)) {}
+        while (!rb.writeValue(i)) {
+        }
         std::size_t out;
-        while (!rb.readValue(out)) {}
+        while (!rb.readValue(out)) {
+        }
     }
 
-    const auto                          end     = std::chrono::high_resolution_clock::now();
+    const auto end = std::chrono::high_resolution_clock::now();
     const std::chrono::duration<double> elapsed = end - start;
 
-    const double ops_per_sec                    = iterations / elapsed.count();
+    const double ops_per_sec = iterations / elapsed.count();
 
     RecordProperty("TotalOps", std::to_string(iterations));
     RecordProperty("Ops_per_sec", std::to_string(ops_per_sec));
@@ -461,7 +461,7 @@ TEST_F(RingBufferTest, ThroughputBenchmarkSingleThreaded) {
 
 TEST_F(RingBufferTest, BasicReadWrite) {
     ASSERT_TRUE(rb.allocate(64));
-    int input  = 42;
+    int input = 42;
     int output = 0;
 
     EXPECT_TRUE(rb.writeValue(input));
@@ -495,15 +495,15 @@ TEST_F(RingBufferTest, WrapAroundBehavior) {
 TEST_F(RingBufferTest, VariadicValues) {
     ASSERT_TRUE(rb.allocate(1 * KB));
     struct Foo {
-        int   a;
+        int a;
         float b;
     };
 
     EXPECT_TRUE(rb.writeValues(10, 20.5f, Foo{1, 2.0f}));
 
-    int   out1;
+    int out1;
     float out2;
-    Foo   out3;
+    Foo out3;
     EXPECT_TRUE(rb.readValues(out1, out2, out3));
 
     EXPECT_EQ(out1, 10);
@@ -562,7 +562,7 @@ TEST_F(RingBufferTest, ThroughputBenchmarkMultiThreaded) {
 
     std::thread consumer([&]() {
         std::vector<uint8_t> sink(64 * KB);
-        size_t               received = 0;
+        size_t received = 0;
         while (received < dataSize) {
             received += rb.read(std::span{sink}, true) * sizeof(uint8_t);
         }
@@ -575,11 +575,11 @@ TEST_F(RingBufferTest, ThroughputBenchmarkMultiThreaded) {
         consumer.join();
     }
 
-    const auto                          end  = std::chrono::high_resolution_clock::now();
+    const auto end = std::chrono::high_resolution_clock::now();
     const std::chrono::duration<double> diff = end - start;
 
-    const double gigabytes                   = static_cast<double>(dataSize) / GB;
-    const double throughput                  = gigabytes / diff.count();
+    const double gigabytes = static_cast<double>(dataSize) / GB;
+    const double throughput = gigabytes / diff.count();
 
     RecordProperty("TotalGB", std::to_string(gigabytes));
     RecordProperty("GB_per_sec", std::to_string(throughput));
@@ -635,23 +635,23 @@ using namespace std::chrono_literals;
  * Consumer reads them and ensures the sequence is never broken.
  */
 TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
-    const auto& [bufferCapacity, duration] = GetParam();
+    const auto &[bufferCapacity, duration] = GetParam();
 
     ASSERT_TRUE(rb.allocate(bufferCapacity));
 
-    std::atomic<bool>     keepRunning{true};
+    std::atomic<bool> keepRunning{true};
     std::atomic<uint64_t> totalBytesProcessed{0};
 
     // --- Producer Thread ---
     std::thread producer([&]() {
-        uint64_t                                   counter = 0;
-        std::mt19937                               gen(std::random_device{}());
+        uint64_t counter = 0;
+        std::mt19937 gen(std::random_device{}());
         std::uniform_int_distribution<std::size_t> dist(1, 128);
 
         while (keepRunning.load(std::memory_order_relaxed)) {
-            std::size_t           itemsToWrite = dist(gen);
+            std::size_t itemsToWrite = dist(gen);
             std::vector<uint64_t> data(itemsToWrite);
-            for (auto& val : data) {
+            for (auto &val : data) {
                 val = counter++;
             }
 
@@ -671,12 +671,12 @@ TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
 
     // --- Consumer Thread ---
     std::thread consumer([&]() {
-        uint64_t                                   expectedValue = 0;
-        std::mt19937                               gen(std::random_device{}());
+        uint64_t expectedValue = 0;
+        std::mt19937 gen(std::random_device{}());
         std::uniform_int_distribution<std::size_t> dist(1, 128);
 
         while (keepRunning.load(std::memory_order_relaxed) || !rb.isEmpty()) {
-            std::size_t           itemsToRead = dist(gen);
+            std::size_t itemsToRead = dist(gen);
             std::vector<uint64_t> readBuffer(itemsToRead);
 
             std::size_t readCount = rb.read<uint64_t>(std::span<uint64_t>(readBuffer), true);
@@ -706,7 +706,7 @@ TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
     }
 
     // Report performance
-    double totalMB    = totalBytesProcessed.load() / MB;
+    double totalMB = totalBytesProcessed.load() / MB;
     double throughput = totalMB / duration.count();
 
     RecordProperty("TotalMB", std::to_string(totalMB));
@@ -716,10 +716,10 @@ TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
 }
 
 TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
-    const auto& [bufferCapacity, duration] = GetParam();
+    const auto &[bufferCapacity, duration] = GetParam();
     ASSERT_TRUE(rb.allocate(bufferCapacity));
 
-    std::atomic<bool>     keepRunning{true};
+    std::atomic<bool> keepRunning{true};
     std::atomic<uint64_t> totalBytesProcessed{0};
 
     // --- Producer: Variadic Multi-Value Write ---
@@ -727,7 +727,7 @@ TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
         uint32_t seq = 0;
         while (keepRunning.load(std::memory_order_relaxed)) {
             PacketHeader header{seq, 0xAB, 1.234};
-            uint64_t     payload = static_cast<uint64_t>(seq) * 2;
+            uint64_t payload = static_cast<uint64_t>(seq) * 2;
 
             // Stress the writeValues variadic template
             if (rb.writeValues(header, payload)) {
@@ -744,9 +744,9 @@ TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
         uint32_t expectedSeq = 0;
         while (keepRunning.load(std::memory_order_relaxed) || !rb.isEmpty()) {
             // Use the Vector API to look at data without copying to a temp buffer first
-            auto [front, back]    = rb.readVector();
+            auto [front, back] = rb.readVector();
             size_t totalAvailable = front.size() + back.size();
-            size_t packetSize     = sizeof(PacketHeader) + sizeof(uint64_t);
+            size_t packetSize = sizeof(PacketHeader) + sizeof(uint64_t);
 
             if (totalAvailable < packetSize) {
                 std::this_thread::yield();
@@ -755,7 +755,7 @@ TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
 
             // Verify logic via readValues to exercise the internal cursor/memcpy
             PacketHeader h;
-            uint64_t     p;
+            uint64_t p;
             if (rb.readValues(h, p)) {
                 if (h.sequence != expectedSeq || p != (uint64_t)expectedSeq * 2) {
                     FAIL() << "Data Corruption! Expected: " << expectedSeq << ", got: " << h.sequence;
@@ -777,7 +777,7 @@ TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
     }
 
     // Report performance
-    double totalMB    = totalBytesProcessed.load() / MB;
+    double totalMB = totalBytesProcessed.load() / MB;
     double throughput = totalMB / duration.count();
 
     RecordProperty("TotalMB", std::to_string(totalMB));

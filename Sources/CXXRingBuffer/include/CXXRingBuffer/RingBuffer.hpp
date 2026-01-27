@@ -81,20 +81,20 @@ class RingBuffer final {
     explicit RingBuffer(SizeType minCapacity);
 
     // This class is non-copyable
-    RingBuffer(const RingBuffer&) = delete;
+    RingBuffer(const RingBuffer &) = delete;
 
     /// Creates a ring buffer by moving the contents of another ring buffer.
     /// @note This method is not thread safe for the ring buffer being moved.
     /// @param other The ring buffer to move.
-    RingBuffer(RingBuffer&& other) noexcept;
+    RingBuffer(RingBuffer &&other) noexcept;
 
     // This class is non-assignable
-    RingBuffer& operator=(const RingBuffer&) = delete;
+    RingBuffer &operator=(const RingBuffer &) = delete;
 
     /// Moves the contents of another ring buffer into this ring buffer.
     /// @note This method is not thread safe.
     /// @param other The ring buffer to move.
-    RingBuffer& operator=(RingBuffer&& other) noexcept;
+    RingBuffer &operator=(RingBuffer &&other) noexcept;
 
     /// Destroys the ring buffer and releases all associated resources.
     ~RingBuffer() noexcept;
@@ -224,14 +224,14 @@ class RingBuffer final {
     /// @tparam T The type to write.
     /// @param value The value to write.
     /// @return true if value was successfully written.
-    template <TriviallyCopyable T> bool writeValue(const T& value) noexcept;
+    template <TriviallyCopyable T> bool writeValue(const T &value) noexcept;
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
     /// @tparam T The type to read.
     /// @param value The destination value.
     /// @return true on success, false otherwise.
-    template <TriviallyCopyable T> bool readValue(T& value) noexcept;
+    template <TriviallyCopyable T> bool readValue(T &value) noexcept;
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -246,7 +246,7 @@ class RingBuffer final {
     /// @tparam T The type to read.
     /// @param value The destination value.
     /// @return true on success, false otherwise.
-    template <TriviallyCopyable T> [[nodiscard]] bool peekValue(T& value) const noexcept;
+    template <TriviallyCopyable T> [[nodiscard]] bool peekValue(T &value) const noexcept;
 
     /// Reads a value without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -265,7 +265,7 @@ class RingBuffer final {
     /// @return true if the values were successfully written.
     template <TriviallyCopyable... Args>
         requires(sizeof...(Args) > 0)
-    bool writeValues(const Args&...args) noexcept;
+    bool writeValues(const Args &...args) noexcept;
 
     /// Reads values and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -274,7 +274,7 @@ class RingBuffer final {
     /// @return true if the values were successfully read.
     template <TriviallyCopyable... Args>
         requires(sizeof...(Args) > 0)
-    bool readValues(Args&...args) noexcept;
+    bool readValues(Args &...args) noexcept;
 
     /// Reads values without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -283,7 +283,7 @@ class RingBuffer final {
     /// @return true if the values were successfully read.
     template <TriviallyCopyable... Args>
         requires(sizeof...(Args) > 0)
-    [[nodiscard]] bool peekValues(Args&...args) const noexcept;
+    [[nodiscard]] bool peekValues(Args &...args) const noexcept;
 
     /// Reads values and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -349,39 +349,35 @@ class RingBuffer final {
 
 // MARK: Buffer Management
 
-inline RingBuffer::operator bool() const noexcept {
-    return buffer_ != nullptr;
-}
+inline RingBuffer::operator bool() const noexcept { return buffer_ != nullptr; }
 
 // MARK: Buffer Information
 
-inline auto RingBuffer::capacity() const noexcept -> SizeType {
-    return capacity_;
-}
+inline auto RingBuffer::capacity() const noexcept -> SizeType { return capacity_; }
 
 // MARK: Buffer Usage
 
 inline auto RingBuffer::freeSpace() const noexcept -> SizeType {
     const auto writePos = writePosition_.load(std::memory_order_relaxed);
-    const auto readPos  = readPosition_.load(std::memory_order_acquire);
+    const auto readPos = readPosition_.load(std::memory_order_acquire);
     return capacity_ - (writePos - readPos);
 }
 
 inline bool RingBuffer::isFull() const noexcept {
     const auto writePos = writePosition_.load(std::memory_order_relaxed);
-    const auto readPos  = readPosition_.load(std::memory_order_acquire);
+    const auto readPos = readPosition_.load(std::memory_order_acquire);
     return (writePos - readPos) == capacity_;
 }
 
 inline auto RingBuffer::availableBytes() const noexcept -> SizeType {
     const auto writePos = writePosition_.load(std::memory_order_acquire);
-    const auto readPos  = readPosition_.load(std::memory_order_relaxed);
+    const auto readPos = readPosition_.load(std::memory_order_relaxed);
     return writePos - readPos;
 }
 
 inline bool RingBuffer::isEmpty() const noexcept {
     const auto writePos = writePosition_.load(std::memory_order_acquire);
-    const auto readPos  = readPosition_.load(std::memory_order_relaxed);
+    const auto readPos = readPosition_.load(std::memory_order_relaxed);
     return writePos == readPos;
 }
 
@@ -393,8 +389,8 @@ inline auto RingBuffer::write(const void *const RB_NONNULL ptr, SizeType itemSiz
         return 0;
     }
 
-    const auto writePos  = writePosition_.load(std::memory_order_relaxed);
-    const auto readPos   = readPosition_.load(std::memory_order_acquire);
+    const auto writePos = writePosition_.load(std::memory_order_relaxed);
+    const auto readPos = readPosition_.load(std::memory_order_acquire);
     const auto bytesUsed = writePos - readPos;
     const auto bytesFree = capacity_ - bytesUsed;
     const auto itemsFree = bytesFree / itemSize;
@@ -403,12 +399,12 @@ inline auto RingBuffer::write(const void *const RB_NONNULL ptr, SizeType itemSiz
         return 0;
     }
 
-    const auto  itemsToWrite = std::min(itemsFree, itemCount);
-    const auto  bytesToWrite = itemsToWrite * itemSize;
-    auto       *dst          = static_cast<unsigned char *>(buffer_);
-    const auto *src          = static_cast<const unsigned char *>(ptr);
-    const auto  writeIndex   = writePos & capacityMask_;
-    const auto  bytesToEnd   = capacity_ - writeIndex;
+    const auto itemsToWrite = std::min(itemsFree, itemCount);
+    const auto bytesToWrite = itemsToWrite * itemSize;
+    auto *dst = static_cast<unsigned char *>(buffer_);
+    const auto *src = static_cast<const unsigned char *>(ptr);
+    const auto writeIndex = writePos & capacityMask_;
+    const auto bytesToEnd = capacity_ - writeIndex;
 
     if (bytesToWrite <= bytesToEnd) [[likely]] {
         std::memcpy(dst + writeIndex, src, bytesToWrite);
@@ -427,21 +423,21 @@ inline auto RingBuffer::read(void *const RB_NONNULL ptr, SizeType itemSize, Size
         return 0;
     }
 
-    const auto writePos       = writePosition_.load(std::memory_order_acquire);
-    const auto readPos        = readPosition_.load(std::memory_order_relaxed);
-    const auto bytesUsed      = writePos - readPos;
+    const auto writePos = writePosition_.load(std::memory_order_acquire);
+    const auto readPos = readPosition_.load(std::memory_order_relaxed);
+    const auto bytesUsed = writePos - readPos;
     const auto itemsAvailable = bytesUsed / itemSize;
 
     if (itemsAvailable == 0 || (itemsAvailable < itemCount && !allowPartial)) {
         return 0;
     }
 
-    const auto  itemsToRead = std::min(itemsAvailable, itemCount);
-    const auto  bytesToRead = itemsToRead * itemSize;
-    auto       *dst         = static_cast<unsigned char *>(ptr);
-    const auto *src         = static_cast<const unsigned char *>(buffer_);
-    const auto  readIndex   = readPos & capacityMask_;
-    const auto  bytesToEnd  = capacity_ - readIndex;
+    const auto itemsToRead = std::min(itemsAvailable, itemCount);
+    const auto bytesToRead = itemsToRead * itemSize;
+    auto *dst = static_cast<unsigned char *>(ptr);
+    const auto *src = static_cast<const unsigned char *>(buffer_);
+    const auto readIndex = readPos & capacityMask_;
+    const auto bytesToEnd = capacity_ - readIndex;
 
     if (bytesToRead <= bytesToEnd) [[likely]] {
         std::memcpy(dst, src + readIndex, bytesToRead);
@@ -459,20 +455,20 @@ inline bool RingBuffer::peek(void *const RB_NONNULL ptr, SizeType itemSize, Size
         return false;
     }
 
-    const auto writePos       = writePosition_.load(std::memory_order_acquire);
-    const auto readPos        = readPosition_.load(std::memory_order_relaxed);
-    const auto bytesUsed      = writePos - readPos;
+    const auto writePos = writePosition_.load(std::memory_order_acquire);
+    const auto readPos = readPosition_.load(std::memory_order_relaxed);
+    const auto bytesUsed = writePos - readPos;
     const auto itemsAvailable = bytesUsed / itemSize;
 
     if (itemsAvailable < itemCount) {
         return false;
     }
 
-    const auto  bytesToPeek = itemCount * itemSize;
-    auto       *dst         = static_cast<unsigned char *>(ptr);
-    const auto *src         = static_cast<const unsigned char *>(buffer_);
-    const auto  readIndex   = readPos & capacityMask_;
-    const auto  bytesToEnd  = capacity_ - readIndex;
+    const auto bytesToPeek = itemCount * itemSize;
+    auto *dst = static_cast<unsigned char *>(ptr);
+    const auto *src = static_cast<const unsigned char *>(buffer_);
+    const auto readIndex = readPos & capacityMask_;
+    const auto bytesToEnd = capacity_ - readIndex;
 
     if (bytesToPeek <= bytesToEnd) [[likely]] {
         std::memcpy(dst, src + readIndex, bytesToPeek);
@@ -491,9 +487,9 @@ inline auto RingBuffer::skip(SizeType itemSize, SizeType itemCount) noexcept -> 
         return 0;
     }
 
-    const auto writePos       = writePosition_.load(std::memory_order_acquire);
-    const auto readPos        = readPosition_.load(std::memory_order_relaxed);
-    const auto bytesUsed      = writePos - readPos;
+    const auto writePos = writePosition_.load(std::memory_order_acquire);
+    const auto readPos = readPosition_.load(std::memory_order_relaxed);
+    const auto bytesUsed = writePos - readPos;
     const auto itemsAvailable = bytesUsed / itemSize;
 
     if (itemsAvailable == 0) [[unlikely]] {
@@ -512,8 +508,8 @@ inline auto RingBuffer::drain() noexcept -> SizeType {
         return 0;
     }
 
-    const auto writePos  = writePosition_.load(std::memory_order_acquire);
-    const auto readPos   = readPosition_.load(std::memory_order_relaxed);
+    const auto writePos = writePosition_.load(std::memory_order_acquire);
+    const auto readPos = readPosition_.load(std::memory_order_relaxed);
     const auto bytesUsed = writePos - readPos;
 
     if (bytesUsed == 0) [[unlikely]] {
@@ -542,11 +538,11 @@ template <TriviallyCopyable T> inline bool RingBuffer::peek(std::span<T> buffer)
 
 // MARK: Writing and Reading Single Values
 
-template <TriviallyCopyable T> inline bool RingBuffer::writeValue(const T& value) noexcept {
+template <TriviallyCopyable T> inline bool RingBuffer::writeValue(const T &value) noexcept {
     return write(static_cast<const void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 }
 
-template <TriviallyCopyable T> inline bool RingBuffer::readValue(T& value) noexcept {
+template <TriviallyCopyable T> inline bool RingBuffer::readValue(T &value) noexcept {
     return read(static_cast<void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 }
 
@@ -558,7 +554,7 @@ inline auto RingBuffer::readValue() noexcept(std::is_nothrow_default_constructib
     return std::nullopt;
 }
 
-template <TriviallyCopyable T> inline bool RingBuffer::peekValue(T& value) const noexcept {
+template <TriviallyCopyable T> inline bool RingBuffer::peekValue(T &value) const noexcept {
     return peek(static_cast<void *>(std::addressof(value)), sizeof value, 1);
 }
 
@@ -574,17 +570,17 @@ inline auto RingBuffer::peekValue() const noexcept(std::is_nothrow_default_const
 
 template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
-inline bool RingBuffer::writeValues(const Args&...args) noexcept {
+inline bool RingBuffer::writeValues(const Args &...args) noexcept {
     constexpr auto totalSize = (sizeof args + ...);
-    auto [front, back]       = writeVector();
-    const auto frontSize     = front.size();
+    auto [front, back] = writeVector();
+    const auto frontSize = front.size();
 
     if (frontSize + back.size() < totalSize) {
         return false;
     }
 
-    std::size_t cursor   = 0;
-    const auto  writeArg = [&](const void *arg, std::size_t len) noexcept {
+    std::size_t cursor = 0;
+    const auto writeArg = [&](const void *arg, std::size_t len) noexcept {
         const auto *src = static_cast<const unsigned char *>(arg);
         if (cursor + len <= frontSize) {
             std::memcpy(front.data() + cursor, src, len);
@@ -606,7 +602,7 @@ inline bool RingBuffer::writeValues(const Args&...args) noexcept {
 
 template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
-inline bool RingBuffer::readValues(Args&...args) noexcept {
+inline bool RingBuffer::readValues(Args &...args) noexcept {
     if (!peekValues(args...)) {
         return false;
     }
@@ -616,17 +612,17 @@ inline bool RingBuffer::readValues(Args&...args) noexcept {
 
 template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
-inline bool RingBuffer::peekValues(Args&...args) const noexcept {
+inline bool RingBuffer::peekValues(Args &...args) const noexcept {
     constexpr auto totalSize = (sizeof args + ...);
-    auto [front, back]       = readVector();
-    const auto frontSize     = front.size();
+    auto [front, back] = readVector();
+    const auto frontSize = front.size();
 
     if (frontSize + back.size() < totalSize) {
         return false;
     }
 
-    std::size_t cursor  = 0;
-    const auto  readArg = [&](void *arg, std::size_t len) noexcept {
+    std::size_t cursor = 0;
+    const auto readArg = [&](void *arg, std::size_t len) noexcept {
         auto *dst = static_cast<unsigned char *>(arg);
         if (cursor + len <= frontSize) {
             std::memcpy(dst, front.data() + cursor, len);
@@ -660,7 +656,7 @@ template <TriviallyCopyableAndDefaultInitializable... Args>
     requires(sizeof...(Args) > 0)
 inline auto RingBuffer::peekValues() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
       -> std::optional<std::tuple<Args...>> {
-    if (std::tuple<Args...> result; std::apply([&](Args&...args) noexcept { return peekValues(args...); }, result)) {
+    if (std::tuple<Args...> result; std::apply([&](Args &...args) noexcept { return peekValues(args...); }, result)) {
         return result;
     }
     return std::nullopt;
@@ -669,8 +665,8 @@ inline auto RingBuffer::peekValues() const noexcept((std::is_nothrow_default_con
 // MARK: Advanced Writing and Reading
 
 inline auto RingBuffer::writeVector() const noexcept -> WriteVector {
-    const auto writePos  = writePosition_.load(std::memory_order_relaxed);
-    const auto readPos   = readPosition_.load(std::memory_order_acquire);
+    const auto writePos = writePosition_.load(std::memory_order_relaxed);
+    const auto readPos = readPosition_.load(std::memory_order_acquire);
     const auto bytesUsed = writePos - readPos;
     const auto bytesFree = capacity_ - bytesUsed;
 
@@ -678,7 +674,7 @@ inline auto RingBuffer::writeVector() const noexcept -> WriteVector {
         return {};
     }
 
-    auto      *dst        = static_cast<unsigned char *>(buffer_);
+    auto *dst = static_cast<unsigned char *>(buffer_);
     const auto writeIndex = writePos & capacityMask_;
     const auto bytesToEnd = capacity_ - writeIndex;
 
@@ -695,17 +691,17 @@ inline void RingBuffer::commitWrite(SizeType count) noexcept {
 }
 
 inline auto RingBuffer::readVector() const noexcept -> ReadVector {
-    const auto writePos  = writePosition_.load(std::memory_order_acquire);
-    const auto readPos   = readPosition_.load(std::memory_order_relaxed);
+    const auto writePos = writePosition_.load(std::memory_order_acquire);
+    const auto readPos = readPosition_.load(std::memory_order_relaxed);
     const auto bytesUsed = writePos - readPos;
 
     if (bytesUsed == 0) [[unlikely]] {
         return {};
     }
 
-    const auto *src        = static_cast<const unsigned char *>(buffer_);
-    const auto  readIndex  = readPos & capacityMask_;
-    const auto  bytesToEnd = capacity_ - readIndex;
+    const auto *src = static_cast<const unsigned char *>(buffer_);
+    const auto readIndex = readPos & capacityMask_;
+    const auto bytesToEnd = capacity_ - readIndex;
 
     if (bytesUsed > bytesToEnd) [[unlikely]] {
         return {{src + readIndex, bytesToEnd}, {src, bytesUsed - bytesToEnd}};

@@ -9,26 +9,7 @@ ColumnLimit: 120
 
 InsertBraces: true
 
-AllowShortFunctionsOnASingleLine: Empty
-AllowShortBlocksOnASingleLine: Empty
-
-ConstructorInitializerIndentWidth: 2
-PackConstructorInitializers: NextLineOnly
-
-ReferenceAlignment: Left
-
-AlignConsecutiveDeclarations:
-  Enabled: true
-  AcrossEmptyLines: false
-  AcrossComments: false
-  AlignFunctionDeclarations: false
-
-AlignConsecutiveAssignments:
-  Enabled: true
-  AcrossEmptyLines: false
-  AcrossComments: false
-  AlignCompound: true
-  PadOperators: true
+ConstructorInitializerIndentWidth: 8
 
 IncludeBlocks: Regroup
 IncludeCategories:
