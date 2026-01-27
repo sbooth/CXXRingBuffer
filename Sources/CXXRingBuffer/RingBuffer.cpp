@@ -23,19 +23,18 @@ CXXRingBuffer::RingBuffer::RingBuffer(SizeType minCapacity) {
     }
 }
 
-CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
-  : buffer_{std::exchange(other.buffer_, nullptr)},
-    capacity_{std::exchange(other.capacity_, 0)},
-    capacityMask_{std::exchange(other.capacityMask_, 0)},
-    writePosition_{other.writePosition_.exchange(0, std::memory_order_relaxed)},
-    readPosition_{other.readPosition_.exchange(0, std::memory_order_relaxed)} {}
+CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer &&other) noexcept
+    : buffer_{std::exchange(other.buffer_, nullptr)}, capacity_{std::exchange(other.capacity_, 0)},
+      capacityMask_{std::exchange(other.capacityMask_, 0)},
+      writePosition_{other.writePosition_.exchange(0, std::memory_order_relaxed)},
+      readPosition_{other.readPosition_.exchange(0, std::memory_order_relaxed)} {}
 
-CXXRingBuffer::RingBuffer& CXXRingBuffer::RingBuffer::operator=(RingBuffer&& other) noexcept {
+CXXRingBuffer::RingBuffer &CXXRingBuffer::RingBuffer::operator=(RingBuffer &&other) noexcept {
     if (this != &other) [[likely]] {
         std::free(buffer_);
 
-        buffer_       = std::exchange(other.buffer_, nullptr);
-        capacity_     = std::exchange(other.capacity_, 0);
+        buffer_ = std::exchange(other.buffer_, nullptr);
+        capacity_ = std::exchange(other.capacity_, 0);
         capacityMask_ = std::exchange(other.capacityMask_, 0);
 
         writePosition_.store(other.writePosition_.exchange(0, std::memory_order_relaxed), std::memory_order_relaxed);
@@ -44,9 +43,7 @@ CXXRingBuffer::RingBuffer& CXXRingBuffer::RingBuffer::operator=(RingBuffer&& oth
     return *this;
 }
 
-CXXRingBuffer::RingBuffer::~RingBuffer() noexcept {
-    std::free(buffer_);
-}
+CXXRingBuffer::RingBuffer::~RingBuffer() noexcept { std::free(buffer_); }
 
 // MARK: Buffer Management
 
@@ -58,13 +55,13 @@ bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
     deallocate();
 
     const auto capacity = std::bit_ceil(minCapacity);
-    buffer_             = std::malloc(capacity);
+    buffer_ = std::malloc(capacity);
 
     if (buffer_ == nullptr) [[unlikely]] {
         return false;
     }
 
-    capacity_     = capacity;
+    capacity_ = capacity;
     capacityMask_ = capacity - 1;
 
     writePosition_.store(0, std::memory_order_relaxed);
@@ -77,8 +74,8 @@ void CXXRingBuffer::RingBuffer::deallocate() noexcept {
     if (buffer_ != nullptr) [[likely]] {
         std::free(buffer_);
 
-        buffer_       = nullptr;
-        capacity_     = 0;
+        buffer_ = nullptr;
+        capacity_ = 0;
         capacityMask_ = 0;
 
         writePosition_.store(0, std::memory_order_relaxed);
