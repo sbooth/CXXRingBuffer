@@ -361,13 +361,13 @@ inline RingBuffer::operator bool() const noexcept {
 
 // MARK: Buffer Information
 
-inline RingBuffer::SizeType RingBuffer::capacity() const noexcept {
+inline auto RingBuffer::capacity() const noexcept -> SizeType {
     return capacity_;
 }
 
 // MARK: Buffer Usage
 
-inline RingBuffer::SizeType RingBuffer::freeSpace() const noexcept {
+inline auto RingBuffer::freeSpace() const noexcept -> SizeType {
     const auto writePos = writePosition_.load(std::memory_order_relaxed);
     const auto readPos = readPosition_.load(std::memory_order_acquire);
     return capacity_ - (writePos - readPos);
@@ -379,7 +379,7 @@ inline bool RingBuffer::isFull() const noexcept {
     return (writePos - readPos) == capacity_;
 }
 
-inline RingBuffer::SizeType RingBuffer::availableBytes() const noexcept {
+inline auto RingBuffer::availableBytes() const noexcept -> SizeType {
     const auto writePos = writePosition_.load(std::memory_order_acquire);
     const auto readPos = readPosition_.load(std::memory_order_relaxed);
     return writePos - readPos;
@@ -393,8 +393,8 @@ inline bool RingBuffer::isEmpty() const noexcept {
 
 // MARK: Writing and Reading Data
 
-inline RingBuffer::SizeType RingBuffer::write(const void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
-                                              bool allowPartial) noexcept {
+inline auto RingBuffer::write(const void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
+                              bool allowPartial) noexcept -> SizeType {
     if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return 0;
     }
@@ -429,8 +429,8 @@ inline RingBuffer::SizeType RingBuffer::write(const void *const RB_NONNULL ptr, 
     return itemsToWrite;
 }
 
-inline RingBuffer::SizeType RingBuffer::read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
-                                             bool allowPartial) noexcept {
+inline auto RingBuffer::read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
+                             bool allowPartial) noexcept -> SizeType {
     if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return 0;
     }
@@ -497,7 +497,7 @@ inline bool RingBuffer::peek(void *const RB_NONNULL ptr, SizeType itemSize, Size
 
 // MARK: Discarding Data
 
-inline RingBuffer::SizeType RingBuffer::skip(SizeType itemSize, SizeType itemCount) noexcept {
+inline auto RingBuffer::skip(SizeType itemSize, SizeType itemCount) noexcept -> SizeType {
     if (itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return 0;
     }
@@ -519,7 +519,7 @@ inline RingBuffer::SizeType RingBuffer::skip(SizeType itemSize, SizeType itemCou
     return itemsToSkip;
 }
 
-inline RingBuffer::SizeType RingBuffer::drain() noexcept {
+inline auto RingBuffer::drain() noexcept -> SizeType {
     if (capacity_ == 0) [[unlikely]] {
         return 0;
     }
@@ -539,12 +539,12 @@ inline RingBuffer::SizeType RingBuffer::drain() noexcept {
 // MARK: Writing and Reading Spans
 
 template <TriviallyCopyable T>
-inline RingBuffer::SizeType RingBuffer::write(std::span<const T> data, bool allowPartial) noexcept {
+inline auto RingBuffer::write(std::span<const T> data, bool allowPartial) noexcept -> SizeType {
     return write(data.data(), sizeof(T), data.size(), allowPartial);
 }
 
 template <TriviallyCopyable T>
-inline RingBuffer::SizeType RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept {
+inline auto RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept -> SizeType {
     return read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
 }
 
@@ -566,7 +566,7 @@ inline bool RingBuffer::readValue(T& value) noexcept {
 }
 
 template <TriviallyCopyableAndDefaultInitializable T>
-inline std::optional<T> RingBuffer::readValue() noexcept(std::is_nothrow_default_constructible_v<T>) {
+inline auto RingBuffer::readValue() noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
     if (std::optional<T> result; readValue(result.emplace())) {
         return result;
     }
@@ -579,7 +579,7 @@ inline bool RingBuffer::peekValue(T& value) const noexcept {
 }
 
 template <TriviallyCopyableAndDefaultInitializable T>
-inline std::optional<T> RingBuffer::peekValue() const noexcept(std::is_nothrow_default_constructible_v<T>) {
+inline auto RingBuffer::peekValue() const noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
     if (std::optional<T> result; peekValue(result.emplace())) {
         return result;
     }
@@ -662,8 +662,8 @@ inline bool RingBuffer::peekValues(Args&...args) const noexcept {
 
 template <TriviallyCopyableAndDefaultInitializable... Args>
     requires(sizeof...(Args) > 0)
-inline std::optional<std::tuple<Args...>>
-RingBuffer::readValues() noexcept((std::is_nothrow_default_constructible_v<Args> && ...)) {
+inline auto RingBuffer::readValues() noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
+      -> std::optional<std::tuple<Args...>> {
     auto result = peekValues<Args...>();
     if (!result) {
         return std::nullopt;
@@ -674,8 +674,8 @@ RingBuffer::readValues() noexcept((std::is_nothrow_default_constructible_v<Args>
 
 template <TriviallyCopyableAndDefaultInitializable... Args>
     requires(sizeof...(Args) > 0)
-inline std::optional<std::tuple<Args...>> RingBuffer::peekValues() const
-      noexcept((std::is_nothrow_default_constructible_v<Args> && ...)) {
+inline auto RingBuffer::peekValues() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
+      -> std::optional<std::tuple<Args...>> {
     if (std::tuple<Args...> result; std::apply([&](Args&...args) noexcept { return peekValues(args...); }, result)) {
         return result;
     }
@@ -684,7 +684,7 @@ inline std::optional<std::tuple<Args...>> RingBuffer::peekValues() const
 
 // MARK: Advanced Writing and Reading
 
-inline RingBuffer::WriteVector RingBuffer::writeVector() const noexcept {
+inline auto RingBuffer::writeVector() const noexcept -> WriteVector {
     const auto writePos = writePosition_.load(std::memory_order_relaxed);
     const auto readPos = readPosition_.load(std::memory_order_acquire);
 
@@ -710,7 +710,7 @@ inline void RingBuffer::commitWrite(SizeType count) noexcept {
     writePosition_.store(writePos + count, std::memory_order_release);
 }
 
-inline RingBuffer::ReadVector RingBuffer::readVector() const noexcept {
+inline auto RingBuffer::readVector() const noexcept -> ReadVector {
     const auto writePos = writePosition_.load(std::memory_order_acquire);
     const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
