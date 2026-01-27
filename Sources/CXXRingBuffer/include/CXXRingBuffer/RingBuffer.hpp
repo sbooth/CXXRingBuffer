@@ -616,7 +616,7 @@ inline bool RingBuffer::writeValues(const Args&...args) noexcept {
         }
     };
 
-    (copyBytes(std::addressof(args), sizeof(args)), ...);
+    (copyBytes(std::addressof(args), sizeof args), ...);
 
     commitWrite(totalSize);
     return true;
@@ -660,7 +660,7 @@ inline bool RingBuffer::peekValues(Args&...args) const noexcept {
         }
     };
 
-    (readBytes(std::addressof(args), sizeof(args)), ...);
+    (readBytes(std::addressof(args), sizeof args), ...);
     return true;
 }
 
