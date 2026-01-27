@@ -599,19 +599,19 @@ inline bool RingBuffer::writeValues(const Args&...args) noexcept {
     }
 
     auto copyBytes = [front, back, cursor = std::size_t{0}](const void *arg, std::size_t len) mutable noexcept {
-        const auto *data = static_cast<const unsigned char *>(arg);
+        const auto *src = static_cast<const unsigned char *>(arg);
 
         if (cursor < front.size()) {
             const auto toFront = std::min(len, front.size() - cursor);
-            std::memcpy(front.data() + cursor, data, toFront);
+            std::memcpy(front.data() + cursor, src, toFront);
             cursor += toFront;
-            data += toFront;
+            src += toFront;
             len -= toFront;
         }
 
         if (len > 0) [[unlikely]] {
             const auto backOffset = (cursor >= front.size()) ? (cursor - front.size()) : 0;
-            std::memcpy(back.data() + backOffset, data, len);
+            std::memcpy(back.data() + backOffset, src, len);
             cursor += len;
         }
     };
@@ -648,9 +648,9 @@ inline bool RingBuffer::peekValues(Args&...args) const noexcept {
         if (cursor < front.size()) {
             const auto fromFront = std::min(len, front.size() - cursor);
             std::memcpy(dst, front.data() + cursor, fromFront);
+            cursor += fromFront;
             dst += fromFront;
             len -= fromFront;
-            cursor += fromFront;
         }
 
         if (len > 0) [[unlikely]] {
