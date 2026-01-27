@@ -15,6 +15,7 @@
 #include <cstring>
 #include <limits>
 #include <memory>
+#include <new>
 #include <optional>
 #include <span>
 #include <tuple>
