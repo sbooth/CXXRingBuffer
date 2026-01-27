@@ -635,7 +635,7 @@ inline bool RingBuffer::readValues(Args&...args) noexcept {
 template <TriviallyCopyable... Args>
     requires(sizeof...(Args) > 0)
 inline bool RingBuffer::peekValues(Args&...args) const noexcept {
-    constexpr auto totalSize = (sizeof(args) + ...);
+    constexpr auto totalSize = (sizeof args + ...);
     auto [front, back] = readVector();
 
     if (front.size() + back.size() < totalSize) {
