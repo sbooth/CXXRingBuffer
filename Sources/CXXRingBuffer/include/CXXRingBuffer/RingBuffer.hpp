@@ -46,6 +46,8 @@ concept TriviallyCopyableAndDefaultInitializable = TriviallyCopyable<T> && std::
 /// A lock-free SPSC ring buffer.
 ///
 /// This class is thread safe when used with a single producer and a single consumer.
+///
+/// This ring buffer performs raw byte copies; it does not provide serialization.
 class RingBuffer final {
   public:
     /// Unsigned integer type.
@@ -574,8 +576,8 @@ inline bool RingBuffer::readValue(T& value) noexcept {
 
 template <TriviallyCopyableAndDefaultInitializable T>
 inline std::optional<T> RingBuffer::readValue() noexcept(std::is_nothrow_default_constructible_v<T>) {
-    if (T value{}; readValue(value)) {
-        return value;
+    if (std::optional<T> result; readValue(result.emplace())) {
+        return result;
     }
     return std::nullopt;
 }
@@ -587,8 +589,8 @@ inline bool RingBuffer::peekValue(T& value) const noexcept {
 
 template <TriviallyCopyableAndDefaultInitializable T>
 inline std::optional<T> RingBuffer::peekValue() const noexcept(std::is_nothrow_default_constructible_v<T>) {
-    if (T value{}; peekValue(value)) {
-        return value;
+    if (std::optional<T> result; peekValue(result.emplace())) {
+        return result;
     }
     return std::nullopt;
 }
