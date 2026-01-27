@@ -33,9 +33,9 @@ CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
 CXXRingBuffer::RingBuffer& CXXRingBuffer::RingBuffer::operator=(RingBuffer&& other) noexcept {
     if (this != &other) [[likely]] {
         std::free(buffer_);
-        buffer_ = std::exchange(other.buffer_, nullptr);
+        buffer_       = std::exchange(other.buffer_, nullptr);
 
-        capacity_ = std::exchange(other.capacity_, 0);
+        capacity_     = std::exchange(other.capacity_, 0);
         capacityMask_ = std::exchange(other.capacityMask_, 0);
 
         writePosition_.store(other.writePosition_.exchange(0, std::memory_order_relaxed), std::memory_order_relaxed);
@@ -73,7 +73,7 @@ bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
         return false;
     }
 
-    capacity_ = capacity;
+    capacity_     = capacity;
     capacityMask_ = capacity - 1;
 
     writePosition_.store(0, std::memory_order_relaxed);
@@ -85,9 +85,9 @@ bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
 void CXXRingBuffer::RingBuffer::deallocate() noexcept {
     if (buffer_ != nullptr) [[likely]] {
         std::free(buffer_);
-        buffer_ = nullptr;
+        buffer_       = nullptr;
 
-        capacity_ = 0;
+        capacity_     = 0;
         capacityMask_ = 0;
 
         writePosition_.store(0, std::memory_order_relaxed);
