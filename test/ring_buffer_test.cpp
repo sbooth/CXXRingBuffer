@@ -25,78 +25,9 @@ constexpr std::size_t KB = 1024;
 constexpr std::size_t MB = 1024 * KB;
 constexpr std::size_t GB = 1024 * MB;
 
-struct POD {
-    uint32_t a;
-    uint64_t b;
-};
-
-static_assert(std::is_trivially_copyable_v<POD>);
-
 class RingBufferTest : public ::testing::Test {
   protected:
     CXXRingBuffer::RingBuffer rb;
-};
-
-// A type that is trivially copyable but might throw during default construction
-struct ThrowingDefault {
-    int value{0};
-    static inline bool should_throw = false;
-
-    // Must be default initializable
-    ThrowingDefault() noexcept(false) {
-        if (should_throw) {
-            throw std::runtime_error("ctor failed");
-        }
-    }
-
-    // Logic to keep it trivially copyable (C++17/20 requirements)
-    ThrowingDefault(const ThrowingDefault &) = default;
-    ThrowingDefault &operator=(const ThrowingDefault &) = default;
-};
-
-// Ensure test type meets RingBuffer concepts
-static_assert(std::is_trivially_copyable_v<ThrowingDefault>);
-static_assert(std::default_initializable<ThrowingDefault>);
-
-class RingBufferExceptionTest : public ::testing::Test {
-  protected:
-    CXXRingBuffer::RingBuffer rb;
-    void SetUp() override {
-        rb.allocate(1 * KB);
-        ThrowingDefault::should_throw = false;
-    }
-    void TearDown() override { ThrowingDefault::should_throw = false; }
-};
-
-// Structure to hold our test parameters
-struct StressParams {
-    std::size_t capacity;
-    std::chrono::seconds duration;
-};
-
-class RingBufferStressTest : public ::testing::TestWithParam<StressParams> {
-  public:
-    // Helper to print nice parameter names in the test runner
-    static std::string ParamNameGenerator(const ::testing::TestParamInfo<StressParams> &info) {
-        const auto cap = info.param.capacity;
-        if (cap >= MB) {
-            return std::to_string(cap / MB) + "MB";
-        }
-        if (cap >= KB) {
-            return std::to_string(cap / KB) + "KB";
-        }
-        return std::to_string(cap) + "Bytes";
-    }
-
-  protected:
-    CXXRingBuffer::RingBuffer rb;
-};
-
-// A mixed-type structure to stress alignment and multi-value logic
-struct PacketHeader {
-    uint32_t sequence;
-    uint8_t type;
-    double timestamp;
 };
 
 } // namespace
@@ -322,6 +253,17 @@ TEST_F(RingBufferTest, SkipAndDrain) {
     EXPECT_EQ(rb.drain(), 2 * sizeof(int));
     EXPECT_TRUE(rb.isEmpty());
 }
+
+namespace {
+
+struct POD {
+    uint32_t a;
+    uint64_t b;
+};
+
+static_assert(std::is_trivially_copyable_v<POD>);
+
+} // namespace
 
 TEST_F(RingBufferTest, PODWriteRead) {
     ASSERT_TRUE(rb.allocate(64));
@@ -588,6 +530,41 @@ TEST_F(RingBufferTest, ThroughputBenchmarkMultiThreaded) {
               << " GB/sec)" << std::endl;
 }
 
+namespace {
+
+// A type that is trivially copyable but might throw during default construction
+struct ThrowingDefault {
+    int value{0};
+    static inline bool should_throw = false;
+
+    // Must be default initializable
+    ThrowingDefault() noexcept(false) {
+        if (should_throw) {
+            throw std::runtime_error("ctor failed");
+        }
+    }
+
+    // Logic to keep it trivially copyable (C++17/20 requirements)
+    ThrowingDefault(const ThrowingDefault &) = default;
+    ThrowingDefault &operator=(const ThrowingDefault &) = default;
+};
+
+// Ensure test type meets RingBuffer concepts
+static_assert(std::is_trivially_copyable_v<ThrowingDefault>);
+static_assert(std::default_initializable<ThrowingDefault>);
+
+class RingBufferExceptionTest : public ::testing::Test {
+  protected:
+    CXXRingBuffer::RingBuffer rb;
+    void SetUp() override {
+        rb.allocate(1 * KB);
+        ThrowingDefault::should_throw = false;
+    }
+    void TearDown() override { ThrowingDefault::should_throw = false; }
+};
+
+} // namespace
+
 TEST_F(RingBufferExceptionTest, ReadMaintainsStateOnException) {
     // 1. Prepare data
     ThrowingDefault item;
@@ -628,6 +605,41 @@ TEST_F(RingBufferExceptionTest, PeekMaintainsStateOnException) {
 }
 
 using namespace std::chrono_literals;
+
+namespace {
+
+// Structure to hold our test parameters
+struct StressParams {
+    std::size_t capacity;
+    std::chrono::seconds duration;
+};
+
+class RingBufferStressTest : public ::testing::TestWithParam<StressParams> {
+  public:
+    // Helper to print nice parameter names in the test runner
+    static std::string ParamNameGenerator(const ::testing::TestParamInfo<StressParams> &info) {
+        const auto cap = info.param.capacity;
+        if (cap >= MB) {
+            return std::to_string(cap / MB) + "MB";
+        }
+        if (cap >= KB) {
+            return std::to_string(cap / KB) + "KB";
+        }
+        return std::to_string(cap) + "Bytes";
+    }
+
+  protected:
+    CXXRingBuffer::RingBuffer rb;
+};
+
+// A mixed-type structure to stress alignment and multi-value logic
+struct PacketHeader {
+    uint32_t sequence;
+    uint8_t type;
+    double timestamp;
+};
+
+} // namespace
 
 /**
  * Stress test for RingBuffer.
@@ -793,3 +805,142 @@ INSTANTIATE_TEST_SUITE_P(VariedCapacities, RingBufferStressTest,
                                            StressParams{64 * KB, 3s} // Medium
                                            ),
                          RingBufferStressTest::ParamNameGenerator);
+
+TEST_F(RingBufferTest, TemplateSkipSuccess) {
+    ASSERT_TRUE(rb.allocate(64));
+    // Write 3 integers (12 bytes)
+    rb.writeAll(10, 20, 30);
+    ASSERT_EQ(rb.availableBytes(), 12);
+
+    // Skip 2 integers (8 bytes)
+    // Should return true and leave 4 bytes
+    EXPECT_TRUE(rb.skip<int>(2));
+    EXPECT_EQ(rb.availableBytes(), 4);
+
+    // Verify the remaining value is indeed the 3rd integer
+    int remaining = 0;
+    EXPECT_TRUE(rb.read(remaining));
+    EXPECT_EQ(remaining, 30);
+}
+
+TEST_F(RingBufferTest, TemplateSkipFailsIfInsufficient) {
+    ASSERT_TRUE(rb.allocate(64));
+    rb.writeAll(10, 20); // 8 bytes
+
+    // Attempt to skip 3 integers (12 bytes)
+    // This is "All-or-Nothing", so it should return false
+    // and the read pointer should NOT move.
+    EXPECT_FALSE(rb.skip<int>(3));
+    EXPECT_EQ(rb.availableBytes(), 8);
+
+    // Verify data is still intact
+    int first = 0;
+    EXPECT_TRUE(rb.read(first));
+    EXPECT_EQ(first, 10);
+}
+
+// MARK: - Raw skip() Tests (Partial Support)
+
+TEST_F(RingBufferTest, RawSkipPartialAllowed) {
+    ASSERT_TRUE(rb.allocate(64));
+    rb.writeAll(10, 20); // 8 bytes
+
+    // Request skip 12 bytes with allowPartial = true
+    // Should skip the available 8 bytes and return 8
+    auto skipped = rb.skip(1, 12, true);
+    EXPECT_EQ(skipped, 8);
+    EXPECT_TRUE(rb.isEmpty());
+}
+
+TEST_F(RingBufferTest, RawSkipPartialForbidden) {
+    ASSERT_TRUE(rb.allocate(64));
+    rb.writeAll(10, 20); // 8 bytes
+
+    // Request skip 12 bytes with allowPartial = false
+    // Should return 0 and not move pointer
+    auto skipped = rb.skip(1, 12, false);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(rb.availableBytes(), 8);
+}
+
+// MARK: - Edge Cases
+
+TEST_F(RingBufferTest, SkipEmptyBuffer) {
+    ASSERT_TRUE(rb.allocate(64));
+    EXPECT_FALSE(rb.skip<int>(1));
+    EXPECT_EQ(rb.skip(1, 10, true), 0);
+}
+
+TEST_F(RingBufferTest, DrainClearsEverything) {
+    ASSERT_TRUE(rb.allocate(64));
+    rb.writeAll(1, 2, 3, 4, 5);
+    ASSERT_GT(rb.availableBytes(), 0);
+
+    rb.drain();
+    EXPECT_EQ(rb.availableBytes(), 0);
+    EXPECT_TRUE(rb.isEmpty());
+}
+
+TEST_F(RingBufferTest, SkipHandlesWrapAroundCorrectly) {
+    ASSERT_TRUE(rb.allocate(64));
+    // 1. Write 60 bytes of padding.
+    // We use a const span to ensure we hit the "Collection" overload.
+    uint8_t padding[60] = {0};
+    ASSERT_EQ(rb.write(std::span<const uint8_t>{padding}), 60);
+
+    // 2. Skip 56 bytes. Read pointer is now at index 56.
+    // 4 bytes of padding remain in the buffer.
+    EXPECT_TRUE(rb.skip<uint8_t>(56));
+    ASSERT_EQ(rb.availableBytes(), 4);
+
+    // 3. Write 3 uint32_ts (12 bytes).
+    // The first 4 bytes fill up to index 64 (the wrap point).
+    // The last 8 bytes wrap around to index 0.
+    uint32_t v1 = 0xDEADBEEF, v2 = 0xCAFEBABE, v3 = 0xAAAA5555;
+    rb.writeAll(v1, v2, v3);
+
+    // Total available: 4 (padding) + 12 (new data) = 16 bytes.
+    ASSERT_EQ(rb.availableBytes(), 16);
+
+    // 4. Skip 3 uint32_ts (12 bytes).
+    // This skip must handle the jump from index 60ish back to index 4ish.
+    EXPECT_TRUE(rb.skip<uint32_t>(3));
+
+    // 5. Verify 4 bytes remain, which correspond to the final uint32_t (v3).
+    EXPECT_EQ(rb.availableBytes(), 4);
+
+    // 6. Final verification: Reading those 4 bytes should yield v3, and then the buffer is empty.
+    uint32_t result = 0;
+    EXPECT_TRUE(rb.read(result));
+    EXPECT_EQ(result, v3);
+    EXPECT_TRUE(rb.isEmpty());
+}
+
+TEST_F(RingBufferTest, SkipTransactionalIntegrity) {
+    ASSERT_TRUE(rb.allocate(64));
+    rb.writeAll(100, 200, 300); // 12 bytes
+    auto initialAvailableBytes = rb.availableBytes();
+
+    // Try to skip 100 integers (impossible)
+    bool success = rb.skip<int>(100);
+
+    EXPECT_FALSE(success);
+    // The amount of data available to read must not have changed
+    EXPECT_EQ(rb.availableBytes(), initialAvailableBytes);
+
+    // Verify we can still read the first value correctly
+    int first = 0;
+    ASSERT_TRUE(rb.read(first));
+    EXPECT_EQ(first, 100);
+}
+
+// This helper uses a trailing return type.
+// If r.write(p) is deleted, substitution fails here (SFINAE).
+auto can_write = [](auto &r, auto p) -> decltype(r.write(p), std::true_type{}) { return {}; };
+
+// We check if the lambda can be called with these arguments.
+static_assert(!std::is_invocable_v<decltype(can_write), CXXRingBuffer::RingBuffer &, int *>,
+              "Safety Failure: RingBuffer should NOT allow writing a pointer.");
+
+static_assert(std::is_invocable_v<decltype(can_write), CXXRingBuffer::RingBuffer &, int>,
+              "Error: Basic write(int) should be valid.");

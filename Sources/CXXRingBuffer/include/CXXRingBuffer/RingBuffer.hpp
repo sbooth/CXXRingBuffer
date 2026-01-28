@@ -194,8 +194,8 @@ class RingBuffer final {
     /// @param ptr An address to receive the data.
     /// @param itemSize The size of an individual item in bytes.
     /// @param itemCount The desired number of items to read.
-    /// @param allowPartial Whether any items should be read if the number of items available for reading is less than
-    /// count.
+    /// @param allowPartial Whether any items should be read if the number of items available to read is less than
+    /// itemCount.
     /// @return The number of items actually read.
     SizeType read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
 
@@ -203,7 +203,7 @@ class RingBuffer final {
     /// @note This method is only safe to call from the consumer.
     /// @tparam T The type to read.
     /// @param buffer A span to receive the items.
-    /// @param allowPartial Whether any items should be read if the number of items available for reading is less than
+    /// @param allowPartial Whether any items should be read if the number of items available to read is less than
     /// buffer.size().
     /// @return The number of items actually read.
     template <TriviallyCopyable T> SizeType read(std::span<T> buffer, bool allowPartial = true) noexcept;
@@ -306,8 +306,16 @@ class RingBuffer final {
     /// @note This method is only safe to call from the consumer.
     /// @param itemSize The size of an individual item in bytes.
     /// @param itemCount The desired number of items to skip.
+    /// @param allowPartial Whether any items should be skipped if the number of items available to skip is less than
+    /// itemCount.
     /// @return The number of items actually skipped.
-    SizeType skip(SizeType itemSize, SizeType itemCount) noexcept;
+    SizeType skip(SizeType itemSize, SizeType itemCount, bool allowPartial = true) noexcept;
+
+    /// Skips items and advances the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @param itemCount The number of items to skip.
+    /// @return true if the items were successfully skipped.
+    template <TriviallyCopyable T> bool skip(SizeType itemCount = 1) noexcept;
 
     /// Advances the read position to the write position, emptying the buffer.
     /// @note This method is only safe to call from the consumer.
@@ -632,7 +640,7 @@ inline auto RingBuffer::peekAll() const noexcept((std::is_nothrow_default_constr
 
 // MARK: Discarding Data
 
-inline auto RingBuffer::skip(SizeType itemSize, SizeType itemCount) noexcept -> SizeType {
+inline auto RingBuffer::skip(SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept -> SizeType {
     if (itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return 0;
     }
@@ -642,7 +650,7 @@ inline auto RingBuffer::skip(SizeType itemSize, SizeType itemCount) noexcept -> 
     const auto bytesUsed = writePos - readPos;
     const auto itemsAvailable = bytesUsed / itemSize;
 
-    if (itemsAvailable == 0) [[unlikely]] {
+    if (itemsAvailable == 0 || (itemsAvailable < itemCount && !allowPartial)) {
         return 0;
     }
 
@@ -651,6 +659,10 @@ inline auto RingBuffer::skip(SizeType itemSize, SizeType itemCount) noexcept -> 
 
     readPosition_.store(readPos + bytesToSkip, std::memory_order_release);
     return itemsToSkip;
+}
+
+template <TriviallyCopyable T> inline bool RingBuffer::skip(SizeType itemCount) noexcept {
+    return skip(sizeof(T), itemCount, false) == itemCount;
 }
 
 inline auto RingBuffer::drain() noexcept -> SizeType {
