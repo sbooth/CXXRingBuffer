@@ -40,16 +40,14 @@ namespace CXXRingBuffer {
 template <typename T>
 concept TriviallyCopyable = std::is_trivially_copyable_v<T>;
 
-template <typename T>
-concept TriviallyCopyableAndDefaultInitializable = TriviallyCopyable<T> && std::default_initializable<T>;
-
 template <typename T> struct is_span_trait : std::false_type {};
 template <typename T, std::size_t Extent> struct is_span_trait<std::span<T, Extent>> : std::true_type {};
 
 template <typename T> inline constexpr bool is_span_v = is_span_trait<std::remove_cvref_t<T>>::value;
 
 template <typename T>
-concept SingleValue = !std::is_pointer_v<std::remove_cvref_t<T>> && !is_span_v<std::remove_cvref_t<T>>;
+concept SingleValue = std::is_trivially_copyable_v<T> && !std::is_pointer_v<std::remove_cvref_t<T>> &&
+                      !is_span_v<std::remove_cvref_t<T>>;
 
 /// A lock-free SPSC ring buffer.
 ///
@@ -191,7 +189,7 @@ class RingBuffer final {
     /// @tparam Args The types to write.
     /// @param args The values to write.
     /// @return true if the values were successfully written.
-    template <TriviallyCopyable... Args>
+    template <SingleValue... Args>
         requires(sizeof...(Args) > 1)
     bool writeAll(const Args &...args) noexcept;
 
@@ -232,15 +230,14 @@ class RingBuffer final {
     /// @tparam T The type to read.
     /// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
     /// @throw Any exceptions thrown by the default constructor of T.
-    template <TriviallyCopyableAndDefaultInitializable T>
-    std::optional<T> read() noexcept(std::is_nothrow_default_constructible_v<T>);
+    template <SingleValue T> std::optional<T> read() noexcept(std::is_nothrow_default_constructible_v<T>);
 
     /// Reads values and advances the read position.
     /// @note This method is only safe to call from the consumer.
     /// @tparam Args The types to read.
     /// @param args The destination values.
     /// @return true if the values were successfully read.
-    template <TriviallyCopyable... Args>
+    template <SingleValue... Args>
         requires(sizeof...(Args) > 1)
     bool readAll(Args &...args) noexcept;
 
@@ -249,7 +246,7 @@ class RingBuffer final {
     /// @tparam Args The types to read.
     /// @return A std::optional containing a std::tuple of the values if they were successfully read.
     /// @throw Any exceptions thrown by the default constructors of Args.
-    template <TriviallyCopyableAndDefaultInitializable... Args>
+    template <SingleValue... Args>
         requires(sizeof...(Args) > 1)
     std::optional<std::tuple<Args...>> readAll() noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
 
@@ -286,7 +283,7 @@ class RingBuffer final {
     /// @tparam T The type to read.
     /// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
     /// @throw Any exceptions thrown by the default constructor of T.
-    template <TriviallyCopyableAndDefaultInitializable T>
+    template <SingleValue T>
     [[nodiscard]] std::optional<T> peek() const noexcept(std::is_nothrow_default_constructible_v<T>);
 
     /// Reads values without advancing the read position.
@@ -294,7 +291,7 @@ class RingBuffer final {
     /// @tparam Args The types to read.
     /// @param args The destination values.
     /// @return true if the values were successfully read.
-    template <TriviallyCopyable... Args>
+    template <SingleValue... Args>
         requires(sizeof...(Args) > 1)
     [[nodiscard]] bool peekAll(Args &...args) const noexcept;
 
@@ -303,7 +300,7 @@ class RingBuffer final {
     /// @tparam Args The types to read.
     /// @return A std::optional containing a std::tuple of the values if they were successfully read.
     /// @throw Any exceptions thrown by the default constructors of Args.
-    template <TriviallyCopyableAndDefaultInitializable... Args>
+    template <SingleValue... Args>
         requires(sizeof...(Args) > 1)
     [[nodiscard]] std::optional<std::tuple<Args...>> peekAll() const
             noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
@@ -323,7 +320,7 @@ class RingBuffer final {
     /// @note This method is only safe to call from the consumer.
     /// @param itemCount The number of items to skip.
     /// @return true if the items were successfully skipped.
-    template <TriviallyCopyable T> bool skip(SizeType itemCount = 1) noexcept;
+    template <SingleValue T> bool skip(SizeType itemCount = 1) noexcept;
 
     /// Advances the read position to the write position, emptying the buffer.
     /// @note This method is only safe to call from the consumer.
@@ -452,7 +449,7 @@ inline bool RingBuffer::write(SingleValue auto const &value) noexcept {
     return write(static_cast<const void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 }
 
-template <TriviallyCopyable... Args>
+template <SingleValue... Args>
     requires(sizeof...(Args) > 1)
 inline bool RingBuffer::writeAll(const Args &...args) noexcept {
     constexpr auto totalSize = (sizeof args + ...);
@@ -528,7 +525,7 @@ inline bool RingBuffer::read(SingleValue auto &value) noexcept {
     return read(std::addressof(value), sizeof value, 1, false) == 1;
 }
 
-template <TriviallyCopyableAndDefaultInitializable T>
+template <SingleValue T>
 inline auto RingBuffer::read() noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
     if (std::optional<T> result; read(result.emplace())) {
         return result;
@@ -536,7 +533,7 @@ inline auto RingBuffer::read() noexcept(std::is_nothrow_default_constructible_v<
     return std::nullopt;
 }
 
-template <TriviallyCopyable... Args>
+template <SingleValue... Args>
     requires(sizeof...(Args) > 1)
 inline bool RingBuffer::readAll(Args &...args) noexcept {
     if (!peekAll(args...)) {
@@ -546,7 +543,7 @@ inline bool RingBuffer::readAll(Args &...args) noexcept {
     return true;
 }
 
-template <TriviallyCopyableAndDefaultInitializable... Args>
+template <SingleValue... Args>
     requires(sizeof...(Args) > 1)
 inline auto RingBuffer::readAll() noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
         -> std::optional<std::tuple<Args...>> {
@@ -598,7 +595,7 @@ inline bool RingBuffer::peek(SingleValue auto &value) const noexcept {
     return peek(std::addressof(value), sizeof value, 1);
 }
 
-template <TriviallyCopyableAndDefaultInitializable T>
+template <SingleValue T>
 inline auto RingBuffer::peek() const noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
     if (std::optional<T> result; peek(result.emplace())) {
         return result;
@@ -606,7 +603,7 @@ inline auto RingBuffer::peek() const noexcept(std::is_nothrow_default_constructi
     return std::nullopt;
 }
 
-template <TriviallyCopyable... Args>
+template <SingleValue... Args>
     requires(sizeof...(Args) > 1)
 inline bool RingBuffer::peekAll(Args &...args) const noexcept {
     constexpr auto totalSize = (sizeof args + ...);
@@ -636,7 +633,7 @@ inline bool RingBuffer::peekAll(Args &...args) const noexcept {
     return true;
 }
 
-template <TriviallyCopyableAndDefaultInitializable... Args>
+template <SingleValue... Args>
     requires(sizeof...(Args) > 1)
 inline auto RingBuffer::peekAll() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
         -> std::optional<std::tuple<Args...>> {
@@ -669,7 +666,7 @@ inline auto RingBuffer::skip(SizeType itemSize, SizeType itemCount, bool allowPa
     return itemsToSkip;
 }
 
-template <TriviallyCopyable T> inline bool RingBuffer::skip(SizeType itemCount) noexcept {
+template <SingleValue T> inline bool RingBuffer::skip(SizeType itemCount) noexcept {
     return skip(sizeof(T), itemCount, false) == itemCount;
 }
 
