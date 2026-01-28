@@ -127,7 +127,7 @@ TEST_F(RingBufferTest, ThroughputBenchmarkChunkedMultiThreaded) {
     RecordProperty("TotalGB", std::to_string(gigabytes));
     RecordProperty("GB_per_sec", std::to_string(throughput));
 
-    std::cout << "[ BENCH    ] Transferred " << gigabytes << " GB in " << diff.count() << "sec (" << throughput
+    std::cout << "[  BENCH   ] Transferred " << gigabytes << " GB in " << diff.count() << "sec (" << throughput
               << " GB/sec)" << std::endl;
 }
 
@@ -396,7 +396,7 @@ TEST_F(RingBufferTest, ThroughputBenchmarkSingleThreaded) {
     RecordProperty("TotalOps", std::to_string(iterations));
     RecordProperty("Ops_per_sec", std::to_string(ops_per_sec));
 
-    std::cout << "[ BENCH    ] Operations per second = " << ops_per_sec << "\n";
+    std::cout << "[  BENCH   ] Operations per second = " << ops_per_sec << "\n";
 }
 
 // MARK: -
@@ -526,7 +526,7 @@ TEST_F(RingBufferTest, ThroughputBenchmarkMultiThreaded) {
     RecordProperty("TotalGB", std::to_string(gigabytes));
     RecordProperty("GB_per_sec", std::to_string(throughput));
 
-    std::cout << "[ BENCH    ] Transferred " << gigabytes << " GB in " << diff.count() << "sec (" << throughput
+    std::cout << "[  BENCH   ] Transferred " << gigabytes << " GB in " << diff.count() << "sec (" << throughput
               << " GB/sec)" << std::endl;
 }
 
