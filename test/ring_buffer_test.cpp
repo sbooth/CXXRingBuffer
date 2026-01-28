@@ -50,8 +50,8 @@ struct ThrowingDefault {
     }
 
     // Logic to keep it trivially copyable (C++17/20 requirements)
-    ThrowingDefault(const ThrowingDefault&) = default;
-    ThrowingDefault& operator=(const ThrowingDefault&) = default;
+    ThrowingDefault(const ThrowingDefault &) = default;
+    ThrowingDefault &operator=(const ThrowingDefault &) = default;
 };
 
 // Ensure test type meets RingBuffer concepts
@@ -65,9 +65,7 @@ class RingBufferExceptionTest : public ::testing::Test {
         rb.allocate(1 * KB);
         ThrowingDefault::should_throw = false;
     }
-    void TearDown() override {
-        ThrowingDefault::should_throw = false;
-    }
+    void TearDown() override { ThrowingDefault::should_throw = false; }
 };
 
 // Structure to hold our test parameters
@@ -79,7 +77,7 @@ struct StressParams {
 class RingBufferStressTest : public ::testing::TestWithParam<StressParams> {
   public:
     // Helper to print nice parameter names in the test runner
-    static std::string ParamNameGenerator(const ::testing::TestParamInfo<StressParams>& info) {
+    static std::string ParamNameGenerator(const ::testing::TestParamInfo<StressParams> &info) {
         const auto cap = info.param.capacity;
         if (cap >= MB) {
             return std::to_string(cap / MB) + "MB";
@@ -132,7 +130,7 @@ TEST_F(RingBufferTest, Functional) {
 
     constexpr size_t size = 10;
     std::vector<int> vec(size);
-    for (auto& v : vec) {
+    for (auto &v : vec) {
         v = dist(gen);
     }
 
@@ -441,9 +439,11 @@ TEST_F(RingBufferTest, ThroughputBenchmarkSingleThreaded) {
     const auto start = std::chrono::high_resolution_clock::now();
 
     for (std::size_t i = 0; i < iterations; ++i) {
-        while (!rb.writeValue(i)) {}
+        while (!rb.writeValue(i)) {
+        }
         std::size_t out;
-        while (!rb.readValue(out)) {}
+        while (!rb.readValue(out)) {
+        }
     }
 
     const auto end = std::chrono::high_resolution_clock::now();
@@ -635,7 +635,7 @@ using namespace std::chrono_literals;
  * Consumer reads them and ensures the sequence is never broken.
  */
 TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
-    const auto& [bufferCapacity, duration] = GetParam();
+    const auto &[bufferCapacity, duration] = GetParam();
 
     ASSERT_TRUE(rb.allocate(bufferCapacity));
 
@@ -651,7 +651,7 @@ TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
         while (keepRunning.load(std::memory_order_relaxed)) {
             std::size_t itemsToWrite = dist(gen);
             std::vector<uint64_t> data(itemsToWrite);
-            for (auto& val : data) {
+            for (auto &val : data) {
                 val = counter++;
             }
 
@@ -716,7 +716,7 @@ TEST_P(RingBufferStressTest, ProducerConsumerThroughput) {
 }
 
 TEST_P(RingBufferStressTest, MixedProducerConsumerThroughput) {
-    const auto& [bufferCapacity, duration] = GetParam();
+    const auto &[bufferCapacity, duration] = GetParam();
     ASSERT_TRUE(rb.allocate(bufferCapacity));
 
     std::atomic<bool> keepRunning{true};
