@@ -176,10 +176,6 @@ class RingBuffer final {
     /// @return true if value was successfully written.
     bool write(ValueLike auto const &value) noexcept;
 
-    template <typename T>
-        requires std::is_pointer_v<std::remove_cvref_t<T>>
-    bool write(T &&) = delete;
-
     /// Writes values and advances the write position.
     /// @note This method is only safe to call from the producer.
     /// @tparam Args The types to write.
@@ -215,10 +211,6 @@ class RingBuffer final {
     /// @param value The destination value.
     /// @return true on success, false otherwise.
     bool read(ValueLike auto &value) noexcept;
-
-    template <typename T>
-        requires std::is_pointer_v<std::remove_cvref_t<T>>
-    bool read(T &&) = delete;
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -269,10 +261,6 @@ class RingBuffer final {
     /// @param value The destination value.
     /// @return true on success, false otherwise.
     [[nodiscard]] bool peek(ValueLike auto &value) const noexcept;
-
-    template <typename T>
-        requires std::is_pointer_v<std::remove_cvref_t<T>>
-    bool peek(T &&) const = delete;
 
     /// Reads a value without advancing the read position.
     /// @note This method is only safe to call from the consumer.
