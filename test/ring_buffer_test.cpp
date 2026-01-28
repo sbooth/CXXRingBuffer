@@ -27,7 +27,7 @@ constexpr std::size_t GB = 1024 * MB;
 
 class RingBufferTest : public ::testing::Test {
   protected:
-    CXXRingBuffer::RingBuffer rb;
+    ring::RingBuffer rb;
 };
 
 } // namespace
@@ -150,9 +150,9 @@ TEST_F(RingBufferTest, AllocateRoundsToPowerOfTwo) {
 }
 
 TEST_F(RingBufferTest, AllocateMinimumCapacity) {
-    EXPECT_TRUE(rb.allocate(CXXRingBuffer::RingBuffer::minCapacity));
+    EXPECT_TRUE(rb.allocate(ring::RingBuffer::minCapacity));
     EXPECT_TRUE(rb);
-    EXPECT_GE(rb.capacity(), CXXRingBuffer::RingBuffer::minCapacity);
+    EXPECT_GE(rb.capacity(), ring::RingBuffer::minCapacity);
 }
 
 TEST_F(RingBufferTest, DeallocateResetsState) {
@@ -555,7 +555,7 @@ static_assert(std::default_initializable<ThrowingDefault>);
 
 class RingBufferExceptionTest : public ::testing::Test {
   protected:
-    CXXRingBuffer::RingBuffer rb;
+    ring::RingBuffer rb;
     void SetUp() override {
         rb.allocate(1 * KB);
         ThrowingDefault::should_throw = false;
@@ -629,7 +629,7 @@ class RingBufferStressTest : public ::testing::TestWithParam<StressParams> {
     }
 
   protected:
-    CXXRingBuffer::RingBuffer rb;
+    ring::RingBuffer rb;
 };
 
 // A mixed-type structure to stress alignment and multi-value logic
@@ -939,8 +939,8 @@ TEST_F(RingBufferTest, SkipTransactionalIntegrity) {
 auto can_write = [](auto &r, auto p) -> decltype(r.write(p), std::true_type{}) { return {}; };
 
 // We check if the lambda can be called with these arguments.
-static_assert(!std::is_invocable_v<decltype(can_write), CXXRingBuffer::RingBuffer &, int *>,
+static_assert(!std::is_invocable_v<decltype(can_write), ring::RingBuffer &, int *>,
               "Safety Failure: RingBuffer should NOT allow writing a pointer.");
 
-static_assert(std::is_invocable_v<decltype(can_write), CXXRingBuffer::RingBuffer &, int>,
+static_assert(std::is_invocable_v<decltype(can_write), ring::RingBuffer &, int>,
               "Error: Basic write(int) should be valid.");
