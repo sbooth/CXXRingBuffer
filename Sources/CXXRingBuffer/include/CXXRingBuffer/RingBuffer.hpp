@@ -38,7 +38,7 @@
 namespace CXXRingBuffer {
 
 template <typename T>
-concept TriviallyCopyable = std::is_trivially_copyable_v<T>;
+concept TriviallyCopyable = std::is_trivially_copyable_v<std::remove_cvref_t<T>>;
 
 template <typename T> struct is_span_trait : std::false_type {};
 template <typename T, std::size_t Extent> struct is_span_trait<std::span<T, Extent>> : std::true_type {};
@@ -46,8 +46,7 @@ template <typename T, std::size_t Extent> struct is_span_trait<std::span<T, Exte
 template <typename T> inline constexpr bool is_span_v = is_span_trait<std::remove_cvref_t<T>>::value;
 
 template <typename T>
-concept SingleValue =
-        TriviallyCopyable<T> && !std::is_pointer_v<std::remove_cvref_t<T>> && !is_span_v<std::remove_cvref_t<T>>;
+concept SingleValue = TriviallyCopyable<T> && !std::is_pointer_v<std::remove_cvref_t<T>> && !is_span_v<T>;
 
 /// A lock-free SPSC ring buffer.
 ///
