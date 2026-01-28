@@ -22,18 +22,17 @@ CXXRingBuffer::RingBuffer::RingBuffer(SizeType minCapacity) {
     }
 }
 
-CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer&& other) noexcept
-  : buffer_{std::exchange(other.buffer_, nullptr)},
-    capacity_{std::exchange(other.capacity_, 0)},
-    capacityMask_{std::exchange(other.capacityMask_, 0)},
-    writePosition_{other.writePosition_.exchange(0, std::memory_order_relaxed)},
-    readPosition_{other.readPosition_.exchange(0, std::memory_order_relaxed)} {}
+CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer &&other) noexcept
+    : buffer_{std::exchange(other.buffer_, nullptr)}, capacity_{std::exchange(other.capacity_, 0)},
+      capacityMask_{std::exchange(other.capacityMask_, 0)},
+      writePosition_{other.writePosition_.exchange(0, std::memory_order_relaxed)},
+      readPosition_{other.readPosition_.exchange(0, std::memory_order_relaxed)} {}
 
-CXXRingBuffer::RingBuffer& CXXRingBuffer::RingBuffer::operator=(RingBuffer&& other) noexcept {
+CXXRingBuffer::RingBuffer &CXXRingBuffer::RingBuffer::operator=(RingBuffer &&other) noexcept {
     if (this != &other) [[likely]] {
         std::free(buffer_);
-        buffer_ = std::exchange(other.buffer_, nullptr);
 
+        buffer_ = std::exchange(other.buffer_, nullptr);
         capacity_ = std::exchange(other.capacity_, 0);
         capacityMask_ = std::exchange(other.capacityMask_, 0);
 
@@ -43,9 +42,7 @@ CXXRingBuffer::RingBuffer& CXXRingBuffer::RingBuffer::operator=(RingBuffer&& oth
     return *this;
 }
 
-CXXRingBuffer::RingBuffer::~RingBuffer() noexcept {
-    std::free(buffer_);
-}
+CXXRingBuffer::RingBuffer::~RingBuffer() noexcept { std::free(buffer_); }
 
 // MARK: Buffer Management
 
@@ -57,17 +54,8 @@ bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
     deallocate();
 
     const auto capacity = std::bit_ceil(minCapacity);
-
-#if false
-    // Use aligned_alloc for cache-line alignment (64 bytes)
-    // Note: capacity must be a multiple of alignment for aligned_alloc
-    if (__builtin_available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *))
-        buffer_ = std::aligned_alloc(64, capacity);
-    else
-        buffer_ = std::malloc(capacity);
-#endif
-
     buffer_ = std::malloc(capacity);
+
     if (buffer_ == nullptr) [[unlikely]] {
         return false;
     }
@@ -84,8 +72,8 @@ bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
 void CXXRingBuffer::RingBuffer::deallocate() noexcept {
     if (buffer_ != nullptr) [[likely]] {
         std::free(buffer_);
-        buffer_ = nullptr;
 
+        buffer_ = nullptr;
         capacity_ = 0;
         capacityMask_ = 0;
 
