@@ -806,21 +806,8 @@ INSTANTIATE_TEST_SUITE_P(VariedCapacities, RingBufferStressTest,
                                            ),
                          RingBufferStressTest::ParamNameGenerator);
 
-namespace {
-
-class RingBufferSkipTest : public ::testing::Test {
-  protected:
-    void SetUp() override {
-        // Allocate a power-of-two buffer (e.g., 64 bytes)
-        rb.allocate(64);
-    }
-
-    CXXRingBuffer::RingBuffer rb;
-};
-
-} // namespace
-
-TEST_F(RingBufferSkipTest, TemplateSkipSuccess) {
+TEST_F(RingBufferTest, TemplateSkipSuccess) {
+    ASSERT_TRUE(rb.allocate(64));
     // Write 3 integers (12 bytes)
     rb.writeAll(10, 20, 30);
     ASSERT_EQ(rb.availableBytes(), 12);
@@ -836,7 +823,8 @@ TEST_F(RingBufferSkipTest, TemplateSkipSuccess) {
     EXPECT_EQ(remaining, 30);
 }
 
-TEST_F(RingBufferSkipTest, TemplateSkipFailsIfInsufficient) {
+TEST_F(RingBufferTest, TemplateSkipFailsIfInsufficient) {
+    ASSERT_TRUE(rb.allocate(64));
     rb.writeAll(10, 20); // 8 bytes
 
     // Attempt to skip 3 integers (12 bytes)
@@ -853,7 +841,8 @@ TEST_F(RingBufferSkipTest, TemplateSkipFailsIfInsufficient) {
 
 // MARK: - Raw skip() Tests (Partial Support)
 
-TEST_F(RingBufferSkipTest, RawSkipPartialAllowed) {
+TEST_F(RingBufferTest, RawSkipPartialAllowed) {
+    ASSERT_TRUE(rb.allocate(64));
     rb.writeAll(10, 20); // 8 bytes
 
     // Request skip 12 bytes with allowPartial = true
@@ -863,7 +852,8 @@ TEST_F(RingBufferSkipTest, RawSkipPartialAllowed) {
     EXPECT_TRUE(rb.isEmpty());
 }
 
-TEST_F(RingBufferSkipTest, RawSkipPartialForbidden) {
+TEST_F(RingBufferTest, RawSkipPartialForbidden) {
+    ASSERT_TRUE(rb.allocate(64));
     rb.writeAll(10, 20); // 8 bytes
 
     // Request skip 12 bytes with allowPartial = false
@@ -875,12 +865,14 @@ TEST_F(RingBufferSkipTest, RawSkipPartialForbidden) {
 
 // MARK: - Edge Cases
 
-TEST_F(RingBufferSkipTest, SkipEmptyBuffer) {
+TEST_F(RingBufferTest, SkipEmptyBuffer) {
+    ASSERT_TRUE(rb.allocate(64));
     EXPECT_FALSE(rb.skip<int>(1));
     EXPECT_EQ(rb.skip(1, 10, true), 0);
 }
 
-TEST_F(RingBufferSkipTest, DrainClearsEverything) {
+TEST_F(RingBufferTest, DrainClearsEverything) {
+    ASSERT_TRUE(rb.allocate(64));
     rb.writeAll(1, 2, 3, 4, 5);
     ASSERT_GT(rb.availableBytes(), 0);
 
@@ -888,3 +880,67 @@ TEST_F(RingBufferSkipTest, DrainClearsEverything) {
     EXPECT_EQ(rb.availableBytes(), 0);
     EXPECT_TRUE(rb.isEmpty());
 }
+
+TEST_F(RingBufferTest, SkipHandlesWrapAroundCorrectly) {
+    ASSERT_TRUE(rb.allocate(64));
+    // 1. Write 60 bytes of padding.
+    // We use a const span to ensure we hit the "Collection" overload.
+    uint8_t padding[60] = {0};
+    ASSERT_EQ(rb.write(std::span<const uint8_t>{padding}), 60);
+
+    // 2. Skip 56 bytes. Read pointer is now at index 56.
+    // 4 bytes of padding remain in the buffer.
+    EXPECT_TRUE(rb.skip<uint8_t>(56));
+    ASSERT_EQ(rb.availableBytes(), 4);
+
+    // 3. Write 3 uint32_ts (12 bytes).
+    // The first 4 bytes fill up to index 64 (the wrap point).
+    // The last 8 bytes wrap around to index 0.
+    uint32_t v1 = 0xDEADBEEF, v2 = 0xCAFEBABE, v3 = 0xAAAA5555;
+    rb.writeAll(v1, v2, v3);
+
+    // Total available: 4 (padding) + 12 (new data) = 16 bytes.
+    ASSERT_EQ(rb.availableBytes(), 16);
+
+    // 4. Skip 3 uint32_ts (12 bytes).
+    // This skip must handle the jump from index 60ish back to index 4ish.
+    EXPECT_TRUE(rb.skip<uint32_t>(3));
+
+    // 5. Verify 4 bytes remain (the original padding trailing the write).
+    EXPECT_EQ(rb.availableBytes(), 4);
+
+    // 6. Final verification: If we skip those 4 bytes, the buffer should be empty.
+    uint32_t result = 0;
+    EXPECT_TRUE(rb.read(result));
+    EXPECT_EQ(result, v3);
+    EXPECT_TRUE(rb.isEmpty());
+}
+
+TEST_F(RingBufferTest, SkipTransactionalIntegrity) {
+    ASSERT_TRUE(rb.allocate(64));
+    rb.writeAll(100, 200, 300); // 12 bytes
+    auto initialReadPos = rb.availableBytes();
+
+    // Try to skip 100 integers (impossible)
+    bool success = rb.skip<int>(100);
+
+    EXPECT_FALSE(success);
+    // The read position must not have moved by even one byte
+    EXPECT_EQ(rb.availableBytes(), initialReadPos);
+
+    // Verify we can still read the first value correctly
+    int first;
+    rb.read(first);
+    EXPECT_EQ(first, 100);
+}
+
+// This helper uses a trailing return type.
+// If r.write(p) is deleted, substitution fails here (SFINAE).
+auto can_write = [](auto &r, auto p) -> decltype(r.write(p), std::true_type{}) { return {}; };
+
+// We check if the lambda can be called with these arguments.
+static_assert(!std::is_invocable_v<decltype(can_write), CXXRingBuffer::RingBuffer &, int *>,
+              "Safety Failure: RingBuffer should NOT allow writing a pointer.");
+
+static_assert(std::is_invocable_v<decltype(can_write), CXXRingBuffer::RingBuffer &, int>,
+              "Error: Basic write(int) should be valid.");
