@@ -29,7 +29,7 @@ ring::RingBuffer::RingBuffer(RingBuffer &&other) noexcept
       writePosition_{other.writePosition_.exchange(0, std::memory_order_relaxed)},
       readPosition_{other.readPosition_.exchange(0, std::memory_order_relaxed)} {}
 
-ring::RingBuffer &ring::RingBuffer::operator=(RingBuffer &&other) noexcept {
+auto ring::RingBuffer::operator=(RingBuffer &&other) noexcept -> RingBuffer & {
     if (this != &other) [[likely]] {
         std::free(buffer_);
 
