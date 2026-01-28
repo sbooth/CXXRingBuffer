@@ -514,7 +514,7 @@ template <TriviallyCopyable T> inline bool RingBuffer::read(T &value) noexcept {
 
 template <TriviallyCopyableAndDefaultInitializable T>
 inline auto RingBuffer::read() noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
-    if (std::optional<T> result; readValue(result.emplace())) {
+    if (std::optional<T> result; read(result.emplace())) {
         return result;
     }
     return std::nullopt;
@@ -584,7 +584,7 @@ template <TriviallyCopyable T> inline bool RingBuffer::peek(T &value) const noex
 
 template <TriviallyCopyableAndDefaultInitializable T>
 inline auto RingBuffer::peek() const noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
-    if (std::optional<T> result; peekValue(result.emplace())) {
+    if (std::optional<T> result; peek(result.emplace())) {
         return result;
     }
     return std::nullopt;
