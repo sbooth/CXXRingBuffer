@@ -175,8 +175,8 @@ class RingBuffer final {
     template <TriviallyCopyable T> bool write(const T &value) noexcept;
 
     template <typename T>
-        requires std::is_pointer_v<T>
-    bool write(T ptr) = delete;
+        requires std::is_pointer_v<std::remove_cvref_t<T>>
+    bool write(T &&) = delete;
 
     /// Writes values and advances the write position.
     /// @note This method is only safe to call from the producer.
@@ -216,8 +216,8 @@ class RingBuffer final {
     template <TriviallyCopyable T> bool read(T &value) noexcept;
 
     template <typename T>
-        requires std::is_pointer_v<T>
-    bool read(T &value) = delete;
+        requires std::is_pointer_v<std::remove_cvref_t<T>>
+    bool read(T &&) = delete;
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -270,8 +270,8 @@ class RingBuffer final {
     template <TriviallyCopyable T> [[nodiscard]] bool peek(T &value) const noexcept;
 
     template <typename T>
-        requires std::is_pointer_v<T>
-    bool peek(T ptr) const = delete;
+        requires std::is_pointer_v<std::remove_cvref_t<T>>
+    bool peek(T &&) const = delete;
 
     /// Reads a value without advancing the read position.
     /// @note This method is only safe to call from the consumer.
