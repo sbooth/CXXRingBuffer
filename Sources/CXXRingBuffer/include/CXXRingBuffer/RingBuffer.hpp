@@ -146,7 +146,7 @@ class RingBuffer final {
     /// @return true if the buffer contains no data.
     [[nodiscard]] bool isEmpty() const noexcept;
 
-    // MARK: Writing Data
+    // MARK: Writing
 
     /// Writes data and advances the write position.
     /// @note This method is only safe to call from the producer.
@@ -187,7 +187,7 @@ class RingBuffer final {
         requires(sizeof...(Args) > 1)
     bool writeAll(const Args &...args) noexcept;
 
-    // MARK: Reading Data
+    // MARK: Reading
 
     /// Reads data and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -245,7 +245,7 @@ class RingBuffer final {
         requires(sizeof...(Args) > 1)
     std::optional<std::tuple<Args...>> readAll() noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
 
-    // MARK: Peeking Data
+    // MARK: Peeking
 
     /// Reads data without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -391,7 +391,7 @@ inline bool RingBuffer::isEmpty() const noexcept {
     return writePos == readPos;
 }
 
-// MARK: Writing Data
+// MARK: Writing
 
 inline auto RingBuffer::write(const void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
                               bool allowPartial) noexcept -> SizeType {
@@ -468,7 +468,7 @@ inline bool RingBuffer::writeAll(const Args &...args) noexcept {
     return true;
 }
 
-// MARK: Reading Data
+// MARK: Reading
 
 inline auto RingBuffer::read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
                              bool allowPartial) noexcept -> SizeType {
@@ -542,7 +542,7 @@ inline auto RingBuffer::readAll() noexcept((std::is_nothrow_default_constructibl
     return result;
 }
 
-// MARK: Peeking Data
+// MARK: Peeking
 
 inline bool RingBuffer::peek(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount) const noexcept {
     if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
