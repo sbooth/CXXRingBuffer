@@ -194,7 +194,7 @@ class RingBuffer final {
     /// @param ptr An address to receive the data.
     /// @param itemSize The size of an individual item in bytes.
     /// @param itemCount The desired number of items to read.
-    /// @param allowPartial Whether any items should be read if the number of items available for reading is less than
+    /// @param allowPartial Whether any items should be read if the number of items available to read is less than
     /// itemCount.
     /// @return The number of items actually read.
     SizeType read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
@@ -203,7 +203,7 @@ class RingBuffer final {
     /// @note This method is only safe to call from the consumer.
     /// @tparam T The type to read.
     /// @param buffer A span to receive the items.
-    /// @param allowPartial Whether any items should be read if the number of items available for reading is less than
+    /// @param allowPartial Whether any items should be read if the number of items available to read is less than
     /// buffer.size().
     /// @return The number of items actually read.
     template <TriviallyCopyable T> SizeType read(std::span<T> buffer, bool allowPartial = true) noexcept;
@@ -306,7 +306,8 @@ class RingBuffer final {
     /// @note This method is only safe to call from the consumer.
     /// @param itemSize The size of an individual item in bytes.
     /// @param itemCount The desired number of items to skip.
-    /// @param allowPartial Whether any items should be skipped if the number of items available is less than itemCount.
+    /// @param allowPartial Whether any items should be skipped if the number of items available to skip is less than
+    /// itemCount.
     /// @return The number of items actually skipped.
     SizeType skip(SizeType itemSize, SizeType itemCount, bool allowPartial = true) noexcept;
 
