@@ -43,6 +43,14 @@ concept TriviallyCopyable = std::is_trivially_copyable_v<T>;
 template <typename T>
 concept TriviallyCopyableAndDefaultInitializable = TriviallyCopyable<T> && std::default_initializable<T>;
 
+template <typename T> struct is_span_trait : std::false_type {};
+template <typename T, std::size_t Extent> struct is_span_trait<std::span<T, Extent>> : std::true_type {};
+
+template <typename T> inline constexpr bool is_span_v = is_span_trait<std::remove_cvref_t<T>>::value;
+
+template <typename T>
+concept SingleValue = !std::is_pointer_v<std::remove_cvref_t<T>> && !is_span_v<std::remove_cvref_t<T>>;
+
 /// A lock-free SPSC ring buffer.
 ///
 /// This class is thread safe when used with a single producer and a single consumer.
@@ -172,7 +180,7 @@ class RingBuffer final {
     /// @tparam T The type to write.
     /// @param value The value to write.
     /// @return true if value was successfully written.
-    template <TriviallyCopyable T> bool write(const T &value) noexcept;
+    bool write(SingleValue auto const &value) noexcept;
 
     template <typename T>
         requires std::is_pointer_v<std::remove_cvref_t<T>>
@@ -213,7 +221,7 @@ class RingBuffer final {
     /// @tparam T The type to read.
     /// @param value The destination value.
     /// @return true on success, false otherwise.
-    template <TriviallyCopyable T> bool read(T &value) noexcept;
+    bool read(SingleValue auto &value) noexcept;
 
     template <typename T>
         requires std::is_pointer_v<std::remove_cvref_t<T>>
@@ -267,7 +275,7 @@ class RingBuffer final {
     /// @tparam T The type to read.
     /// @param value The destination value.
     /// @return true on success, false otherwise.
-    template <TriviallyCopyable T> [[nodiscard]] bool peek(T &value) const noexcept;
+    [[nodiscard]] bool peek(SingleValue auto &value) const noexcept;
 
     template <typename T>
         requires std::is_pointer_v<std::remove_cvref_t<T>>
@@ -440,7 +448,7 @@ inline auto RingBuffer::write(std::span<const T> data, bool allowPartial) noexce
     return write(data.data(), sizeof(T), data.size(), allowPartial);
 }
 
-template <TriviallyCopyable T> inline bool RingBuffer::write(const T &value) noexcept {
+inline bool RingBuffer::write(SingleValue auto const &value) noexcept {
     return write(static_cast<const void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 }
 
@@ -516,7 +524,7 @@ inline auto RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept ->
     return read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
 }
 
-template <TriviallyCopyable T> inline bool RingBuffer::read(T &value) noexcept {
+inline bool RingBuffer::read(SingleValue auto &value) noexcept {
     return read(std::addressof(value), sizeof value, 1, false) == 1;
 }
 
@@ -586,7 +594,7 @@ template <TriviallyCopyable T> inline bool RingBuffer::peek(std::span<T> buffer)
     return peek(buffer.data(), sizeof(T), buffer.size());
 }
 
-template <TriviallyCopyable T> inline bool RingBuffer::peek(T &value) const noexcept {
+inline bool RingBuffer::peek(SingleValue auto &value) const noexcept {
     return peek(std::addressof(value), sizeof value, 1);
 }
 
