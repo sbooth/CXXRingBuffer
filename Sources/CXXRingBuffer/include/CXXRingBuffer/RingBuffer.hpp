@@ -146,7 +146,7 @@ class RingBuffer final {
     /// @return true if the buffer contains no data.
     [[nodiscard]] bool isEmpty() const noexcept;
 
-    // MARK: Writing and Reading Data
+    // MARK: Writing
 
     /// Writes data and advances the write position.
     /// @note This method is only safe to call from the producer.
@@ -158,6 +158,37 @@ class RingBuffer final {
     /// @return The number of items actually written.
     SizeType write(const void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
 
+    /// Writes items and advances the write position.
+    /// @note This method is only safe to call from the producer.
+    /// @tparam T The type to write.
+    /// @param data A span containing the items to copy.
+    /// @param allowPartial Whether any items should be written if insufficient free space is available to write all
+    /// items.
+    /// @return The number of items actually written.
+    template <TriviallyCopyable T> SizeType write(std::span<const T> data, bool allowPartial = true) noexcept;
+
+    /// Writes a value and advances the write position.
+    /// @note This method is only safe to call from the producer.
+    /// @tparam T The type to write.
+    /// @param value The value to write.
+    /// @return true if value was successfully written.
+    template <TriviallyCopyable T> bool write(const T &value) noexcept;
+
+    template <typename T>
+        requires std::is_pointer_v<std::remove_cvref_t<T>>
+    bool write(T &&) = delete;
+
+    /// Writes values and advances the write position.
+    /// @note This method is only safe to call from the producer.
+    /// @tparam Args The types to write.
+    /// @param args The values to write.
+    /// @return true if the values were successfully written.
+    template <TriviallyCopyable... Args>
+        requires(sizeof...(Args) > 1)
+    bool writeAll(const Args &...args) noexcept;
+
+    // MARK: Reading
+
     /// Reads data and advances the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param ptr An address to receive the data.
@@ -168,6 +199,54 @@ class RingBuffer final {
     /// @return The number of items actually read.
     SizeType read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept;
 
+    /// Reads items and advances the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam T The type to read.
+    /// @param buffer A span to receive the items.
+    /// @param allowPartial Whether any items should be read if the number of items available for reading is less than
+    /// buffer.size().
+    /// @return The number of items actually read.
+    template <TriviallyCopyable T> SizeType read(std::span<T> buffer, bool allowPartial = true) noexcept;
+
+    /// Reads a value and advances the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam T The type to read.
+    /// @param value The destination value.
+    /// @return true on success, false otherwise.
+    template <TriviallyCopyable T> bool read(T &value) noexcept;
+
+    template <typename T>
+        requires std::is_pointer_v<std::remove_cvref_t<T>>
+    bool read(T &&) = delete;
+
+    /// Reads a value and advances the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam T The type to read.
+    /// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
+    /// @throw Any exceptions thrown by the default constructor of T.
+    template <TriviallyCopyableAndDefaultInitializable T>
+    std::optional<T> read() noexcept(std::is_nothrow_default_constructible_v<T>);
+
+    /// Reads values and advances the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam Args The types to read.
+    /// @param args The destination values.
+    /// @return true if the values were successfully read.
+    template <TriviallyCopyable... Args>
+        requires(sizeof...(Args) > 1)
+    bool readAll(Args &...args) noexcept;
+
+    /// Reads values and advances the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam Args The types to read.
+    /// @return A std::optional containing a std::tuple of the values if they were successfully read.
+    /// @throw Any exceptions thrown by the default constructors of Args.
+    template <TriviallyCopyableAndDefaultInitializable... Args>
+        requires(sizeof...(Args) > 1)
+    std::optional<std::tuple<Args...>> readAll() noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
+
+    // MARK: Peeking
+
     /// Reads data without advancing the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param ptr An address to receive the data.
@@ -175,6 +254,51 @@ class RingBuffer final {
     /// @param itemCount The desired number of items to read.
     /// @return True if the requested items were read, false otherwise.
     [[nodiscard]] bool peek(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount) const noexcept;
+
+    /// Reads items without advancing the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam T The type to read.
+    /// @param buffer A span to receive the data.
+    /// @return True if the requested items were read, false otherwise.
+    template <TriviallyCopyable T> [[nodiscard]] bool peek(std::span<T> buffer) const noexcept;
+
+    /// Reads a value without advancing the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam T The type to read.
+    /// @param value The destination value.
+    /// @return true on success, false otherwise.
+    template <TriviallyCopyable T> [[nodiscard]] bool peek(T &value) const noexcept;
+
+    template <typename T>
+        requires std::is_pointer_v<std::remove_cvref_t<T>>
+    bool peek(T &&) const = delete;
+
+    /// Reads a value without advancing the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam T The type to read.
+    /// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
+    /// @throw Any exceptions thrown by the default constructor of T.
+    template <TriviallyCopyableAndDefaultInitializable T>
+    [[nodiscard]] std::optional<T> peek() const noexcept(std::is_nothrow_default_constructible_v<T>);
+
+    /// Reads values without advancing the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam Args The types to read.
+    /// @param args The destination values.
+    /// @return true if the values were successfully read.
+    template <TriviallyCopyable... Args>
+        requires(sizeof...(Args) > 1)
+    [[nodiscard]] bool peekAll(Args &...args) const noexcept;
+
+    /// Reads values without advancing the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam Args The types to read.
+    /// @return A std::optional containing a std::tuple of the values if they were successfully read.
+    /// @throw Any exceptions thrown by the default constructors of Args.
+    template <TriviallyCopyableAndDefaultInitializable... Args>
+        requires(sizeof...(Args) > 1)
+    [[nodiscard]] std::optional<std::tuple<Args...>> peekAll() const
+            noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
 
     // MARK: Discarding Data
 
@@ -189,120 +313,6 @@ class RingBuffer final {
     /// @note This method is only safe to call from the consumer.
     /// @return The number of bytes discarded.
     SizeType drain() noexcept;
-
-    // MARK: Writing and Reading Spans
-
-    /// Writes items and advances the write position.
-    /// @note This method is only safe to call from the producer.
-    /// @tparam T The type to write.
-    /// @param data A span containing the items to copy.
-    /// @param allowPartial Whether any items should be written if insufficient free space is available to write all
-    /// items.
-    /// @return The number of items actually written.
-    template <TriviallyCopyable T> SizeType write(std::span<const T> data, bool allowPartial = true) noexcept;
-
-    /// Reads items and advances the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam T The type to read.
-    /// @param buffer A span to receive the items.
-    /// @param allowPartial Whether any items should be read if the number of items available for reading is less than
-    /// buffer.size().
-    /// @return The number of items actually read.
-    template <TriviallyCopyable T> SizeType read(std::span<T> buffer, bool allowPartial = true) noexcept;
-
-    /// Reads items without advancing the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam T The type to read.
-    /// @param buffer A span to receive the data.
-    /// @return True if the requested items were read, false otherwise.
-    template <TriviallyCopyable T> [[nodiscard]] bool peek(std::span<T> buffer) const noexcept;
-
-    // MARK: Writing and Reading Single Values
-
-    /// Writes a value and advances the write position.
-    /// @note This method is only safe to call from the producer.
-    /// @tparam T The type to write.
-    /// @param value The value to write.
-    /// @return true if value was successfully written.
-    template <TriviallyCopyable T> bool writeValue(const T &value) noexcept;
-
-    /// Reads a value and advances the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam T The type to read.
-    /// @param value The destination value.
-    /// @return true on success, false otherwise.
-    template <TriviallyCopyable T> bool readValue(T &value) noexcept;
-
-    /// Reads a value and advances the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam T The type to read.
-    /// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
-    /// @throw Any exceptions thrown by the default constructor of T.
-    template <TriviallyCopyableAndDefaultInitializable T>
-    std::optional<T> readValue() noexcept(std::is_nothrow_default_constructible_v<T>);
-
-    /// Reads a value without advancing the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam T The type to read.
-    /// @param value The destination value.
-    /// @return true on success, false otherwise.
-    template <TriviallyCopyable T> [[nodiscard]] bool peekValue(T &value) const noexcept;
-
-    /// Reads a value without advancing the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam T The type to read.
-    /// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
-    /// @throw Any exceptions thrown by the default constructor of T.
-    template <TriviallyCopyableAndDefaultInitializable T>
-    [[nodiscard]] std::optional<T> peekValue() const noexcept(std::is_nothrow_default_constructible_v<T>);
-
-    // MARK: Writing and Reading Multiple Values
-
-    /// Writes values and advances the write position.
-    /// @note This method is only safe to call from the producer.
-    /// @tparam Args The types to write.
-    /// @param args The values to write.
-    /// @return true if the values were successfully written.
-    template <TriviallyCopyable... Args>
-        requires(sizeof...(Args) > 0)
-    bool writeValues(const Args &...args) noexcept;
-
-    /// Reads values and advances the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam Args The types to read.
-    /// @param args The destination values.
-    /// @return true if the values were successfully read.
-    template <TriviallyCopyable... Args>
-        requires(sizeof...(Args) > 0)
-    bool readValues(Args &...args) noexcept;
-
-    /// Reads values without advancing the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam Args The types to read.
-    /// @param args The destination values.
-    /// @return true if the values were successfully read.
-    template <TriviallyCopyable... Args>
-        requires(sizeof...(Args) > 0)
-    [[nodiscard]] bool peekValues(Args &...args) const noexcept;
-
-    /// Reads values and advances the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam Args The types to read.
-    /// @return A std::optional containing a std::tuple of the values if they were successfully read.
-    /// @throw Any exceptions thrown by the default constructors of Args.
-    template <TriviallyCopyableAndDefaultInitializable... Args>
-        requires(sizeof...(Args) > 0)
-    std::optional<std::tuple<Args...>> readValues() noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
-
-    /// Reads values without advancing the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @tparam Args The types to read.
-    /// @return A std::optional containing a std::tuple of the values if they were successfully read.
-    /// @throw Any exceptions thrown by the default constructors of Args.
-    template <TriviallyCopyableAndDefaultInitializable... Args>
-        requires(sizeof...(Args) > 0)
-    [[nodiscard]] std::optional<std::tuple<Args...>> peekValues() const
-            noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
 
     // MARK: Advanced Writing and Reading
 
@@ -381,7 +391,7 @@ inline bool RingBuffer::isEmpty() const noexcept {
     return writePos == readPos;
 }
 
-// MARK: Writing and Reading Data
+// MARK: Writing
 
 inline auto RingBuffer::write(const void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
                               bool allowPartial) noexcept -> SizeType {
@@ -417,6 +427,49 @@ inline auto RingBuffer::write(const void *const RB_NONNULL ptr, SizeType itemSiz
     return itemsToWrite;
 }
 
+template <TriviallyCopyable T>
+inline auto RingBuffer::write(std::span<const T> data, bool allowPartial) noexcept -> SizeType {
+    return write(data.data(), sizeof(T), data.size(), allowPartial);
+}
+
+template <TriviallyCopyable T> inline bool RingBuffer::write(const T &value) noexcept {
+    return write(static_cast<const void *>(std::addressof(value)), sizeof value, 1, false) == 1;
+}
+
+template <TriviallyCopyable... Args>
+    requires(sizeof...(Args) > 1)
+inline bool RingBuffer::writeAll(const Args &...args) noexcept {
+    constexpr auto totalSize = (sizeof args + ...);
+    auto [front, back] = writeVector();
+    const auto frontSize = front.size();
+
+    if (frontSize + back.size() < totalSize) {
+        return false;
+    }
+
+    std::size_t cursor = 0;
+    const auto writeArg = [&](const void *arg, std::size_t len) noexcept {
+        const auto *src = static_cast<const unsigned char *>(arg);
+        if (cursor + len <= frontSize) {
+            std::memcpy(front.data() + cursor, src, len);
+        } else if (cursor >= frontSize) {
+            std::memcpy(back.data() + (cursor - frontSize), src, len);
+        } else [[unlikely]] {
+            const std::size_t toFront = frontSize - cursor;
+            std::memcpy(front.data() + cursor, src, toFront);
+            std::memcpy(back.data(), src + toFront, len - toFront);
+        }
+        cursor += len;
+    };
+
+    (writeArg(std::addressof(args), sizeof args), ...);
+
+    commitWrite(totalSize);
+    return true;
+}
+
+// MARK: Reading
+
 inline auto RingBuffer::read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
                              bool allowPartial) noexcept -> SizeType {
     if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
@@ -450,6 +503,47 @@ inline auto RingBuffer::read(void *const RB_NONNULL ptr, SizeType itemSize, Size
     return itemsToRead;
 }
 
+template <TriviallyCopyable T>
+inline auto RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept -> SizeType {
+    return read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
+}
+
+template <TriviallyCopyable T> inline bool RingBuffer::read(T &value) noexcept {
+    return read(std::addressof(value), sizeof value, 1, false) == 1;
+}
+
+template <TriviallyCopyableAndDefaultInitializable T>
+inline auto RingBuffer::read() noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
+    if (std::optional<T> result; read(result.emplace())) {
+        return result;
+    }
+    return std::nullopt;
+}
+
+template <TriviallyCopyable... Args>
+    requires(sizeof...(Args) > 1)
+inline bool RingBuffer::readAll(Args &...args) noexcept {
+    if (!peekAll(args...)) {
+        return false;
+    }
+    commitRead((sizeof args + ...));
+    return true;
+}
+
+template <TriviallyCopyableAndDefaultInitializable... Args>
+    requires(sizeof...(Args) > 1)
+inline auto RingBuffer::readAll() noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
+        -> std::optional<std::tuple<Args...>> {
+    auto result = peekAll<Args...>();
+    if (!result) {
+        return std::nullopt;
+    }
+    commitRead((sizeof(Args) + ...));
+    return result;
+}
+
+// MARK: Peeking
+
 inline bool RingBuffer::peek(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount) const noexcept {
     if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return false;
@@ -478,6 +572,62 @@ inline bool RingBuffer::peek(void *const RB_NONNULL ptr, SizeType itemSize, Size
     }
 
     return true;
+}
+
+template <TriviallyCopyable T> inline bool RingBuffer::peek(std::span<T> buffer) const noexcept {
+    return peek(buffer.data(), sizeof(T), buffer.size());
+}
+
+template <TriviallyCopyable T> inline bool RingBuffer::peek(T &value) const noexcept {
+    return peek(std::addressof(value), sizeof value, 1);
+}
+
+template <TriviallyCopyableAndDefaultInitializable T>
+inline auto RingBuffer::peek() const noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
+    if (std::optional<T> result; peek(result.emplace())) {
+        return result;
+    }
+    return std::nullopt;
+}
+
+template <TriviallyCopyable... Args>
+    requires(sizeof...(Args) > 1)
+inline bool RingBuffer::peekAll(Args &...args) const noexcept {
+    constexpr auto totalSize = (sizeof args + ...);
+    auto [front, back] = readVector();
+    const auto frontSize = front.size();
+
+    if (frontSize + back.size() < totalSize) {
+        return false;
+    }
+
+    std::size_t cursor = 0;
+    const auto readArg = [&](void *arg, std::size_t len) noexcept {
+        auto *dst = static_cast<unsigned char *>(arg);
+        if (cursor + len <= frontSize) {
+            std::memcpy(dst, front.data() + cursor, len);
+        } else if (cursor >= frontSize) {
+            std::memcpy(dst, back.data() + (cursor - frontSize), len);
+        } else [[unlikely]] {
+            const std::size_t fromFront = frontSize - cursor;
+            std::memcpy(dst, front.data() + cursor, fromFront);
+            std::memcpy(dst + fromFront, back.data(), len - fromFront);
+        }
+        cursor += len;
+    };
+
+    (readArg(std::addressof(args), sizeof args), ...);
+    return true;
+}
+
+template <TriviallyCopyableAndDefaultInitializable... Args>
+    requires(sizeof...(Args) > 1)
+inline auto RingBuffer::peekAll() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
+        -> std::optional<std::tuple<Args...>> {
+    if (std::tuple<Args...> result; std::apply([&](Args &...args) noexcept { return peekAll(args...); }, result)) {
+        return result;
+    }
+    return std::nullopt;
 }
 
 // MARK: Discarding Data
@@ -518,148 +668,6 @@ inline auto RingBuffer::drain() noexcept -> SizeType {
 
     readPosition_.store(writePos, std::memory_order_release);
     return bytesUsed;
-}
-
-// MARK: Writing and Reading Spans
-
-template <TriviallyCopyable T>
-inline auto RingBuffer::write(std::span<const T> data, bool allowPartial) noexcept -> SizeType {
-    return write(data.data(), sizeof(T), data.size(), allowPartial);
-}
-
-template <TriviallyCopyable T>
-inline auto RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept -> SizeType {
-    return read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
-}
-
-template <TriviallyCopyable T> inline bool RingBuffer::peek(std::span<T> buffer) const noexcept {
-    return peek(buffer.data(), sizeof(T), buffer.size());
-}
-
-// MARK: Writing and Reading Single Values
-
-template <TriviallyCopyable T> inline bool RingBuffer::writeValue(const T &value) noexcept {
-    return write(static_cast<const void *>(std::addressof(value)), sizeof value, 1, false) == 1;
-}
-
-template <TriviallyCopyable T> inline bool RingBuffer::readValue(T &value) noexcept {
-    return read(static_cast<void *>(std::addressof(value)), sizeof value, 1, false) == 1;
-}
-
-template <TriviallyCopyableAndDefaultInitializable T>
-inline auto RingBuffer::readValue() noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
-    if (std::optional<T> result; readValue(result.emplace())) {
-        return result;
-    }
-    return std::nullopt;
-}
-
-template <TriviallyCopyable T> inline bool RingBuffer::peekValue(T &value) const noexcept {
-    return peek(static_cast<void *>(std::addressof(value)), sizeof value, 1);
-}
-
-template <TriviallyCopyableAndDefaultInitializable T>
-inline auto RingBuffer::peekValue() const noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
-    if (std::optional<T> result; peekValue(result.emplace())) {
-        return result;
-    }
-    return std::nullopt;
-}
-
-// MARK: Writing and Reading Multiple Values
-
-template <TriviallyCopyable... Args>
-    requires(sizeof...(Args) > 0)
-inline bool RingBuffer::writeValues(const Args &...args) noexcept {
-    constexpr auto totalSize = (sizeof args + ...);
-    auto [front, back] = writeVector();
-    const auto frontSize = front.size();
-
-    if (frontSize + back.size() < totalSize) {
-        return false;
-    }
-
-    std::size_t cursor = 0;
-    const auto writeArg = [&](const void *arg, std::size_t len) noexcept {
-        const auto *src = static_cast<const unsigned char *>(arg);
-        if (cursor + len <= frontSize) {
-            std::memcpy(front.data() + cursor, src, len);
-        } else if (cursor >= frontSize) {
-            std::memcpy(back.data() + (cursor - frontSize), src, len);
-        } else [[unlikely]] {
-            const std::size_t toFront = frontSize - cursor;
-            std::memcpy(front.data() + cursor, src, toFront);
-            std::memcpy(back.data(), src + toFront, len - toFront);
-        }
-        cursor += len;
-    };
-
-    (writeArg(std::addressof(args), sizeof args), ...);
-
-    commitWrite(totalSize);
-    return true;
-}
-
-template <TriviallyCopyable... Args>
-    requires(sizeof...(Args) > 0)
-inline bool RingBuffer::readValues(Args &...args) noexcept {
-    if (!peekValues(args...)) {
-        return false;
-    }
-    commitRead((sizeof args + ...));
-    return true;
-}
-
-template <TriviallyCopyable... Args>
-    requires(sizeof...(Args) > 0)
-inline bool RingBuffer::peekValues(Args &...args) const noexcept {
-    constexpr auto totalSize = (sizeof args + ...);
-    auto [front, back] = readVector();
-    const auto frontSize = front.size();
-
-    if (frontSize + back.size() < totalSize) {
-        return false;
-    }
-
-    std::size_t cursor = 0;
-    const auto readArg = [&](void *arg, std::size_t len) noexcept {
-        auto *dst = static_cast<unsigned char *>(arg);
-        if (cursor + len <= frontSize) {
-            std::memcpy(dst, front.data() + cursor, len);
-        } else if (cursor >= frontSize) {
-            std::memcpy(dst, back.data() + (cursor - frontSize), len);
-        } else [[unlikely]] {
-            const std::size_t fromFront = frontSize - cursor;
-            std::memcpy(dst, front.data() + cursor, fromFront);
-            std::memcpy(dst + fromFront, back.data(), len - fromFront);
-        }
-        cursor += len;
-    };
-
-    (readArg(std::addressof(args), sizeof args), ...);
-    return true;
-}
-
-template <TriviallyCopyableAndDefaultInitializable... Args>
-    requires(sizeof...(Args) > 0)
-inline auto RingBuffer::readValues() noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
-        -> std::optional<std::tuple<Args...>> {
-    auto result = peekValues<Args...>();
-    if (!result) {
-        return std::nullopt;
-    }
-    commitRead((sizeof(Args) + ...));
-    return result;
-}
-
-template <TriviallyCopyableAndDefaultInitializable... Args>
-    requires(sizeof...(Args) > 0)
-inline auto RingBuffer::peekValues() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
-        -> std::optional<std::tuple<Args...>> {
-    if (std::tuple<Args...> result; std::apply([&](Args &...args) noexcept { return peekValues(args...); }, result)) {
-        return result;
-    }
-    return std::nullopt;
 }
 
 // MARK: Advanced Writing and Reading
