@@ -16,6 +16,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <tuple>
 #include <type_traits>
@@ -40,13 +41,9 @@ namespace CXXRingBuffer {
 template <typename T>
 concept TriviallyCopyable = std::is_trivially_copyable_v<std::remove_cvref_t<T>>;
 
-template <typename T> struct is_span_trait : std::false_type {};
-template <typename T, std::size_t Extent> struct is_span_trait<std::span<T, Extent>> : std::true_type {};
-
-template <typename T> inline constexpr bool is_span_v = is_span_trait<std::remove_cvref_t<T>>::value;
-
 template <typename T>
-concept SingleValue = TriviallyCopyable<T> && !std::is_pointer_v<std::remove_cvref_t<T>> && !is_span_v<T>;
+concept ValueLike = std::is_object_v<std::remove_cvref_t<T>> && std::is_trivially_copyable_v<std::remove_cvref_t<T>> &&
+                    std::is_standard_layout_v<std::remove_cvref_t<T>> && !std::ranges::range<std::remove_cvref_t<T>>;
 
 /// A lock-free SPSC ring buffer.
 ///
@@ -174,10 +171,9 @@ class RingBuffer final {
 
     /// Writes a value and advances the write position.
     /// @note This method is only safe to call from the producer.
-
     /// @param value The value to write.
     /// @return true if value was successfully written.
-    bool write(SingleValue auto const &value) noexcept;
+    bool write(ValueLike auto const &value) noexcept;
 
     template <typename T>
         requires std::is_pointer_v<std::remove_cvref_t<T>>
@@ -188,7 +184,7 @@ class RingBuffer final {
     /// @tparam Args The types to write.
     /// @param args The values to write.
     /// @return true if the values were successfully written.
-    template <SingleValue... Args>
+    template <ValueLike... Args>
         requires(sizeof...(Args) > 1)
     bool writeAll(const Args &...args) noexcept;
 
@@ -215,10 +211,9 @@ class RingBuffer final {
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
-
     /// @param value The destination value.
     /// @return true on success, false otherwise.
-    bool read(SingleValue auto &value) noexcept;
+    bool read(ValueLike auto &value) noexcept;
 
     template <typename T>
         requires std::is_pointer_v<std::remove_cvref_t<T>>
@@ -229,14 +224,16 @@ class RingBuffer final {
     /// @tparam T The type to read.
     /// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
     /// @throw Any exceptions thrown by the default constructor of T.
-    template <SingleValue T> std::optional<T> read() noexcept(std::is_nothrow_default_constructible_v<T>);
+    template <ValueLike T>
+        requires std::default_initializable<T>
+    std::optional<T> read() noexcept(std::is_nothrow_default_constructible_v<T>);
 
     /// Reads values and advances the read position.
     /// @note This method is only safe to call from the consumer.
     /// @tparam Args The types to read.
     /// @param args The destination values.
     /// @return true if the values were successfully read.
-    template <SingleValue... Args>
+    template <ValueLike... Args>
         requires(sizeof...(Args) > 1)
     bool readAll(Args &...args) noexcept;
 
@@ -245,8 +242,8 @@ class RingBuffer final {
     /// @tparam Args The types to read.
     /// @return A std::optional containing a std::tuple of the values if they were successfully read.
     /// @throw Any exceptions thrown by the default constructors of Args.
-    template <SingleValue... Args>
-        requires(sizeof...(Args) > 1)
+    template <ValueLike... Args>
+        requires(sizeof...(Args) > 1) && (std::default_initializable<Args> && ...)
     std::optional<std::tuple<Args...>> readAll() noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
 
     // MARK: Peeking
@@ -271,7 +268,7 @@ class RingBuffer final {
 
     /// @param value The destination value.
     /// @return true on success, false otherwise.
-    [[nodiscard]] bool peek(SingleValue auto &value) const noexcept;
+    [[nodiscard]] bool peek(ValueLike auto &value) const noexcept;
 
     template <typename T>
         requires std::is_pointer_v<std::remove_cvref_t<T>>
@@ -282,7 +279,8 @@ class RingBuffer final {
     /// @tparam T The type to read.
     /// @return A std::optional containing an instance of T if sufficient bytes were available for reading.
     /// @throw Any exceptions thrown by the default constructor of T.
-    template <SingleValue T>
+    template <ValueLike T>
+        requires std::default_initializable<T>
     [[nodiscard]] std::optional<T> peek() const noexcept(std::is_nothrow_default_constructible_v<T>);
 
     /// Reads values without advancing the read position.
@@ -290,7 +288,7 @@ class RingBuffer final {
     /// @tparam Args The types to read.
     /// @param args The destination values.
     /// @return true if the values were successfully read.
-    template <SingleValue... Args>
+    template <ValueLike... Args>
         requires(sizeof...(Args) > 1)
     [[nodiscard]] bool peekAll(Args &...args) const noexcept;
 
@@ -299,8 +297,8 @@ class RingBuffer final {
     /// @tparam Args The types to read.
     /// @return A std::optional containing a std::tuple of the values if they were successfully read.
     /// @throw Any exceptions thrown by the default constructors of Args.
-    template <SingleValue... Args>
-        requires(sizeof...(Args) > 1)
+    template <ValueLike... Args>
+        requires(sizeof...(Args) > 1) && (std::default_initializable<Args> && ...)
     [[nodiscard]] std::optional<std::tuple<Args...>> peekAll() const
             noexcept((std::is_nothrow_default_constructible_v<Args> && ...));
 
@@ -319,7 +317,7 @@ class RingBuffer final {
     /// @note This method is only safe to call from the consumer.
     /// @param itemCount The number of items to skip.
     /// @return true if the items were successfully skipped.
-    template <SingleValue T> bool skip(SizeType itemCount = 1) noexcept;
+    template <ValueLike T> bool skip(SizeType itemCount = 1) noexcept;
 
     /// Advances the read position to the write position, emptying the buffer.
     /// @note This method is only safe to call from the consumer.
@@ -444,11 +442,11 @@ inline auto RingBuffer::write(std::span<const T> data, bool allowPartial) noexce
     return write(data.data(), sizeof(T), data.size(), allowPartial);
 }
 
-inline bool RingBuffer::write(SingleValue auto const &value) noexcept {
+inline bool RingBuffer::write(ValueLike auto const &value) noexcept {
     return write(static_cast<const void *>(std::addressof(value)), sizeof value, 1, false) == 1;
 }
 
-template <SingleValue... Args>
+template <ValueLike... Args>
     requires(sizeof...(Args) > 1)
 inline bool RingBuffer::writeAll(const Args &...args) noexcept {
     constexpr auto totalSize = (sizeof args + ...);
@@ -520,11 +518,12 @@ inline auto RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept ->
     return read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
 }
 
-inline bool RingBuffer::read(SingleValue auto &value) noexcept {
+inline bool RingBuffer::read(ValueLike auto &value) noexcept {
     return read(std::addressof(value), sizeof value, 1, false) == 1;
 }
 
-template <SingleValue T>
+template <ValueLike T>
+    requires std::default_initializable<T>
 inline auto RingBuffer::read() noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
     if (std::optional<T> result; read(result.emplace())) {
         return result;
@@ -532,7 +531,7 @@ inline auto RingBuffer::read() noexcept(std::is_nothrow_default_constructible_v<
     return std::nullopt;
 }
 
-template <SingleValue... Args>
+template <ValueLike... Args>
     requires(sizeof...(Args) > 1)
 inline bool RingBuffer::readAll(Args &...args) noexcept {
     if (!peekAll(args...)) {
@@ -542,8 +541,8 @@ inline bool RingBuffer::readAll(Args &...args) noexcept {
     return true;
 }
 
-template <SingleValue... Args>
-    requires(sizeof...(Args) > 1)
+template <ValueLike... Args>
+    requires(sizeof...(Args) > 1) && (std::default_initializable<Args> && ...)
 inline auto RingBuffer::readAll() noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
         -> std::optional<std::tuple<Args...>> {
     auto result = peekAll<Args...>();
@@ -590,11 +589,12 @@ template <TriviallyCopyable T> inline bool RingBuffer::peek(std::span<T> buffer)
     return peek(buffer.data(), sizeof(T), buffer.size());
 }
 
-inline bool RingBuffer::peek(SingleValue auto &value) const noexcept {
+inline bool RingBuffer::peek(ValueLike auto &value) const noexcept {
     return peek(std::addressof(value), sizeof value, 1);
 }
 
-template <SingleValue T>
+template <ValueLike T>
+    requires std::default_initializable<T>
 inline auto RingBuffer::peek() const noexcept(std::is_nothrow_default_constructible_v<T>) -> std::optional<T> {
     if (std::optional<T> result; peek(result.emplace())) {
         return result;
@@ -602,7 +602,7 @@ inline auto RingBuffer::peek() const noexcept(std::is_nothrow_default_constructi
     return std::nullopt;
 }
 
-template <SingleValue... Args>
+template <ValueLike... Args>
     requires(sizeof...(Args) > 1)
 inline bool RingBuffer::peekAll(Args &...args) const noexcept {
     constexpr auto totalSize = (sizeof args + ...);
@@ -632,8 +632,8 @@ inline bool RingBuffer::peekAll(Args &...args) const noexcept {
     return true;
 }
 
-template <SingleValue... Args>
-    requires(sizeof...(Args) > 1)
+template <ValueLike... Args>
+    requires(sizeof...(Args) > 1) && (std::default_initializable<Args> && ...)
 inline auto RingBuffer::peekAll() const noexcept((std::is_nothrow_default_constructible_v<Args> && ...))
         -> std::optional<std::tuple<Args...>> {
     if (std::tuple<Args...> result; std::apply([&](Args &...args) noexcept { return peekAll(args...); }, result)) {
@@ -665,7 +665,7 @@ inline auto RingBuffer::skip(SizeType itemSize, SizeType itemCount, bool allowPa
     return itemsToSkip;
 }
 
-template <SingleValue T> inline bool RingBuffer::skip(SizeType itemCount) noexcept {
+template <ValueLike T> inline bool RingBuffer::skip(SizeType itemCount) noexcept {
     return skip(sizeof(T), itemCount, false) == itemCount;
 }
 
