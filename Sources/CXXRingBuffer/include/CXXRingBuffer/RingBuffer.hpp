@@ -266,7 +266,6 @@ class RingBuffer final {
 
     /// Reads a value without advancing the read position.
     /// @note This method is only safe to call from the consumer.
-
     /// @param value The destination value.
     /// @return true on success, false otherwise.
     [[nodiscard]] bool peek(ValueLike auto &value) const noexcept;
