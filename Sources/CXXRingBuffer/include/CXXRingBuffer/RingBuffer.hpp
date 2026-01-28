@@ -39,12 +39,12 @@
 namespace CXXRingBuffer {
 
 template <typename T>
-concept TriviallySerializable =
+concept ByteCopyable =
         std::is_object_v<std::remove_cvref_t<T>> && std::is_trivially_copyable_v<std::remove_cvref_t<T>> &&
         std::is_standard_layout_v<std::remove_cvref_t<T>> && !std::is_pointer_v<std::remove_cvref_t<T>>;
 
 template <typename T>
-concept ValueLike = TriviallySerializable<T> && !std::ranges::range<std::remove_cvref_t<T>>;
+concept ValueLike = ByteCopyable<T> && !std::ranges::range<std::remove_cvref_t<T>>;
 
 /// A lock-free SPSC ring buffer.
 ///
@@ -168,7 +168,7 @@ class RingBuffer final {
     /// @param allowPartial Whether any items should be written if insufficient free space is available to write all
     /// items.
     /// @return The number of items actually written.
-    template <TriviallySerializable T> SizeType write(std::span<const T> data, bool allowPartial = true) noexcept;
+    template <ByteCopyable T> SizeType write(std::span<const T> data, bool allowPartial = true) noexcept;
 
     /// Writes a value and advances the write position.
     /// @note This method is only safe to call from the producer.
@@ -208,7 +208,7 @@ class RingBuffer final {
     /// @param allowPartial Whether any items should be read if the number of items available to read is less than
     /// buffer.size().
     /// @return The number of items actually read.
-    template <TriviallySerializable T> SizeType read(std::span<T> buffer, bool allowPartial = true) noexcept;
+    template <ByteCopyable T> SizeType read(std::span<T> buffer, bool allowPartial = true) noexcept;
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -262,7 +262,7 @@ class RingBuffer final {
     /// @tparam T The type to read.
     /// @param buffer A span to receive the data.
     /// @return True if the requested items were read, false otherwise.
-    template <TriviallySerializable T> [[nodiscard]] bool peek(std::span<T> buffer) const noexcept;
+    template <ByteCopyable T> [[nodiscard]] bool peek(std::span<T> buffer) const noexcept;
 
     /// Reads a value without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -438,7 +438,7 @@ inline auto RingBuffer::write(const void *const RB_NONNULL ptr, SizeType itemSiz
     return itemsToWrite;
 }
 
-template <TriviallySerializable T>
+template <ByteCopyable T>
 inline auto RingBuffer::write(std::span<const T> data, bool allowPartial) noexcept -> SizeType {
     return write(data.data(), sizeof(T), data.size(), allowPartial);
 }
@@ -514,8 +514,7 @@ inline auto RingBuffer::read(void *const RB_NONNULL ptr, SizeType itemSize, Size
     return itemsToRead;
 }
 
-template <TriviallySerializable T>
-inline auto RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept -> SizeType {
+template <ByteCopyable T> inline auto RingBuffer::read(std::span<T> buffer, bool allowPartial) noexcept -> SizeType {
     return read(buffer.data(), sizeof(T), buffer.size(), allowPartial);
 }
 
@@ -586,7 +585,7 @@ inline bool RingBuffer::peek(void *const RB_NONNULL ptr, SizeType itemSize, Size
     return true;
 }
 
-template <TriviallySerializable T> inline bool RingBuffer::peek(std::span<T> buffer) const noexcept {
+template <ByteCopyable T> inline bool RingBuffer::peek(std::span<T> buffer) const noexcept {
     return peek(buffer.data(), sizeof(T), buffer.size());
 }
 
