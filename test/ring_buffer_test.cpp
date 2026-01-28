@@ -906,10 +906,10 @@ TEST_F(RingBufferTest, SkipHandlesWrapAroundCorrectly) {
     // This skip must handle the jump from index 60ish back to index 4ish.
     EXPECT_TRUE(rb.skip<uint32_t>(3));
 
-    // 5. Verify 4 bytes remain (the original padding trailing the write).
+    // 5. Verify 4 bytes remain, which correspond to the final uint32_t (v3).
     EXPECT_EQ(rb.availableBytes(), 4);
 
-    // 6. Final verification: If we skip those 4 bytes, the buffer should be empty.
+    // 6. Final verification: Reading those 4 bytes should yield v3, and then the buffer is empty.
     uint32_t result = 0;
     EXPECT_TRUE(rb.read(result));
     EXPECT_EQ(result, v3);
@@ -919,18 +919,18 @@ TEST_F(RingBufferTest, SkipHandlesWrapAroundCorrectly) {
 TEST_F(RingBufferTest, SkipTransactionalIntegrity) {
     ASSERT_TRUE(rb.allocate(64));
     rb.writeAll(100, 200, 300); // 12 bytes
-    auto initialReadPos = rb.availableBytes();
+    auto initialAvailableBytes = rb.availableBytes();
 
     // Try to skip 100 integers (impossible)
     bool success = rb.skip<int>(100);
 
     EXPECT_FALSE(success);
-    // The read position must not have moved by even one byte
-    EXPECT_EQ(rb.availableBytes(), initialReadPos);
+    // The amount of data available to read must not have changed
+    EXPECT_EQ(rb.availableBytes(), initialAvailableBytes);
 
     // Verify we can still read the first value correctly
-    int first;
-    rb.read(first);
+    int first = 0;
+    ASSERT_TRUE(rb.read(first));
     EXPECT_EQ(first, 100);
 }
 
