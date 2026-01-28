@@ -175,7 +175,7 @@ class RingBuffer final {
 
     /// Writes a value and advances the write position.
     /// @note This method is only safe to call from the producer.
-    /// @tparam T The type to write.
+
     /// @param value The value to write.
     /// @return true if value was successfully written.
     bool write(SingleValue auto const &value) noexcept;
@@ -216,7 +216,7 @@ class RingBuffer final {
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
-    /// @tparam T The type to read.
+
     /// @param value The destination value.
     /// @return true on success, false otherwise.
     bool read(SingleValue auto &value) noexcept;
@@ -269,7 +269,7 @@ class RingBuffer final {
 
     /// Reads a value without advancing the read position.
     /// @note This method is only safe to call from the consumer.
-    /// @tparam T The type to read.
+
     /// @param value The destination value.
     /// @return true on success, false otherwise.
     [[nodiscard]] bool peek(SingleValue auto &value) const noexcept;
