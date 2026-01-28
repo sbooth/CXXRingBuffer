@@ -6,9 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(CXXRingBuffer
     Sources/CXXRingBuffer/RingBuffer.cpp
-    Sources/CXXRingBuffer/include/CXXRingBuffer/RingBuffer.hpp
+    Sources/CXXRingBuffer/include/ring/RingBuffer.hpp
 )
-add_library(CXXRingBuffer::RingBuffer ALIAS CXXRingBuffer)
+add_library(ring::RingBuffer ALIAS CXXRingBuffer)
 
 target_include_directories(CXXRingBuffer PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CXXRingBuffer/include>
@@ -34,7 +34,7 @@ install(DIRECTORY Sources/CXXRingBuffer/include/ DESTINATION ${CMAKE_INSTALL_INC
 
 install(EXPORT CXXRingBufferTargets
     FILE CXXRingBufferTargets.cmake
-    NAMESPACE CXXRingBuffer::
+    NAMESPACE ring::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CXXRingBuffer
 )
 
@@ -49,7 +49,7 @@ if(BUILD_TESTING)
 
     target_link_libraries(run_tests
         PRIVATE
-            CXXRingBuffer::RingBuffer
+            ring::RingBuffer
             GTest::gtest_main
     )
 

@@ -7,6 +7,6 @@
 
 module CXXRingBuffer {
     requires cplusplus20
-    header "CXXRingBuffer/RingBuffer.hpp"
+    header "ring/RingBuffer.hpp"
     export *
 }
