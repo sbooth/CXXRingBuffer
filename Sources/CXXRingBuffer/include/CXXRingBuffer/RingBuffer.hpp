@@ -83,16 +83,13 @@ class RingBuffer final {
     /// supported.
     explicit RingBuffer(SizeType minCapacity);
 
-    // This class is non-copyable
     RingBuffer(const RingBuffer &) = delete;
+    RingBuffer &operator=(const RingBuffer &) = delete;
 
     /// Creates a ring buffer by moving the contents of another ring buffer.
     /// @note This method is not thread safe for the ring buffer being moved.
     /// @param other The ring buffer to move.
     RingBuffer(RingBuffer &&other) noexcept;
-
-    // This class is non-assignable
-    RingBuffer &operator=(const RingBuffer &) = delete;
 
     /// Moves the contents of another ring buffer into this ring buffer.
     /// @note This method is not thread safe.
