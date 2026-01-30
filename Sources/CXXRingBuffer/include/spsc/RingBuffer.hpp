@@ -36,7 +36,7 @@
 #define RB_NULLABLE
 #endif
 
-namespace CXXRingBuffer {
+namespace spsc {
 
 template <typename T>
 concept ByteCopyable =
@@ -723,4 +723,4 @@ inline void RingBuffer::commitRead(SizeType count) noexcept {
     readPosition_.store(readPos + count, std::memory_order_release);
 }
 
-} /* namespace CXXRingBuffer */
+} /* namespace spsc */
