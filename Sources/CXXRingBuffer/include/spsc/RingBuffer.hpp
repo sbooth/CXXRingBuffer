@@ -36,7 +36,7 @@
 #define RB_NULLABLE
 #endif
 
-namespace CXXRingBuffer {
+namespace spsc {
 
 template <typename T>
 concept ByteCopyable =
@@ -83,16 +83,13 @@ class RingBuffer final {
     /// supported.
     explicit RingBuffer(SizeType minCapacity);
 
-    // This class is non-copyable
     RingBuffer(const RingBuffer &) = delete;
+    RingBuffer &operator=(const RingBuffer &) = delete;
 
     /// Creates a ring buffer by moving the contents of another ring buffer.
     /// @note This method is not thread safe for the ring buffer being moved.
     /// @param other The ring buffer to move.
     RingBuffer(RingBuffer &&other) noexcept;
-
-    // This class is non-assignable
-    RingBuffer &operator=(const RingBuffer &) = delete;
 
     /// Moves the contents of another ring buffer into this ring buffer.
     /// @note This method is not thread safe.
@@ -176,10 +173,6 @@ class RingBuffer final {
     /// @return true if value was successfully written.
     bool write(ValueLike auto const &value) noexcept;
 
-    template <typename T>
-        requires std::is_pointer_v<std::remove_cvref_t<T>>
-    bool write(T &&) = delete;
-
     /// Writes values and advances the write position.
     /// @note This method is only safe to call from the producer.
     /// @tparam Args The types to write.
@@ -215,10 +208,6 @@ class RingBuffer final {
     /// @param value The destination value.
     /// @return true on success, false otherwise.
     bool read(ValueLike auto &value) noexcept;
-
-    template <typename T>
-        requires std::is_pointer_v<std::remove_cvref_t<T>>
-    bool read(T &&) = delete;
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -269,10 +258,6 @@ class RingBuffer final {
     /// @param value The destination value.
     /// @return true on success, false otherwise.
     [[nodiscard]] bool peek(ValueLike auto &value) const noexcept;
-
-    template <typename T>
-        requires std::is_pointer_v<std::remove_cvref_t<T>>
-    bool peek(T &&) const = delete;
 
     /// Reads a value without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -738,4 +723,4 @@ inline void RingBuffer::commitRead(SizeType count) noexcept {
     readPosition_.store(readPos + count, std::memory_order_release);
 }
 
-} /* namespace CXXRingBuffer */
+} /* namespace spsc */

@@ -5,7 +5,7 @@
 // Part of https://github.com/sbooth/CXXRingBuffer
 //
 
-#include "CXXRingBuffer/RingBuffer.hpp"
+#include "spsc/RingBuffer.hpp"
 
 #include <bit>
 #include <cstdlib>
@@ -14,7 +14,7 @@
 
 // MARK: Construction and Destruction
 
-CXXRingBuffer::RingBuffer::RingBuffer(SizeType minCapacity) {
+spsc::RingBuffer::RingBuffer(SizeType minCapacity) {
     if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]] {
         throw std::invalid_argument("capacity out of range");
     }
@@ -23,13 +23,13 @@ CXXRingBuffer::RingBuffer::RingBuffer(SizeType minCapacity) {
     }
 }
 
-CXXRingBuffer::RingBuffer::RingBuffer(RingBuffer &&other) noexcept
+spsc::RingBuffer::RingBuffer(RingBuffer &&other) noexcept
     : buffer_{std::exchange(other.buffer_, nullptr)}, capacity_{std::exchange(other.capacity_, 0)},
       capacityMask_{std::exchange(other.capacityMask_, 0)},
       writePosition_{other.writePosition_.exchange(0, std::memory_order_relaxed)},
       readPosition_{other.readPosition_.exchange(0, std::memory_order_relaxed)} {}
 
-CXXRingBuffer::RingBuffer &CXXRingBuffer::RingBuffer::operator=(RingBuffer &&other) noexcept {
+auto spsc::RingBuffer::operator=(RingBuffer &&other) noexcept -> RingBuffer & {
     if (this != &other) [[likely]] {
         std::free(buffer_);
 
@@ -43,11 +43,11 @@ CXXRingBuffer::RingBuffer &CXXRingBuffer::RingBuffer::operator=(RingBuffer &&oth
     return *this;
 }
 
-CXXRingBuffer::RingBuffer::~RingBuffer() noexcept { std::free(buffer_); }
+spsc::RingBuffer::~RingBuffer() noexcept { std::free(buffer_); }
 
 // MARK: Buffer Management
 
-bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
+bool spsc::RingBuffer::allocate(SizeType minCapacity) noexcept {
     if (minCapacity < RingBuffer::minCapacity || minCapacity > RingBuffer::maxCapacity) [[unlikely]] {
         return false;
     }
@@ -70,7 +70,7 @@ bool CXXRingBuffer::RingBuffer::allocate(SizeType minCapacity) noexcept {
     return true;
 }
 
-void CXXRingBuffer::RingBuffer::deallocate() noexcept {
+void spsc::RingBuffer::deallocate() noexcept {
     if (buffer_ != nullptr) [[likely]] {
         std::free(buffer_);
 
