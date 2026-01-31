@@ -542,7 +542,8 @@ inline auto RingBuffer::readAll() noexcept((std::is_nothrow_default_constructibl
 // MARK: Peeking
 
 inline bool RingBuffer::peek(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount) const noexcept {
-    if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
+    assert(ptr != nullptr);
+    if (itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return false;
     }
 
