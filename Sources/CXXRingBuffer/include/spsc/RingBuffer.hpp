@@ -390,7 +390,8 @@ inline bool RingBuffer::isEmpty() const noexcept {
 
 inline auto RingBuffer::write(const void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
                               bool allowPartial) noexcept -> SizeType {
-    if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
+    assert(ptr != nullptr);
+    if (itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return 0;
     }
 
@@ -467,7 +468,8 @@ inline bool RingBuffer::writeAll(const Args &...args) noexcept {
 
 inline auto RingBuffer::read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
                              bool allowPartial) noexcept -> SizeType {
-    if ((ptr == nullptr) || itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
+    assert(ptr != nullptr);
+    if (itemSize == 0 || itemCount == 0 || capacity_ == 0) [[unlikely]] {
         return 0;
     }
 
