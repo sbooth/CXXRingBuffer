@@ -9,7 +9,6 @@
 
 #include <bit>
 #include <cstdlib>
-#include <new>
 #include <stdexcept>
 
 // MARK: Construction and Destruction
