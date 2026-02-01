@@ -39,16 +39,6 @@
 
 namespace spsc {
 
-#ifdef __cpp_lib_hardware_interference_size
-inline constexpr std::size_t destructiveInterferenceSize = std::hardware_destructive_interference_size;
-#else
-#if defined(__APPLE__) && defined(__aarch64__)
-inline constexpr std::size_t destructiveInterferenceSize = 128;
-#else
-inline constexpr std::size_t destructiveInterferenceSize = 64;
-#endif
-#endif
-
 template <typename T>
 concept ByteCopyable =
         std::is_object_v<std::remove_cvref_t<T>> && std::is_trivially_copyable_v<std::remove_cvref_t<T>> &&
@@ -352,6 +342,16 @@ class RingBuffer final {
     SizeType capacity_{0};
     /// The capacity of buffer_ in bytes minus one.
     SizeType capacityMask_{0};
+
+#ifdef __cpp_lib_hardware_interference_size
+    static constexpr std::size_t destructiveInterferenceSize = std::hardware_destructive_interference_size;
+#else
+#if defined(__APPLE__) && defined(__aarch64__)
+    static constexpr std::size_t destructiveInterferenceSize = 128;
+#else
+    static constexpr std::size_t destructiveInterferenceSize = 64;
+#endif
+#endif
 
     /// The free-running write location.
     alignas(destructiveInterferenceSize) AtomicSizeType writePosition_{0};
