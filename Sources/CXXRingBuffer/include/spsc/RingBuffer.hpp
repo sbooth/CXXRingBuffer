@@ -378,9 +378,7 @@ class RingBuffer final {
     /// Writes data and advances the write position.
     /// @param data The data to copy to the ring buffer.
     /// @return @c true if the data was successfully written or @c false if there is insufficient write space available.
-    bool write(NSData *RB_NONNULL data) noexcept {
-        return write((__bridge CFDataRef)data);
-    }
+    bool write(NSData *RB_NONNULL data) noexcept { return write((__bridge CFDataRef)data); }
 
     /// Reads data and advances the read position.
     /// @param data The destination data object.
