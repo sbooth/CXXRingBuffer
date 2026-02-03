@@ -351,8 +351,9 @@ class RingBuffer final {
     /// @param data The data to copy to the ring buffer.
     /// @return @c true if the data was successfully written or @c false if there is insufficient write space available.
     bool writeData(CFDataRef _Nonnull data) noexcept {
-        if (!data)
+        if (data == nullptr) {
             return false;
+        }
         const auto length = CFDataGetLength(data);
         const auto count = static_cast<SizeType>(length);
         return write(CFDataGetBytePtr(data), 1, count, false) == count;
@@ -362,12 +363,14 @@ class RingBuffer final {
     /// @param data The destination data object.
     /// @param count The desired number of bytes to read.
     void readData(CFMutableDataRef _Nonnull data, CFIndex count) noexcept {
-        if (!data || count < 0)
+        if (data == nullptr || count < 0) {
             return;
+        }
         CFDataSetLength(data, count);
         const auto length = read(CFDataGetMutableBytePtr(data), 1, count, false);
-        if (length != count)
+        if (length != count) {
             CFDataSetLength(data, length);
+        }
     }
 #endif
 
