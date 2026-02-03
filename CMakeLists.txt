@@ -1,0 +1,58 @@
+cmake_minimum_required(VERSION 3.15)
+project(CXXRingBuffer VERSION 0.6.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_library(CXXRingBuffer
+    Sources/CXXRingBuffer/RingBuffer.cpp
+    Sources/CXXRingBuffer/include/spsc/RingBuffer.hpp
+)
+add_library(spsc::RingBuffer ALIAS CXXRingBuffer)
+
+target_include_directories(CXXRingBuffer PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CXXRingBuffer/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+if(MSVC)
+    target_compile_options(CXXRingBuffer PRIVATE /W4)
+else()
+    target_compile_options(CXXRingBuffer PRIVATE -Wall -Wextra)
+endif()
+
+include(GNUInstallDirs)
+
+install(TARGETS CXXRingBuffer
+    EXPORT CXXRingBufferTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(DIRECTORY Sources/CXXRingBuffer/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(EXPORT CXXRingBufferTargets
+    FILE CXXRingBufferTargets.cmake
+    NAMESPACE spsc::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CXXRingBuffer
+)
+
+option(BUILD_TESTING "Build tests" ON)
+
+if(BUILD_TESTING)
+    find_package(GTest REQUIRED)
+
+    enable_testing()
+
+    add_executable(run_tests test/ring_buffer_test.cpp)
+
+    target_link_libraries(run_tests
+        PRIVATE
+            spsc::RingBuffer
+            GTest::gtest_main
+    )
+
+    include(GoogleTest)
+    gtest_discover_tests(run_tests)
+endif()
