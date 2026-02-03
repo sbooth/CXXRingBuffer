@@ -350,7 +350,7 @@ class RingBuffer final {
     /// Writes data and advances the write position.
     /// @param data The data to copy to the ring buffer.
     /// @return @c true if the data was successfully written or @c false if there is insufficient write space available.
-    bool writeData(CFDataRef _Nonnull data) noexcept {
+    bool write(CFDataRef RB_NONNULL data) noexcept {
         if (data == nullptr) {
             return false;
         }
@@ -362,7 +362,7 @@ class RingBuffer final {
     /// Reads data and advances the read position.
     /// @param data The destination data object.
     /// @param count The desired number of bytes to read.
-    void readData(CFMutableDataRef _Nonnull data, CFIndex count) noexcept {
+    void read(CFMutableDataRef RB_NONNULL data, CFIndex count) noexcept {
         if (data == nullptr || count < 0) {
             return;
         }
@@ -378,23 +378,23 @@ class RingBuffer final {
     /// Writes data and advances the write position.
     /// @param data The data to copy to the ring buffer.
     /// @return @c true if the data was successfully written or @c false if there is insufficient write space available.
-    bool writeData(NSData *_Nonnull data) noexcept {
-        return writeData((__bridge CFDataRef)data);
+    bool write(NSData *RB_NONNULL data) noexcept {
+        return write((__bridge CFDataRef)data);
     }
 
     /// Reads data and advances the read position.
     /// @param data The destination data object.
     /// @param count The desired number of bytes to read.
-    void readData(NSMutableData *_Nonnull data, NSUInteger count) noexcept {
-        readData((__bridge CFMutableDataRef)data, count);
+    void read(NSMutableData *RB_NONNULL data, NSUInteger count) noexcept {
+        read((__bridge CFMutableDataRef)data, count);
     }
 
     /// Reads data and advances the read position.
     /// @param count The desired number of bytes to read.
     /// @return An @c NSData object or @c nil if an error occurred.
-    NSData *_Nullable ReadData(NSUInteger count) noexcept {
+    NSData *RB_NULLABLE readData(NSUInteger count) noexcept {
         NSMutableData *data = [NSMutableData dataWithCapacity:count];
-        readData((__bridge CFMutableDataRef)data, count);
+        read((__bridge CFMutableDataRef)data, count);
         return data;
     }
 #endif
