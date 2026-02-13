@@ -5,10 +5,6 @@
 // Part of https://github.com/sbooth/CXXRingBuffer
 //
 
-#include "spsc/RingBuffer.hpp"
-
-#include <gtest/gtest.h>
-
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -18,6 +14,9 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+
+#include "spsc/RingBuffer.hpp"
+#include <gtest/gtest.h>
 
 namespace {
 
