@@ -5,7 +5,8 @@
 // Part of https://github.com/sbooth/CXXRingBuffer
 //
 
-#pragma once
+#ifndef SPSC_RING_BUFFER_HPP
+#define SPSC_RING_BUFFER_HPP
 
 #include <algorithm>
 #include <atomic>
@@ -22,13 +23,13 @@
 #include <type_traits>
 #include <utility>
 
-#if defined(__has_feature)
+#ifdef __has_feature
 #if __has_feature(nullability)
-#define RB_HAS_NULLABILITY 1
+#define RB_HAS_NULLABILITY
 #endif
 #endif
 
-#if defined(RB_HAS_NULLABILITY)
+#ifdef RB_HAS_NULLABILITY
 #define RB_NONNULL _Nonnull
 #define RB_NULLABLE _Nullable
 #else
@@ -724,3 +725,5 @@ inline void RingBuffer::commitRead(SizeType count) noexcept {
 }
 
 } /* namespace spsc */
+
+#endif
