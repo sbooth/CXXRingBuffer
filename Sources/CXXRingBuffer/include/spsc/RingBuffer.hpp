@@ -16,6 +16,7 @@
 #include <cstring>
 #include <limits>
 #include <memory>
+#include <new>
 #include <optional>
 #include <ranges>
 #include <span>
@@ -343,12 +344,24 @@ class RingBuffer final {
     /// The capacity of buffer_ in bytes minus one.
     SizeType capacityMask_{0};
 
+#ifdef __cpp_lib_hardware_interference_size
+    static constexpr std::size_t destructiveInterferenceSize = std::hardware_destructive_interference_size;
+#else
+#if defined(__APPLE__) && defined(__aarch64__)
+    static constexpr std::size_t destructiveInterferenceSize = 128;
+#else
+    static constexpr std::size_t destructiveInterferenceSize = 64;
+#endif
+#endif
+
     /// The free-running write location.
-    AtomicSizeType writePosition_{0};
+    alignas(destructiveInterferenceSize) AtomicSizeType writePosition_{0};
     /// The free-running read location.
-    AtomicSizeType readPosition_{0};
+    alignas(destructiveInterferenceSize) AtomicSizeType readPosition_{0};
 
     static_assert(AtomicSizeType::is_always_lock_free, "Lock-free AtomicSizeType required");
+    static_assert(destructiveInterferenceSize >= alignof(AtomicSizeType));
+    static_assert((destructiveInterferenceSize % alignof(AtomicSizeType)) == 0);
 };
 
 // MARK: - Implementation -
