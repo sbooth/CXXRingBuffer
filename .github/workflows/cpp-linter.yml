@@ -2,12 +2,12 @@ name: cpp-linter
 on:
   push:
     branches: [ "main" ]
-    paths: 
+    paths:
       - 'Sources/**/*.hpp'
       - 'Sources/**/*.cpp'
   pull_request:
     branches: [ "main" ]
-    paths: 
+    paths:
       - 'Sources/**/*.hpp'
       - 'Sources/**/*.cpp'
 permissions:
