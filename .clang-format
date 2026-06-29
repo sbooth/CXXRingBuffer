@@ -13,6 +13,8 @@ InsertBraces: true
 
 IncludeBlocks: Regroup
 IncludeCategories:
+  - Regex: '^".*"$'
+    Priority: 1
   - Regex: '^<[^./>]+>$'
     Priority: 10
   - Regex: '.*'

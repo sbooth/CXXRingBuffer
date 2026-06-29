@@ -7,8 +7,6 @@
 
 #include "spsc/RingBuffer.hpp"
 
-#include <gtest/gtest.h>
-
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -18,6 +16,8 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+
+#include <gtest/gtest.h>
 
 namespace {
 
