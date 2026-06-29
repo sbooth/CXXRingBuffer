@@ -7,8 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(CXXRingBuffer
     Sources/CXXRingBuffer/spsc/RingBuffer.cpp
     Sources/CXXRingBuffer/include/spsc/RingBuffer.hpp
+    Sources/CXXRingBuffer/mpsc/RingBuffer.cpp
+    Sources/CXXRingBuffer/include/mpsc/RingBuffer.hpp
 )
-add_library(spsc::RingBuffer ALIAS CXXRingBuffer)
+add_library(lockfree::RingBuffer ALIAS CXXRingBuffer)
 
 target_include_directories(CXXRingBuffer PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Sources/CXXRingBuffer/include>
@@ -34,7 +36,7 @@ install(DIRECTORY Sources/CXXRingBuffer/include/ DESTINATION ${CMAKE_INSTALL_INC
 
 install(EXPORT CXXRingBufferTargets
     FILE CXXRingBufferTargets.cmake
-    NAMESPACE spsc::
+    NAMESPACE lockfree::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CXXRingBuffer
 )
 
@@ -45,14 +47,22 @@ if(BUILD_TESTING)
 
     enable_testing()
 
-    add_executable(run_tests test/ring_buffer_test.cpp)
+    add_executable(run_spsc_tests test/spsc_ring_buffer_test.cpp)
+    add_executable(run_mpsc_tests test/mpsc_ring_buffer_test.cpp)
 
-    target_link_libraries(run_tests
+    target_link_libraries(run_spsc_tests
         PRIVATE
-            spsc::RingBuffer
+            lockfree::RingBuffer
+            GTest::gtest_main
+    )
+
+    target_link_libraries(run_mpsc_tests
+        PRIVATE
+            lockfree::RingBuffer
             GTest::gtest_main
     )
 
     include(GoogleTest)
-    gtest_discover_tests(run_tests)
+    gtest_discover_tests(run_spsc_tests)
+    gtest_discover_tests(run_mpsc_tests)
 endif()
