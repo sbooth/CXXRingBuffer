@@ -180,14 +180,14 @@ class RingBuffer final {
     /// @param capacity The maximum number of bytes to copy.
     /// @param written On return, the number of bytes read.
     /// @return true if data was successfully read.
-    bool peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) noexcept [[clang::nonblocking]];
+    bool peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) const noexcept [[clang::nonblocking]];
 
     /// Reads data without advancing the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param buffer A span to receive the data.
     /// @param written On return, the number of bytes read.
     /// @return true if data was successfully read.
-    bool peek(std::span<unsigned char> buffer, SizeType &written) noexcept [[clang::nonblocking]];
+    bool peek(std::span<unsigned char> buffer, SizeType &written) const noexcept [[clang::nonblocking]];
 
   private:
     /// A ring buffer slot.
@@ -370,7 +370,7 @@ inline bool RingBuffer<N>::read(std::span<unsigned char> buffer, SizeType &writt
 
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) noexcept {
+inline bool RingBuffer<N>::peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) const noexcept {
     if (ptr == nullptr || capacity == 0 || slotCount_ == 0) [[unlikely]] {
         written = 0;
         return false;
@@ -401,7 +401,7 @@ inline bool RingBuffer<N>::peek(void *RB_NONNULL ptr, SizeType capacity, SizeTyp
 
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::peek(std::span<unsigned char> buffer, SizeType &written) noexcept {
+inline bool RingBuffer<N>::peek(std::span<unsigned char> buffer, SizeType &written) const noexcept {
     return peek(buffer.data(), buffer.size(), written);
 }
 
