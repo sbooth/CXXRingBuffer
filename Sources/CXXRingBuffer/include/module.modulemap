@@ -8,5 +8,6 @@
 module CXXRingBuffer {
     requires cplusplus20
     header "spsc/RingBuffer.hpp"
+    header "mpsc/RingBuffer.hpp"
     export *
 }
