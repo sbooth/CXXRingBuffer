@@ -22,6 +22,7 @@
 #define RB_NULLABLE
 #endif
 
+#include <algorithm>
 #include <atomic>
 #include <bit>
 #include <concepts>
@@ -189,15 +190,6 @@ class RingBuffer final {
     bool peek(std::span<unsigned char> buffer, SizeType &written) noexcept [[clang::nonblocking]];
 
   private:
-    /// Reads data and optionally advances the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @param ptr An address to receive the data.
-    /// @param capacity The maximum number of bytes to copy.
-    /// @param written On return, the number of bytes read.
-    /// @param commit true if the read position should be advanced.
-    /// @return true if data was successfully read.
-    bool read_(void *RB_NONNULL ptr, SizeType capacity, SizeType &written, bool commit) noexcept [[clang::nonblocking]];
-
     /// A ring buffer slot.
     struct Slot {
         /// The slot's generation.
@@ -333,34 +325,6 @@ inline bool RingBuffer<N>::write(std::span<const unsigned char> data) noexcept {
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 inline bool RingBuffer<N>::read(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) noexcept {
-    return read_(ptr, capacity, written, true);
-}
-
-template <std::size_t N>
-    requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::read(std::span<unsigned char> buffer, SizeType &written) noexcept {
-    return read(buffer.data(), buffer.size(), written);
-}
-
-// MARK: Peeking
-
-template <std::size_t N>
-    requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) noexcept {
-    return read_(ptr, capacity, written, false);
-}
-
-template <std::size_t N>
-    requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::peek(std::span<unsigned char> buffer, SizeType &written) noexcept {
-    return peek(buffer.data(), buffer.size(), written);
-}
-
-// MARK: Logic
-
-template <std::size_t N>
-    requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::read_(void *RB_NONNULL ptr, SizeType capacity, SizeType &written, bool commit) noexcept {
     if (ptr == nullptr || capacity == 0 || slotCount_ == 0) [[unlikely]] {
         written = 0;
         return false;
@@ -386,16 +350,59 @@ inline bool RingBuffer<N>::read_(void *RB_NONNULL ptr, SizeType capacity, SizeTy
         std::memcpy(ptr, slot.data_, dataSize);
         written = dataSize;
 
-        if (commit) {
-            seq_atomic.store(readPos + slotCount_, std::memory_order_release);
-            readPosition_.store(readPos + 1, std::memory_order_relaxed);
-        }
+        seq_atomic.store(readPos + slotCount_, std::memory_order_release);
+        readPosition_.store(readPos + 1, std::memory_order_relaxed);
 
         return true;
     }
 
     written = 0;
     return false;
+}
+
+template <std::size_t N>
+    requires ValidPowerOfTwo<N>
+inline bool RingBuffer<N>::read(std::span<unsigned char> buffer, SizeType &written) noexcept {
+    return read(buffer.data(), buffer.size(), written);
+}
+
+// MARK: Peeking
+
+template <std::size_t N>
+    requires ValidPowerOfTwo<N>
+inline bool RingBuffer<N>::peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) noexcept {
+    if (ptr == nullptr || capacity == 0 || slotCount_ == 0) [[unlikely]] {
+        written = 0;
+        return false;
+    }
+
+    const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+    auto &slot = slots_[readPos & slotCountMask_];
+    std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
+    const auto seq = seq_atomic.load(std::memory_order_acquire);
+    const auto udiff = seq - (readPos + 1);
+    const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
+
+    if (diff == 0) {
+        // Slot contains data
+        const auto dataSize = slot.dataSize_;
+        const auto count = std::min(dataSize, capacity);
+
+        std::memcpy(ptr, slot.data_, count);
+        written = count;
+
+        return true;
+    }
+
+    written = 0;
+    return false;
+}
+
+template <std::size_t N>
+    requires ValidPowerOfTwo<N>
+inline bool RingBuffer<N>::peek(std::span<unsigned char> buffer, SizeType &written) noexcept {
+    return peek(buffer.data(), buffer.size(), written);
 }
 
 } /* namespace mpsc */
