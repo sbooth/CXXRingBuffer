@@ -37,6 +37,18 @@
 #define RB_NULLABLE
 #endif
 
+#if __has_cpp_attribute(clang::nonblocking)
+#define RB_NONBLOCKING [[clang::nonblocking]]
+#else
+#define RB_NONBLOCKING
+#endif
+
+#if __has_cpp_attribute(clang::allocating)
+#define RB_ALLOCATING [[clang::allocating]]
+#else
+#define RB_ALLOCATING
+#endif
+
 namespace spsc {
 
 template <typename T>
@@ -109,43 +121,43 @@ class RingBuffer final {
     /// @note This method is not thread safe.
     /// @param minCapacity The desired minimum capacity in bytes.
     /// @return true on success, false if memory could not be allocated or the buffer capacity is not supported.
-    bool allocate(SizeType minCapacity) noexcept [[clang::allocating]];
+    bool allocate(SizeType minCapacity) noexcept RB_ALLOCATING;
 
     /// Frees any space allocated for data.
     /// @note This method is not thread safe.
     void deallocate() noexcept;
 
     /// Returns true if the ring buffer has allocated space for data.
-    [[nodiscard]] explicit operator bool() const noexcept [[clang::nonblocking]];
+    [[nodiscard]] explicit operator bool() const noexcept RB_NONBLOCKING;
 
     // MARK: Buffer Information
 
     /// Returns the capacity of the ring buffer.
     /// @note This method is safe to call from both producer and consumer.
     /// @return The ring buffer capacity in bytes.
-    [[nodiscard]] SizeType capacity() const noexcept [[clang::nonblocking]];
+    [[nodiscard]] SizeType capacity() const noexcept RB_NONBLOCKING;
 
     // MARK: Buffer Usage
 
     /// Returns the amount of free space in the ring buffer.
     /// @note The result of this method is only accurate when called from the producer.
     /// @return The number of bytes of free space available for writing.
-    [[nodiscard]] SizeType freeSpace() const noexcept [[clang::nonblocking]];
+    [[nodiscard]] SizeType freeSpace() const noexcept RB_NONBLOCKING;
 
     /// Returns true if the ring buffer is full.
     /// @note The result of this method is only accurate when called from the producer.
     /// @return true if the buffer is full.
-    [[nodiscard]] bool isFull() const noexcept [[clang::nonblocking]];
+    [[nodiscard]] bool isFull() const noexcept RB_NONBLOCKING;
 
     /// Returns the amount of data in the ring buffer.
     /// @note The result of this method is only accurate when called from the consumer.
     /// @return The number of bytes available for reading.
-    [[nodiscard]] SizeType availableBytes() const noexcept [[clang::nonblocking]];
+    [[nodiscard]] SizeType availableBytes() const noexcept RB_NONBLOCKING;
 
     /// Returns true if the ring buffer is empty.
     /// @note The result of this method is only accurate when called from the consumer.
     /// @return true if the buffer contains no data.
-    [[nodiscard]] bool isEmpty() const noexcept [[clang::nonblocking]];
+    [[nodiscard]] bool isEmpty() const noexcept RB_NONBLOCKING;
 
     // MARK: Writing
 
@@ -157,8 +169,8 @@ class RingBuffer final {
     /// @param allowPartial Whether any items should be written if insufficient free space is available to write all
     /// items.
     /// @return The number of items actually written.
-    SizeType write(const void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept
-            [[clang::nonblocking]];
+    SizeType write(const void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
+                   bool allowPartial) noexcept RB_NONBLOCKING;
 
     /// Writes items and advances the write position.
     /// @note This method is only safe to call from the producer.
@@ -167,14 +179,13 @@ class RingBuffer final {
     /// @param allowPartial Whether any items should be written if insufficient free space is available to write all
     /// items.
     /// @return The number of items actually written.
-    template <ByteCopyable T>
-    SizeType write(std::span<const T> data, bool allowPartial = true) noexcept [[clang::nonblocking]];
+    template <ByteCopyable T> SizeType write(std::span<const T> data, bool allowPartial = true) noexcept RB_NONBLOCKING;
 
     /// Writes a value and advances the write position.
     /// @note This method is only safe to call from the producer.
     /// @param value The value to write.
     /// @return true if value was successfully written.
-    bool write(ValueLike auto const &value) noexcept [[clang::nonblocking]];
+    bool write(ValueLike auto const &value) noexcept RB_NONBLOCKING;
 
     /// Writes values and advances the write position.
     /// @note This method is only safe to call from the producer.
@@ -183,7 +194,7 @@ class RingBuffer final {
     /// @return true if the values were successfully written.
     template <ValueLike... Args>
         requires(sizeof...(Args) > 1)
-    bool writeAll(const Args &...args) noexcept [[clang::nonblocking]];
+    bool writeAll(const Args &...args) noexcept RB_NONBLOCKING;
 
     // MARK: Reading
 
@@ -195,8 +206,8 @@ class RingBuffer final {
     /// @param allowPartial Whether any items should be read if the number of items available to read is less than
     /// itemCount.
     /// @return The number of items actually read.
-    SizeType read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount, bool allowPartial) noexcept
-            [[clang::nonblocking]];
+    SizeType read(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount,
+                  bool allowPartial) noexcept RB_NONBLOCKING;
 
     /// Reads items and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -205,14 +216,13 @@ class RingBuffer final {
     /// @param allowPartial Whether any items should be read if the number of items available to read is less than
     /// buffer.size().
     /// @return The number of items actually read.
-    template <ByteCopyable T>
-    SizeType read(std::span<T> buffer, bool allowPartial = true) noexcept [[clang::nonblocking]];
+    template <ByteCopyable T> SizeType read(std::span<T> buffer, bool allowPartial = true) noexcept RB_NONBLOCKING;
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param value The destination value.
     /// @return true on success, false otherwise.
-    bool read(ValueLike auto &value) noexcept [[clang::nonblocking]];
+    bool read(ValueLike auto &value) noexcept RB_NONBLOCKING;
 
     /// Reads a value and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -230,7 +240,7 @@ class RingBuffer final {
     /// @return true if the values were successfully read.
     template <ValueLike... Args>
         requires(sizeof...(Args) > 1)
-    bool readAll(Args &...args) noexcept [[clang::nonblocking]];
+    bool readAll(Args &...args) noexcept RB_NONBLOCKING;
 
     /// Reads values and advances the read position.
     /// @note This method is only safe to call from the consumer.
@@ -249,21 +259,21 @@ class RingBuffer final {
     /// @param itemSize The size of an individual item in bytes.
     /// @param itemCount The desired number of items to read.
     /// @return True if the requested items were read, false otherwise.
-    [[nodiscard]] bool peek(void *const RB_NONNULL ptr, SizeType itemSize, SizeType itemCount) const noexcept
-            [[clang::nonblocking]];
+    [[nodiscard]] bool peek(void *const RB_NONNULL ptr, SizeType itemSize,
+                            SizeType itemCount) const noexcept RB_NONBLOCKING;
 
     /// Reads items without advancing the read position.
     /// @note This method is only safe to call from the consumer.
     /// @tparam T The type to read.
     /// @param buffer A span to receive the data.
     /// @return True if the requested items were read, false otherwise.
-    template <ByteCopyable T> [[nodiscard]] bool peek(std::span<T> buffer) const noexcept [[clang::nonblocking]];
+    template <ByteCopyable T> [[nodiscard]] bool peek(std::span<T> buffer) const noexcept RB_NONBLOCKING;
 
     /// Reads a value without advancing the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param value The destination value.
     /// @return true on success, false otherwise.
-    [[nodiscard]] bool peek(ValueLike auto &value) const noexcept [[clang::nonblocking]];
+    [[nodiscard]] bool peek(ValueLike auto &value) const noexcept RB_NONBLOCKING;
 
     /// Reads a value without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -281,7 +291,7 @@ class RingBuffer final {
     /// @return true if the values were successfully read.
     template <ValueLike... Args>
         requires(sizeof...(Args) > 1)
-    [[nodiscard]] bool peekAll(Args &...args) const noexcept [[clang::nonblocking]];
+    [[nodiscard]] bool peekAll(Args &...args) const noexcept RB_NONBLOCKING;
 
     /// Reads values without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -302,42 +312,42 @@ class RingBuffer final {
     /// @param allowPartial Whether any items should be skipped if the number of items available to skip is less than
     /// itemCount.
     /// @return The number of items actually skipped.
-    SizeType skip(SizeType itemSize, SizeType itemCount, bool allowPartial = true) noexcept [[clang::nonblocking]];
+    SizeType skip(SizeType itemSize, SizeType itemCount, bool allowPartial = true) noexcept RB_NONBLOCKING;
 
     /// Skips items and advances the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param itemCount The number of items to skip.
     /// @return true if the items were successfully skipped.
-    template <ValueLike T> bool skip(SizeType itemCount = 1) noexcept [[clang::nonblocking]];
+    template <ValueLike T> bool skip(SizeType itemCount = 1) noexcept RB_NONBLOCKING;
 
     /// Advances the read position to the write position, emptying the buffer.
     /// @note This method is only safe to call from the consumer.
     /// @return The number of bytes discarded.
-    SizeType drain() noexcept [[clang::nonblocking]];
+    SizeType drain() noexcept RB_NONBLOCKING;
 
     // MARK: Advanced Writing and Reading
 
     /// Returns a write vector containing the current writable space.
     /// @note This method is only safe to call from the producer.
     /// @return A pair of spans containing the current writable space.
-    [[nodiscard]] WriteVector writeVector() const noexcept [[clang::nonblocking]];
+    [[nodiscard]] WriteVector writeVector() const noexcept RB_NONBLOCKING;
 
     /// Finalizes a write transaction by writing staged data to the ring buffer.
     /// @warning The behavior is undefined if count is greater than the free space in the write vector.
     /// @note This method is only safe to call from the producer.
     /// @param count The number of bytes that were successfully written to the write vector.
-    void commitWrite(SizeType count) noexcept [[clang::nonblocking]];
+    void commitWrite(SizeType count) noexcept RB_NONBLOCKING;
 
     /// Returns a read vector containing the current readable data.
     /// @note This method is only safe to call from the consumer.
     /// @return A pair of spans containing the current readable data.
-    [[nodiscard]] ReadVector readVector() const noexcept [[clang::nonblocking]];
+    [[nodiscard]] ReadVector readVector() const noexcept RB_NONBLOCKING;
 
     /// Finalizes a read transaction by removing data from the front of the ring buffer.
     /// @warning The behavior is undefined if count is greater than the available data in the read vector.
     /// @note This method is only safe to call from the consumer.
     /// @param count The number of bytes that were successfully read from the read vector.
-    void commitRead(SizeType count) noexcept [[clang::nonblocking]];
+    void commitRead(SizeType count) noexcept RB_NONBLOCKING;
 
   private:
     /// The memory buffer holding the data.
