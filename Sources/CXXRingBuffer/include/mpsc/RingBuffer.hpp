@@ -616,7 +616,7 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
 
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
-auto mpsc::RingBuffer<N>::getReadableSlot() const noexcept -> std::optional<ReadableSlotContext> {
+auto RingBuffer<N>::getReadableSlot() const noexcept -> std::optional<ReadableSlotContext> {
     if (slotCount_ == 0) [[unlikely]] {
         return std::nullopt;
     }
@@ -640,7 +640,7 @@ template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <ValueLike... Args>
     requires(sizeof...(Args) > 0)
-void mpsc::RingBuffer<N>::copyFromSlot(const Slot &slot, Args &...args) noexcept {
+void RingBuffer<N>::copyFromSlot(const Slot &slot, Args &...args) noexcept {
     std::size_t cursor = 0;
     const auto readArg = [&](auto &arg) noexcept {
         std::memcpy(std::addressof(arg), slot.data_ + cursor, sizeof(arg));
