@@ -30,11 +30,20 @@
 #include <limits>
 #include <memory>
 #include <span>
+#include <type_traits>
 
 namespace mpsc {
 
 template <std::size_t N>
 concept ValidPowerOfTwo = (N >= 2) && std::has_single_bit(N);
+
+template <typename T>
+concept ByteCopyable =
+        std::is_object_v<std::remove_cvref_t<T>> && std::is_trivially_copyable_v<std::remove_cvref_t<T>> &&
+        std::is_standard_layout_v<std::remove_cvref_t<T>> && !std::is_pointer_v<std::remove_cvref_t<T>>;
+
+template <typename T>
+concept ValueLike = ByteCopyable<T> && !std::ranges::range<std::remove_cvref_t<T>>;
 
 /// A lock-free MPSC ring buffer.
 ///
@@ -154,6 +163,15 @@ class RingBuffer final {
     /// @param data A span containing the data to copy.
     /// @return true if the data was successfully written.
     bool write(std::span<const unsigned char> data) noexcept [[clang::nonblocking]];
+
+    /// Writes values and advances the write position.
+    /// @note This method is only safe to call from a producer.
+    /// @tparam Args The types to write.
+    /// @param args The values to write.
+    /// @return true if the values were successfully written.
+    template <ValueLike... Args>
+        requires(sizeof...(Args) > 1)
+    bool writeAll(const Args &...args) noexcept [[clang::nonblocking]];
 
     // MARK: Reading
 
@@ -318,6 +336,53 @@ template <std::size_t N>
     requires ValidPowerOfTwo<N>
 inline bool RingBuffer<N>::write(std::span<const unsigned char> data) noexcept {
     return write(data.data(), data.size());
+}
+
+template <std::size_t N>
+    requires ValidPowerOfTwo<N>
+template <ValueLike... Args>
+    requires(sizeof...(Args) > 1)
+inline bool RingBuffer<N>::writeAll(const Args &...args) noexcept {
+    constexpr auto totalSize = (sizeof args + ...);
+    if (totalSize > N || slotCount_ == 0) [[unlikely]] {
+        return false;
+    }
+
+    auto writePos = writePosition_.load(std::memory_order_relaxed);
+
+    while (true) {
+        auto &slot = slots_[writePos & slotCountMask_];
+        std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
+        const auto seq = seq_atomic.load(std::memory_order_acquire);
+        const auto udiff = seq - writePos;
+        const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
+
+        if (diff == 0) {
+            // Attempt to claim the slot
+            if (writePosition_.compare_exchange_weak(writePos, writePos + 1, std::memory_order_relaxed,
+                                                     std::memory_order_relaxed)) {
+
+                std::size_t cursor = 0;
+                const auto writeArg = [&](const void *arg, std::size_t len) noexcept {
+                    std::memcpy(slot.data_ + cursor, arg, len);
+                    cursor += len;
+                };
+
+                // Copy each argument to the slot in turn
+                (writeArg(std::addressof(args), sizeof args), ...);
+                slot.dataSize_ = totalSize;
+
+                seq_atomic.store(writePos + 1, std::memory_order_release);
+                return true;
+            }
+        } else if (diff < 0) {
+            // All slots are full
+            return false;
+        } else {
+            // Another producer claimed this slot
+            writePos = writePosition_.load(std::memory_order_relaxed);
+        }
+    }
 }
 
 // MARK: Reading
