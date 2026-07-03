@@ -190,6 +190,15 @@ class RingBuffer final {
     /// @return true if data was successfully read.
     bool read(std::span<unsigned char> buffer, SizeType &written) noexcept [[clang::nonblocking]];
 
+    /// Reads values and advances the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam Args The types to read.
+    /// @param args The destination values.
+    /// @return true if the values were successfully read.
+    template <ValueLike... Args>
+        requires(sizeof...(Args) > 1)
+    bool readAll(Args &...args) noexcept [[clang::nonblocking]];
+
     // MARK: Peeking
 
     /// Reads data without advancing the read position.
@@ -198,14 +207,24 @@ class RingBuffer final {
     /// @param capacity The maximum number of bytes to copy.
     /// @param written On return, the number of bytes read.
     /// @return true if data was successfully read.
-    bool peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) const noexcept [[clang::nonblocking]];
+    [[nodiscard]] bool peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) const noexcept
+            [[clang::nonblocking]];
 
     /// Reads data without advancing the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param buffer A span to receive the data.
     /// @param written On return, the number of bytes read.
     /// @return true if data was successfully read.
-    bool peek(std::span<unsigned char> buffer, SizeType &written) const noexcept [[clang::nonblocking]];
+    [[nodiscard]] bool peek(std::span<unsigned char> buffer, SizeType &written) const noexcept [[clang::nonblocking]];
+
+    /// Reads values without advancing the read position.
+    /// @note This method is only safe to call from the consumer.
+    /// @tparam Args The types to read.
+    /// @param args The destination values.
+    /// @return true if the values were successfully read.
+    template <ValueLike... Args>
+        requires(sizeof...(Args) > 1)
+    [[nodiscard]] bool peekAll(Args &...args) const noexcept [[clang::nonblocking]];
 
   private:
     /// A ring buffer slot.
@@ -431,6 +450,49 @@ inline bool RingBuffer<N>::read(std::span<unsigned char> buffer, SizeType &writt
     return read(buffer.data(), buffer.size(), written);
 }
 
+template <std::size_t N>
+    requires ValidPowerOfTwo<N>
+template <ValueLike... Args>
+    requires(sizeof...(Args) > 1)
+inline bool RingBuffer<N>::readAll(Args &...args) noexcept {
+    constexpr auto totalSize = (sizeof args + ...);
+    if (totalSize > N || slotCount_ == 0) [[unlikely]] {
+        return false;
+    }
+
+    const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+    auto &slot = slots_[readPos & slotCountMask_];
+    std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
+    const auto seq = seq_atomic.load(std::memory_order_acquire);
+    const auto udiff = seq - (readPos + 1);
+    const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
+
+    if (diff == 0) {
+        // Slot contains data
+        const auto dataSize = slot.dataSize_;
+        if (dataSize < totalSize) {
+            return false;
+        }
+
+        std::size_t cursor = 0;
+        const auto readArg = [&](void *arg, std::size_t len) noexcept {
+            auto *dst = static_cast<unsigned char *>(arg);
+            std::memcpy(dst, slot.data_ + cursor, len);
+            cursor += len;
+        };
+
+        (readArg(std::addressof(args), sizeof args), ...);
+
+        seq_atomic.store(readPos + slotCount_, std::memory_order_release);
+        readPosition_.store(readPos + 1, std::memory_order_relaxed);
+
+        return true;
+    }
+
+    return false;
+}
+
 // MARK: Peeking
 
 template <std::size_t N>
@@ -468,6 +530,45 @@ template <std::size_t N>
     requires ValidPowerOfTwo<N>
 inline bool RingBuffer<N>::peek(std::span<unsigned char> buffer, SizeType &written) const noexcept {
     return peek(buffer.data(), buffer.size(), written);
+}
+
+template <std::size_t N>
+    requires ValidPowerOfTwo<N>
+template <ValueLike... Args>
+    requires(sizeof...(Args) > 1)
+inline bool RingBuffer<N>::peekAll(Args &...args) const noexcept {
+    constexpr auto totalSize = (sizeof args + ...);
+    if (totalSize > N || slotCount_ == 0) [[unlikely]] {
+        return false;
+    }
+
+    const auto readPos = readPosition_.load(std::memory_order_relaxed);
+
+    auto &slot = slots_[readPos & slotCountMask_];
+    std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
+    const auto seq = seq_atomic.load(std::memory_order_acquire);
+    const auto udiff = seq - (readPos + 1);
+    const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
+
+    if (diff == 0) {
+        // Slot contains data
+        const auto dataSize = slot.dataSize_;
+        if (dataSize < totalSize) {
+            return false;
+        }
+
+        std::size_t cursor = 0;
+        const auto readArg = [&](void *arg, std::size_t len) noexcept {
+            auto *dst = static_cast<unsigned char *>(arg);
+            std::memcpy(dst, slot.data_ + cursor, len);
+            cursor += len;
+        };
+
+        (readArg(std::addressof(args), sizeof args), ...);
+        return true;
+    }
+
+    return false;
 }
 
 } /* namespace mpsc */
