@@ -352,7 +352,7 @@ inline bool RingBuffer<N>::allocate(SizeType minSlots) noexcept {
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 inline void RingBuffer<N>::deallocate() noexcept {
-    if (!slots_) [[likely]] {
+    if (slots_) [[likely]] {
         slots_.reset();
 
         slotCount_ = 0;
