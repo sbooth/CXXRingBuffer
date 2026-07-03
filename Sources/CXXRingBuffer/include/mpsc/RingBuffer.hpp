@@ -32,6 +32,7 @@
 #include <optional>
 #include <span>
 #include <type_traits>
+#include <utility>
 
 namespace mpsc {
 
