@@ -170,8 +170,8 @@ class RingBuffer final {
     /// @param args The values to write.
     /// @return true if the values were successfully written.
     template <ValueLike... Args>
-        requires(sizeof...(Args) > 1)
-    bool writeAll(const Args &...args) noexcept [[clang::nonblocking]];
+        requires(sizeof...(Args) > 0)
+    bool writeValues(const Args &...args) noexcept [[clang::nonblocking]];
 
     // MARK: Reading
 
@@ -196,8 +196,8 @@ class RingBuffer final {
     /// @param args The destination values.
     /// @return true if the values were successfully read.
     template <ValueLike... Args>
-        requires(sizeof...(Args) > 1)
-    bool readAll(Args &...args) noexcept [[clang::nonblocking]];
+        requires(sizeof...(Args) > 0)
+    bool readValues(Args &...args) noexcept [[clang::nonblocking]];
 
     // MARK: Peeking
 
@@ -223,8 +223,8 @@ class RingBuffer final {
     /// @param args The destination values.
     /// @return true if the values were successfully read.
     template <ValueLike... Args>
-        requires(sizeof...(Args) > 1)
-    [[nodiscard]] bool peekAll(Args &...args) const noexcept [[clang::nonblocking]];
+        requires(sizeof...(Args) > 0)
+    [[nodiscard]] bool peekValues(Args &...args) const noexcept [[clang::nonblocking]];
 
   private:
     /// A ring buffer slot.
@@ -360,8 +360,8 @@ inline bool RingBuffer<N>::write(std::span<const unsigned char> data) noexcept {
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <ValueLike... Args>
-    requires(sizeof...(Args) > 1)
-inline bool RingBuffer<N>::writeAll(const Args &...args) noexcept {
+    requires(sizeof...(Args) > 0)
+inline bool RingBuffer<N>::writeValues(const Args &...args) noexcept {
     constexpr auto totalSize = (sizeof args + ...);
     if (totalSize > N || slotCount_ == 0) [[unlikely]] {
         return false;
@@ -453,8 +453,8 @@ inline bool RingBuffer<N>::read(std::span<unsigned char> buffer, SizeType &writt
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <ValueLike... Args>
-    requires(sizeof...(Args) > 1)
-inline bool RingBuffer<N>::readAll(Args &...args) noexcept {
+    requires(sizeof...(Args) > 0)
+inline bool RingBuffer<N>::readValues(Args &...args) noexcept {
     constexpr auto totalSize = (sizeof args + ...);
     if (totalSize > N || slotCount_ == 0) [[unlikely]] {
         return false;
@@ -535,8 +535,8 @@ inline bool RingBuffer<N>::peek(std::span<unsigned char> buffer, SizeType &writt
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <ValueLike... Args>
-    requires(sizeof...(Args) > 1)
-inline bool RingBuffer<N>::peekAll(Args &...args) const noexcept {
+    requires(sizeof...(Args) > 0)
+inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
     constexpr auto totalSize = (sizeof args + ...);
     if (totalSize > N || slotCount_ == 0) [[unlikely]] {
         return false;
