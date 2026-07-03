@@ -29,6 +29,7 @@
 #include <cstring>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <span>
 #include <type_traits>
 
@@ -253,6 +254,29 @@ class RingBuffer final {
     AtomicSizeType readPosition_{0};
 
     static_assert(AtomicSizeType::is_always_lock_free, "Lock-free AtomicSizeType required");
+
+    // MARK: Helpers
+
+    /// Context for reading from a ring buffer slot.
+    struct ReadableSlotContext {
+        /// A reference to the slot
+        Slot &slot_;
+        /// An atomic reference to the slot's generation
+        std::atomic_ref<SizeType> sequence_;
+        /// The read position
+        SizeType position_;
+    };
+
+    /// Returns the read context if available.
+    [[nodiscard]] std::optional<ReadableSlotContext> getReadableSlot() const noexcept;
+
+    /// Copies values from a slot.
+    /// @tparam Args The types to read.
+    /// @param slot The slot containing the data to copy.
+    /// @param args The destination values.
+    template <ValueLike... Args>
+        requires(sizeof...(Args) > 0)
+    static void copyFromSlot(const Slot &slot, Args &...args) noexcept;
 };
 
 // MARK: - Implementation -
@@ -494,34 +518,20 @@ inline bool RingBuffer<N>::read(void *RB_NONNULL ptr, SizeType capacity, SizeTyp
         return false;
     }
 
-    const auto readPos = readPosition_.load(std::memory_order_relaxed);
-
-    auto &slot = slots_[readPos & slotCountMask_];
-    std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
-    const auto seq = seq_atomic.load(std::memory_order_acquire);
-    const auto udiff = seq - (readPos + 1);
-    const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
-
-    if (diff == 0) {
-        // Slot contains data
-        const auto dataSize = slot.dataSize_;
-
-        if (dataSize > capacity) [[unlikely]] {
-            written = 0;
-            return false;
-        }
-
-        std::memcpy(ptr, slot.data_, dataSize);
-        written = dataSize;
-
-        seq_atomic.store(readPos + slotCount_, std::memory_order_release);
-        readPosition_.store(readPos + 1, std::memory_order_relaxed);
-
-        return true;
+    auto context = getReadableSlot();
+    if (!context || context->slot_.dataSize_ > capacity) {
+        written = 0;
+        return false;
     }
 
-    written = 0;
-    return false;
+    const auto dataSize = context->slot_.dataSize_;
+    std::memcpy(ptr, context->slot_.data_, dataSize);
+    written = dataSize;
+
+    context->sequence_.store(context->position_ + slotCount_, std::memory_order_release);
+    readPosition_.store(context->position_ + 1, std::memory_order_relaxed);
+
+    return true;
 }
 
 template <std::size_t N>
@@ -540,37 +550,17 @@ inline bool RingBuffer<N>::readValues(Args &...args) noexcept {
         return false;
     }
 
-    const auto readPos = readPosition_.load(std::memory_order_relaxed);
-
-    auto &slot = slots_[readPos & slotCountMask_];
-    std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
-    const auto seq = seq_atomic.load(std::memory_order_acquire);
-    const auto udiff = seq - (readPos + 1);
-    const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
-
-    if (diff == 0) {
-        // Slot contains data
-        const auto dataSize = slot.dataSize_;
-        if (dataSize < totalSize) {
-            return false;
-        }
-
-        std::size_t cursor = 0;
-        const auto readArg = [&](void *arg, std::size_t len) noexcept {
-            auto *dst = static_cast<unsigned char *>(arg);
-            std::memcpy(dst, slot.data_ + cursor, len);
-            cursor += len;
-        };
-
-        (readArg(std::addressof(args), sizeof args), ...);
-
-        seq_atomic.store(readPos + slotCount_, std::memory_order_release);
-        readPosition_.store(readPos + 1, std::memory_order_relaxed);
-
-        return true;
+    const auto context = getReadableSlot();
+    if (!context || context->slot_.dataSize_ < totalSize) {
+        return false;
     }
 
-    return false;
+    (copyFromSlot(context->slot_, args), ...);
+
+    context->sequence_.store(context->position_ + slotCount_, std::memory_order_release);
+    readPosition_.store(context->position_ + 1, std::memory_order_relaxed);
+
+    return true;
 }
 
 // MARK: Peeking
@@ -583,27 +573,17 @@ inline bool RingBuffer<N>::peek(void *RB_NONNULL ptr, SizeType capacity, SizeTyp
         return false;
     }
 
-    const auto readPos = readPosition_.load(std::memory_order_relaxed);
-
-    auto &slot = slots_[readPos & slotCountMask_];
-    std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
-    const auto seq = seq_atomic.load(std::memory_order_acquire);
-    const auto udiff = seq - (readPos + 1);
-    const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
-
-    if (diff == 0) {
-        // Slot contains data
-        const auto dataSize = slot.dataSize_;
-        const auto count = std::min(dataSize, capacity);
-
-        std::memcpy(ptr, slot.data_, count);
-        written = count;
-
-        return true;
+    const auto context = getReadableSlot();
+    if (!context || context->slot_.dataSize_ > capacity) {
+        written = 0;
+        return false;
     }
 
-    written = 0;
-    return false;
+    const auto dataSize = context->slot_.dataSize_;
+    std::memcpy(ptr, context->slot_.data_, dataSize);
+    written = dataSize;
+
+    return true;
 }
 
 template <std::size_t N>
@@ -622,6 +602,25 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
         return false;
     }
 
+    const auto context = getReadableSlot();
+    if (!context || context->slot_.dataSize_ < totalSize) {
+        return false;
+    }
+
+    (copyFromSlot(context->slot_, args), ...);
+
+    return true;
+}
+
+// MARK: Helpers
+
+template <std::size_t N>
+    requires ValidPowerOfTwo<N>
+auto mpsc::RingBuffer<N>::getReadableSlot() const noexcept -> std::optional<ReadableSlotContext> {
+    if (slotCount_ == 0) [[unlikely]] {
+        return std::nullopt;
+    }
+
     const auto readPos = readPosition_.load(std::memory_order_relaxed);
 
     auto &slot = slots_[readPos & slotCountMask_];
@@ -631,24 +630,23 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
     const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
 
     if (diff == 0) {
-        // Slot contains data
-        const auto dataSize = slot.dataSize_;
-        if (dataSize < totalSize) {
-            return false;
-        }
-
-        std::size_t cursor = 0;
-        const auto readArg = [&](void *arg, std::size_t len) noexcept {
-            auto *dst = static_cast<unsigned char *>(arg);
-            std::memcpy(dst, slot.data_ + cursor, len);
-            cursor += len;
-        };
-
-        (readArg(std::addressof(args), sizeof args), ...);
-        return true;
+        return ReadableSlotContext{slot, seq_atomic, readPos};
     }
 
-    return false;
+    return std::nullopt;
+}
+
+template <std::size_t N>
+    requires ValidPowerOfTwo<N>
+template <ValueLike... Args>
+    requires(sizeof...(Args) > 0)
+void mpsc::RingBuffer<N>::copyFromSlot(const Slot &slot, Args &...args) noexcept {
+    std::size_t cursor = 0;
+    const auto readArg = [&](auto &arg) noexcept {
+        std::memcpy(std::addressof(arg), slot.data_ + cursor, sizeof(arg));
+        cursor += sizeof(arg);
+    };
+    (readArg(args), ...);
 }
 
 } /* namespace mpsc */
