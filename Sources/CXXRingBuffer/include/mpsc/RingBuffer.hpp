@@ -555,7 +555,7 @@ inline bool RingBuffer<N>::readValues(Args &...args) noexcept {
         return false;
     }
 
-    (copyFromSlot(context->slot_, args), ...);
+    copyFromSlot(context->slot_, args...);
 
     context->sequence_.store(context->position_ + slotCount_, std::memory_order_release);
     readPosition_.store(context->position_ + 1, std::memory_order_relaxed);
@@ -607,7 +607,7 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
         return false;
     }
 
-    (copyFromSlot(context->slot_, args), ...);
+    copyFromSlot(context->slot_, args...);
 
     return true;
 }
