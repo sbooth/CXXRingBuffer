@@ -262,8 +262,6 @@ class RingBuffer final {
     struct ReadableSlotContext {
         /// A reference to the slot
         Slot &slot_;
-        /// An atomic reference to the slot's generation
-        std::atomic_ref<SizeType> sequence_;
         /// The read position
         SizeType position_;
     };
@@ -529,7 +527,8 @@ inline bool RingBuffer<N>::read(void *RB_NONNULL ptr, SizeType capacity, SizeTyp
     std::memcpy(ptr, context->slot_.data_, dataSize);
     written = dataSize;
 
-    context->sequence_.store(context->position_ + slotCount_, std::memory_order_release);
+    std::atomic_ref<SizeType> seq_atomic(context->slot_.sequence_);
+    seq_atomic.store(context->position_ + slotCount_, std::memory_order_release);
     readPosition_.store(context->position_ + 1, std::memory_order_relaxed);
 
     return true;
@@ -558,7 +557,8 @@ inline bool RingBuffer<N>::readValues(Args &...args) noexcept {
 
     copyFromSlot(context->slot_, args...);
 
-    context->sequence_.store(context->position_ + slotCount_, std::memory_order_release);
+    std::atomic_ref<SizeType> seq_atomic(context->slot_.sequence_);
+    seq_atomic.store(context->position_ + slotCount_, std::memory_order_release);
     readPosition_.store(context->position_ + 1, std::memory_order_relaxed);
 
     return true;
@@ -631,7 +631,7 @@ auto RingBuffer<N>::getReadableSlot() const noexcept -> std::optional<ReadableSl
     const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
 
     if (diff == 0) {
-        return ReadableSlotContext{slot, seq_atomic, readPos};
+        return ReadableSlotContext{slot, readPos};
     }
 
     return std::nullopt;
