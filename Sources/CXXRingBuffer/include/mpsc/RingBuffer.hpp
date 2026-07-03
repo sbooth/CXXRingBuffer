@@ -467,7 +467,7 @@ template <std::size_t N>
 template <ValueLike... Args>
     requires(sizeof...(Args) > 0)
 inline bool RingBuffer<N>::writeValues(const Args &...args) noexcept {
-    constexpr auto totalSize = (sizeof args + ...);
+    constexpr auto totalSize = (sizeof(Args) + ...);
     if (totalSize > N || slotCount_ == 0) [[unlikely]] {
         return false;
     }
@@ -493,7 +493,7 @@ inline bool RingBuffer<N>::writeValues(const Args &...args) noexcept {
                 };
 
                 // Copy each argument to the slot in turn
-                (writeArg(std::addressof(args), sizeof args), ...);
+                (writeArg(std::addressof(args), sizeof(Args)), ...);
                 slot.dataSize_ = totalSize;
 
                 seq_atomic.store(writePos + 1, std::memory_order_release);
@@ -546,7 +546,7 @@ template <std::size_t N>
 template <ValueLike... Args>
     requires(sizeof...(Args) > 0)
 inline bool RingBuffer<N>::readValues(Args &...args) noexcept {
-    constexpr auto totalSize = (sizeof args + ...);
+    constexpr auto totalSize = (sizeof(Args) + ...);
     if (totalSize > N || slotCount_ == 0) [[unlikely]] {
         return false;
     }
@@ -598,7 +598,7 @@ template <std::size_t N>
 template <ValueLike... Args>
     requires(sizeof...(Args) > 0)
 inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
-    constexpr auto totalSize = (sizeof args + ...);
+    constexpr auto totalSize = (sizeof(Args) + ...);
     if (totalSize > N || slotCount_ == 0) [[unlikely]] {
         return false;
     }
