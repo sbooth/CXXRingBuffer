@@ -263,7 +263,7 @@ class RingBuffer final {
     /// @param writer A callable performing the write
     /// @return true if a writable slot was claimed
     template <typename Writer>
-        requires std::invocable<Writer &, Slot &> && std::is_nothrow_invocable_v<Writer &, Slot &>
+        requires std::invocable<Writer &&, Slot &> && std::is_nothrow_invocable_v<Writer &&, Slot &>
     bool writeToSlot(Writer &&writer) noexcept;
 
     /// Context for reading from a ring buffer slot.
@@ -578,8 +578,8 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <typename Writer>
-    requires std::invocable<Writer &, typename RingBuffer<N>::Slot &> &&
-             std::is_nothrow_invocable_v<Writer &, typename RingBuffer<N>::Slot &>
+    requires std::invocable<Writer &&, typename RingBuffer<N>::Slot &> &&
+             std::is_nothrow_invocable_v<Writer &&, typename RingBuffer<N>::Slot &>
 inline bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
     auto writePos = writePosition_.load(std::memory_order_relaxed);
 
@@ -594,7 +594,7 @@ inline bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
             // Attempt to claim the slot
             if (writePosition_.compare_exchange_weak(writePos, writePos + 1, std::memory_order_relaxed,
                                                      std::memory_order_relaxed)) {
-                writer(slot);
+                std::invoke(std::forward<Writer>(writer), slot);
                 seq_atomic.store(writePos + 1, std::memory_order_release);
                 return true;
             }
@@ -637,7 +637,7 @@ template <ValueLike... Args>
 inline void RingBuffer<N>::copyValuesFromSlot(const Slot &slot, Args &...args) noexcept {
     std::size_t cursor = 0;
     const auto readArg = [&](auto &arg) noexcept {
-        std::memcpy(std::addressof(arg), slot.data_ + cursor, sizeof(arg));
+        std::memcpy(std::addressof(arg), slot.data_ + cursor, sizeof(std::remove_reference_t<decltype(arg)>));
         cursor += sizeof(arg);
     };
     (readArg(args), ...);
