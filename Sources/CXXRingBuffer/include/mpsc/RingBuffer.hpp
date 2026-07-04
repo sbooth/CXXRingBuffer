@@ -264,7 +264,7 @@ class RingBuffer final {
     /// @param writer A callable performing the write
     /// @return true if a writable slot was claimed
     template <typename Writer>
-        requires std::invocable<Writer &&, Slot &> && std::is_nothrow_invocable_v<Writer &&, Slot &>
+        requires std::invocable<Writer, Slot &> && std::is_nothrow_invocable_v<Writer, Slot &>
     bool writeToSlot(Writer &&writer) noexcept;
 
     /// Context for reading from a ring buffer slot.
@@ -579,8 +579,8 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <typename Writer>
-    requires std::invocable<Writer &&, typename RingBuffer<N>::Slot &> &&
-             std::is_nothrow_invocable_v<Writer &&, typename RingBuffer<N>::Slot &>
+    requires std::invocable<Writer, typename RingBuffer<N>::Slot &> &&
+             std::is_nothrow_invocable_v<Writer, typename RingBuffer<N>::Slot &>
 inline bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
     auto writePos = writePosition_.load(std::memory_order_relaxed);
 
