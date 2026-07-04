@@ -258,6 +258,9 @@ class RingBuffer final {
 
     // MARK: Helpers
 
+    /// Claims a writable slot, and if available writes data using writer
+    template <typename Writer> bool writeToSlot(Writer &&writer) noexcept;
+
     /// Context for reading from a ring buffer slot.
     struct ReadableSlotContext {
         /// A reference to the slot
@@ -330,7 +333,7 @@ inline bool RingBuffer<N>::allocate(SizeType minSlots) noexcept {
 
     try {
         slots_ = std::make_unique_for_overwrite<Slot[]>(slotCount);
-    } catch (const std::exception &e) {
+    } catch (...) {
         return false;
     }
 
@@ -425,33 +428,10 @@ inline bool RingBuffer<N>::write(const void *RB_NONNULL ptr, SizeType size) noex
         return false;
     }
 
-    auto writePos = writePosition_.load(std::memory_order_relaxed);
-
-    while (true) {
-        auto &slot = slots_[writePos & slotCountMask_];
-        std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
-        const auto seq = seq_atomic.load(std::memory_order_acquire);
-        const auto udiff = seq - writePos;
-        const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
-
-        if (diff == 0) {
-            // Attempt to claim the slot
-            if (writePosition_.compare_exchange_weak(writePos, writePos + 1, std::memory_order_relaxed,
-                                                     std::memory_order_relaxed)) {
-                std::memcpy(slot.data_, ptr, size);
-                slot.dataSize_ = size;
-
-                seq_atomic.store(writePos + 1, std::memory_order_release);
-                return true;
-            }
-        } else if (diff < 0) {
-            // All slots are full
-            return false;
-        } else {
-            // Another producer claimed this slot
-            writePos = writePosition_.load(std::memory_order_relaxed);
-        }
-    }
+    return writeToSlot([ptr, size](Slot &slot) noexcept {
+        std::memcpy(slot.data_, ptr, size);
+        slot.dataSize_ = size;
+    });
 }
 
 template <std::size_t N>
@@ -470,41 +450,16 @@ inline bool RingBuffer<N>::writeValues(const Args &...args) noexcept {
         return false;
     }
 
-    auto writePos = writePosition_.load(std::memory_order_relaxed);
+    return writeToSlot([&](Slot &slot) noexcept {
+        SizeType cursor = 0;
+        const auto writeArg = [&](const void *src, SizeType size) noexcept {
+            std::memcpy(slot.data_ + cursor, src, size);
+            cursor += size;
+        };
 
-    while (true) {
-        auto &slot = slots_[writePos & slotCountMask_];
-        std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
-        const auto seq = seq_atomic.load(std::memory_order_acquire);
-        const auto udiff = seq - writePos;
-        const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
-
-        if (diff == 0) {
-            // Attempt to claim the slot
-            if (writePosition_.compare_exchange_weak(writePos, writePos + 1, std::memory_order_relaxed,
-                                                     std::memory_order_relaxed)) {
-
-                std::size_t cursor = 0;
-                const auto writeArg = [&](const void *arg, std::size_t len) noexcept {
-                    std::memcpy(slot.data_ + cursor, arg, len);
-                    cursor += len;
-                };
-
-                // Copy each argument to the slot in turn
-                (writeArg(std::addressof(args), sizeof(Args)), ...);
-                slot.dataSize_ = totalSize;
-
-                seq_atomic.store(writePos + 1, std::memory_order_release);
-                return true;
-            }
-        } else if (diff < 0) {
-            // All slots are full
-            return false;
-        } else {
-            // Another producer claimed this slot
-            writePos = writePosition_.load(std::memory_order_relaxed);
-        }
-    }
+        (writeArg(std::addressof(args), sizeof(args)), ...);
+        slot.dataSize_ = totalSize;
+    });
 }
 
 // MARK: Reading
@@ -614,6 +569,37 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
 }
 
 // MARK: Helpers
+
+template <std::size_t N>
+    requires ValidPowerOfTwo<N>
+template <typename Writer>
+bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
+    auto writePos = writePosition_.load(std::memory_order_relaxed);
+
+    while (true) {
+        auto &slot = slots_[writePos & slotCountMask_];
+        std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
+        const auto seq = seq_atomic.load(std::memory_order_acquire);
+        const auto udiff = seq - writePos;
+        const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
+
+        if (diff == 0) {
+            // Attempt to claim the slot
+            if (writePosition_.compare_exchange_weak(writePos, writePos + 1, std::memory_order_relaxed,
+                                                     std::memory_order_relaxed)) {
+                writer(slot);
+                seq_atomic.store(writePos + 1, std::memory_order_release);
+                return true;
+            }
+        } else if (diff < 0) {
+            // All slots are full
+            return false;
+        } else {
+            // Another producer claimed this slot
+            writePos = writePosition_.load(std::memory_order_relaxed);
+        }
+    }
+}
 
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
