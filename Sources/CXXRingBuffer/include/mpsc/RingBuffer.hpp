@@ -258,8 +258,13 @@ class RingBuffer final {
 
     // MARK: Helpers
 
-    /// Claims a writable slot, and if available writes data using writer
-    template <typename Writer> bool writeToSlot(Writer &&writer) noexcept;
+    /// Claims a writable slot if available, and writes data using a callable
+    /// @tparam Writer The type of the callable object.
+    /// @param writer A callable performing the write
+    /// @return true if a writable slot was claimed
+    template <typename Writer>
+        requires std::invocable<Writer &, Slot &> && std::is_nothrow_invocable_v<Writer &, Slot &>
+    bool writeToSlot(Writer &&writer) noexcept;
 
     /// Context for reading from a ring buffer slot.
     struct ReadableSlotContext {
@@ -573,7 +578,9 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <typename Writer>
-bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
+    requires std::invocable<Writer &, typename RingBuffer<N>::Slot &> &&
+             std::is_nothrow_invocable_v<Writer &, typename RingBuffer<N>::Slot &>
+inline bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
     auto writePos = writePosition_.load(std::memory_order_relaxed);
 
     while (true) {
@@ -603,7 +610,7 @@ bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
 
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
-auto RingBuffer<N>::getReadableSlot() const noexcept -> std::optional<ReadableSlotContext> {
+inline auto RingBuffer<N>::getReadableSlot() const noexcept -> std::optional<ReadableSlotContext> {
     if (slotCount_ == 0) [[unlikely]] {
         return std::nullopt;
     }
@@ -627,7 +634,7 @@ template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <ValueLike... Args>
     requires(sizeof...(Args) > 0)
-void RingBuffer<N>::copyValuesFromSlot(const Slot &slot, Args &...args) noexcept {
+inline void RingBuffer<N>::copyValuesFromSlot(const Slot &slot, Args &...args) noexcept {
     std::size_t cursor = 0;
     const auto readArg = [&](auto &arg) noexcept {
         std::memcpy(std::addressof(arg), slot.data_ + cursor, sizeof(arg));
