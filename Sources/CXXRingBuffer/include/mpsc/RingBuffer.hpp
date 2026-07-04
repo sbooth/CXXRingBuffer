@@ -27,6 +27,7 @@
 #include <bit>
 #include <concepts>
 #include <cstring>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <optional>
