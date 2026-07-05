@@ -621,7 +621,7 @@ inline auto RingBuffer<N>::acquireReadable() const noexcept -> std::optional<Rea
     }
 
     const auto readPos = readPosition_.load(std::memory_order_relaxed);
-    auto &slot = slots_[readPos & slotCountMask_];
+    auto &slot = const_cast<Slot &>(slots_[readPos & slotCountMask_]);
 
     std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
     const auto seq = seq_atomic.load(std::memory_order_acquire);
