@@ -261,27 +261,26 @@ class RingBuffer final {
 
     /// Claims a writable slot if available, and writes data using a callable.
     /// @tparam Writer The type of the callable object.
-    /// @param writer A callable performing the write
-    /// @return true if a writable slot was claimed
+    /// @param writer A callable performing the write.
+    /// @return true if a writable slot was claimed.
     template <typename Writer>
         requires std::invocable<Writer, Slot &> && std::is_nothrow_invocable_v<Writer, Slot &>
     bool writeToSlot(Writer &&writer) noexcept;
 
     /// Reads from the readable slot using a callable, optionally advancing the read position.
-    /// @tparam Consume true if the read position should be advanced
+    /// @tparam Consume true if the read position should be advanced.
     /// @tparam Reader The type of the callable object.
-    /// @param reader A callable performing the read
-    /// @return true if a data was read
+    /// @param reader A callable performing the read.
+    /// @return true if data was successfully read.
     template <bool Consume, typename Reader>
         requires std::invocable<Reader, std::span<const unsigned char>> &&
                  std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
     bool readFromSlot(Reader &&reader) noexcept;
 
     /// Reads from the readable slot using a callable without advancing the read position.
-    /// @tparam Consume true if the read position should be advanced
     /// @tparam Reader The type of the callable object.
-    /// @param reader A callable performing the read
-    /// @return true if a data was read
+    /// @param reader A callable performing the read.
+    /// @return true if data was successfully read.
     template <typename Reader>
         requires std::invocable<Reader, std::span<const unsigned char>> &&
                  std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
