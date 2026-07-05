@@ -275,7 +275,7 @@ class RingBuffer final {
     template <bool Consume, typename Reader>
         requires std::invocable<Reader, std::span<const unsigned char>> &&
                  std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
-    bool readFromSlot(Reader &&reader) noexcept;
+    bool readFromSlot(Reader &&reader) const noexcept;
 };
 
 // MARK: - Implementation -
@@ -610,13 +610,13 @@ template <std::size_t N>
 template <bool Consume, typename Reader>
     requires std::invocable<Reader, std::span<const unsigned char>> &&
              std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
-inline bool RingBuffer<N>::readFromSlot(Reader &&reader) noexcept {
+inline bool RingBuffer<N>::readFromSlot(Reader &&reader) const noexcept {
     if (slotCount_ == 0) [[unlikely]] {
         return false;
     }
 
     const auto readPos = readPosition_.load(std::memory_order_relaxed);
-    auto &slot = slots_[readPos & slotCountMask_];
+    auto &slot = const_cast<Slot &>(slots_[readPos & slotCountMask_]);
 
     std::atomic_ref<SizeType> generation_atomic(slot.generation_);
     const auto seq = generation_atomic.load(std::memory_order_acquire);
@@ -634,7 +634,7 @@ inline bool RingBuffer<N>::readFromSlot(Reader &&reader) noexcept {
 
     if constexpr (Consume) {
         generation_atomic.store(readPos + slotCount_, std::memory_order_release);
-        readPosition_.store(readPos + 1, std::memory_order_relaxed);
+        const_cast<std::atomic<SizeType> &>(readPosition_).store(readPos + 1, std::memory_order_relaxed);
     }
 
     return true;
