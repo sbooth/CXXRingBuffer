@@ -229,7 +229,7 @@ class RingBuffer final {
     /// @param args The destination values.
     /// @return true if the values were successfully read.
     template <ValueLike... Args>
-        requires(sizeof...(Args) > 1) && (std::assignable_from<Args&, Args> && ...)
+        requires(sizeof...(Args) > 1) && (std::assignable_from<Args &, Args> && ...)
     bool readAll(Args &...args) noexcept [[clang::nonblocking]];
 
     /// Reads values and advances the read position.
@@ -280,7 +280,7 @@ class RingBuffer final {
     /// @param args The destination values.
     /// @return true if the values were successfully read.
     template <ValueLike... Args>
-        requires(sizeof...(Args) > 1) && (std::assignable_from<Args&, Args> && ...)
+        requires(sizeof...(Args) > 1) && (std::assignable_from<Args &, Args> && ...)
     [[nodiscard]] bool peekAll(Args &...args) const noexcept [[clang::nonblocking]];
 
     /// Reads values without advancing the read position.
@@ -522,7 +522,7 @@ inline auto RingBuffer::read() noexcept(std::is_nothrow_default_constructible_v<
 }
 
 template <ValueLike... Args>
-    requires(sizeof...(Args) > 1) && (std::assignable_from<Args&, Args> && ...)
+    requires(sizeof...(Args) > 1) && (std::assignable_from<Args &, Args> && ...)
 inline bool RingBuffer::readAll(Args &...args) noexcept {
     if (!peekAll(args...)) {
         return false;
@@ -593,7 +593,7 @@ inline auto RingBuffer::peek() const noexcept(std::is_nothrow_default_constructi
 }
 
 template <ValueLike... Args>
-    requires(sizeof...(Args) > 1) && (std::assignable_from<Args&, Args> && ...)
+    requires(sizeof...(Args) > 1) && (std::assignable_from<Args &, Args> && ...)
 inline bool RingBuffer::peekAll(Args &...args) const noexcept {
     constexpr auto totalSize = (sizeof args + ...);
     auto [front, back] = readVector();
