@@ -199,7 +199,7 @@ class RingBuffer final {
     /// @param args The destination values.
     /// @return true if the values were successfully read.
     template <ValueLike... Args>
-        requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, Args> && ...)
+        requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, const Args &> && ...)
     bool readValues(Args &...args) noexcept [[clang::nonblocking]];
 
     // MARK: Peeking
@@ -226,7 +226,7 @@ class RingBuffer final {
     /// @param args The destination values.
     /// @return true if the values were successfully read.
     template <ValueLike... Args>
-        requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, Args> && ...)
+        requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, const Args &> && ...)
     [[nodiscard]] bool peekValues(Args &...args) const noexcept [[clang::nonblocking]];
 
   private:
@@ -500,7 +500,7 @@ inline bool RingBuffer<N>::read(std::span<unsigned char> buffer, SizeType &writt
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <ValueLike... Args>
-    requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, Args> && ...)
+    requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, const Args &> && ...)
 inline bool RingBuffer<N>::readValues(Args &...args) noexcept {
     constexpr auto totalSize = (sizeof(Args) + ...);
     if (totalSize > N || slotCount_ == 0) [[unlikely]] {
@@ -555,7 +555,7 @@ inline bool RingBuffer<N>::peek(std::span<unsigned char> buffer, SizeType &writt
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <ValueLike... Args>
-    requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, Args> && ...)
+    requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, const Args &> && ...)
 inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
     constexpr auto totalSize = (sizeof(Args) + ...);
     if (totalSize > N || slotCount_ == 0) [[unlikely]] {
