@@ -233,7 +233,7 @@ class RingBuffer final {
     /// A ring buffer slot.
     struct Slot {
         /// The slot's generation.
-        SizeType sequence_{0};
+        SizeType generation_{0};
         /// The number of valid bytes in data_
         SizeType dataSize_{0};
         /// The slot data.
@@ -267,21 +267,15 @@ class RingBuffer final {
         requires std::invocable<Writer, Slot &> && std::is_nothrow_invocable_v<Writer, Slot &>
     bool writeToSlot(Writer &&writer) noexcept;
 
-    /// A view of a readable slot's data
-    struct ReadView {
-        /// The readable data
-        std::span<const unsigned char> data_;
-        /// The read position for the slot containing data_
-        SizeType position_;
-    };
-
-    /// Acquires and returns a read view
-    /// @return A view into a readadable slot
-    [[nodiscard]] std::optional<ReadView> acquireReadable() const noexcept;
-
-    /// Releases a readable slot back to the producers
-    /// @param position The read position to release
-    void releaseReadable(SizeType position) noexcept;
+    /// Reads from the readable slot using a callable
+    /// @tparam Consume true if the read position should be advanced
+    /// @tparam Reader The type of the callable object.
+    /// @param reader A callable performing the read
+    /// @return true if a data was read
+    template <bool Consume, typename Reader>
+        requires std::invocable<Reader, std::span<const unsigned char>> &&
+                 std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
+    bool readFromSlot(Reader &&reader) noexcept;
 };
 
 // MARK: - Implementation -
@@ -341,7 +335,7 @@ inline bool RingBuffer<N>::allocate(SizeType minSlots) noexcept {
     }
 
     for (SizeType i = 0; i < slotCount; ++i) {
-        slots_[i].sequence_ = i;
+        slots_[i].generation_ = i;
         slots_[i].dataSize_ = 0;
     }
 
@@ -476,18 +470,16 @@ inline bool RingBuffer<N>::read(void *RB_NONNULL ptr, SizeType capacity, SizeTyp
         return false;
     }
 
-    const auto view = acquireReadable();
-    if (!view || view->data_.size() > capacity) {
-        written = 0;
-        return false;
-    }
+    return readFromSlot<true>([&](std::span<const unsigned char> data) noexcept -> bool {
+        if (data.size() > capacity) {
+            written = 0;
+            return false;
+        }
 
-    std::memcpy(ptr, view->data_.data(), view->data_.size());
-    written = view->data_.size();
-
-    releaseReadable(view->position_);
-
-    return true;
+        std::memcpy(ptr, data.data(), data.size());
+        written = data.size();
+        return true;
+    });
 }
 
 template <std::size_t N>
@@ -506,22 +498,21 @@ inline bool RingBuffer<N>::readValues(Args &...args) noexcept {
         return false;
     }
 
-    const auto view = acquireReadable();
-    if (!view || view->data_.size() < totalSize) {
-        return false;
-    }
+    return readFromSlot<true>([&](std::span<const unsigned char> data) noexcept -> bool {
+        if (data.size() < totalSize) {
+            return false;
+        }
 
-    std::size_t cursor = 0;
-    const auto readArg = [&](auto &arg) noexcept {
-        constexpr auto size = sizeof(arg);
-        std::memcpy(std::addressof(arg), view->data_.data() + cursor, size);
-        cursor += size;
-    };
-    (readArg(args), ...);
+        std::size_t cursor = 0;
+        const auto readArg = [&](auto &arg) noexcept {
+            constexpr auto size = sizeof(arg);
+            std::memcpy(std::addressof(arg), data.data() + cursor, size);
+            cursor += size;
+        };
+        (readArg(args), ...);
 
-    releaseReadable(view->position_);
-
-    return true;
+        return true;
+    });
 }
 
 // MARK: Peeking
@@ -534,16 +525,16 @@ inline bool RingBuffer<N>::peek(void *RB_NONNULL ptr, SizeType capacity, SizeTyp
         return false;
     }
 
-    const auto view = acquireReadable();
-    if (!view || view->data_.size() > capacity) {
-        written = 0;
-        return false;
-    }
+    return readFromSlot<false>([&](std::span<const unsigned char> data) noexcept -> bool {
+        if (data.size() > capacity) {
+            written = 0;
+            return false;
+        }
 
-    std::memcpy(ptr, view->data_.data(), view->data_.size());
-    written = view->data_.size();
-
-    return true;
+        std::memcpy(ptr, data.data(), data.size());
+        written = data.size();
+        return true;
+    });
 }
 
 template <std::size_t N>
@@ -562,20 +553,21 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
         return false;
     }
 
-    const auto view = acquireReadable();
-    if (!view || view->data_.size() < totalSize) {
-        return false;
-    }
+    return readFromSlot<false>([&](std::span<const unsigned char> data) noexcept -> bool {
+        if (data.size() < totalSize) {
+            return false;
+        }
 
-    std::size_t cursor = 0;
-    const auto readArg = [&](auto &arg) noexcept {
-        constexpr auto size = sizeof(arg);
-        std::memcpy(std::addressof(arg), view->data_.data() + cursor, size);
-        cursor += size;
-    };
-    (readArg(args), ...);
+        std::size_t cursor = 0;
+        const auto readArg = [&](auto &arg) noexcept {
+            constexpr auto size = sizeof(arg);
+            std::memcpy(std::addressof(arg), data.data() + cursor, size);
+            cursor += size;
+        };
+        (readArg(args), ...);
 
-    return true;
+        return true;
+    });
 }
 
 // MARK: Helpers
@@ -590,8 +582,8 @@ inline bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
 
     while (true) {
         auto &slot = slots_[writePos & slotCountMask_];
-        std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
-        const auto seq = seq_atomic.load(std::memory_order_acquire);
+        std::atomic_ref<SizeType> generation_atomic(slot.generation_);
+        const auto seq = generation_atomic.load(std::memory_order_acquire);
         const auto udiff = seq - writePos;
         const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
 
@@ -600,7 +592,7 @@ inline bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
             if (writePosition_.compare_exchange_weak(writePos, writePos + 1, std::memory_order_relaxed,
                                                      std::memory_order_relaxed)) {
                 std::invoke(std::forward<Writer>(writer), slot);
-                seq_atomic.store(writePos + 1, std::memory_order_release);
+                generation_atomic.store(writePos + 1, std::memory_order_release);
                 return true;
             }
         } else if (diff < 0) {
@@ -615,34 +607,37 @@ inline bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
 
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
-inline auto RingBuffer<N>::acquireReadable() const noexcept -> std::optional<ReadView> {
+template <bool Consume, typename Reader>
+    requires std::invocable<Reader, std::span<const unsigned char>> &&
+             std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
+inline bool RingBuffer<N>::readFromSlot(Reader &&reader) noexcept {
     if (slotCount_ == 0) [[unlikely]] {
-        return std::nullopt;
+        return false;
     }
 
     const auto readPos = readPosition_.load(std::memory_order_relaxed);
-    auto &slot = const_cast<Slot &>(slots_[readPos & slotCountMask_]);
+    auto &slot = slots_[readPos & slotCountMask_];
 
-    std::atomic_ref<SizeType> seq_atomic(slot.sequence_);
-    const auto seq = seq_atomic.load(std::memory_order_acquire);
+    std::atomic_ref<SizeType> generation_atomic(slot.generation_);
+    const auto seq = generation_atomic.load(std::memory_order_acquire);
     const auto udiff = seq - (readPos + 1);
     const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
 
     if (diff != 0) {
-        return std::nullopt;
+        return false;
     }
 
-    return ReadView{std::span<const unsigned char>{slot.data_, slot.dataSize_}, readPos};
-}
+    if (const auto data = std::span<const unsigned char>{slot.data_, slot.dataSize_};
+        !std::invoke(std::forward<Reader>(reader), data)) {
+        return false;
+    }
 
-template <std::size_t N>
-    requires ValidPowerOfTwo<N>
-inline void RingBuffer<N>::releaseReadable(SizeType position) noexcept {
-    auto &slot = slots_[position & slotCountMask_];
+    if constexpr (Consume) {
+        generation_atomic.store(readPos + slotCount_, std::memory_order_release);
+        readPosition_.store(readPos + 1, std::memory_order_relaxed);
+    }
 
-    std::atomic_ref<SizeType> seq(slot.sequence_);
-    seq.store(position + slotCount_, std::memory_order_release);
-    readPosition_.store(position + 1, std::memory_order_relaxed);
+    return true;
 }
 
 } /* namespace mpsc */
