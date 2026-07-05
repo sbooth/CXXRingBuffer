@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(CXXRingBuffer
     Sources/CXXRingBuffer/spsc/RingBuffer.cpp
     Sources/CXXRingBuffer/include/spsc/RingBuffer.hpp
-    Sources/CXXRingBuffer/mpsc/RingBuffer.cpp
     Sources/CXXRingBuffer/include/mpsc/RingBuffer.hpp
 )
 add_library(lockfree::RingBuffer ALIAS CXXRingBuffer)
