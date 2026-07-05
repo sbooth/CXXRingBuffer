@@ -259,7 +259,7 @@ class RingBuffer final {
 
     // MARK: Helpers
 
-    /// Claims a writable slot if available, and writes data using a callable
+    /// Claims a writable slot if available, and writes data using a callable.
     /// @tparam Writer The type of the callable object.
     /// @param writer A callable performing the write
     /// @return true if a writable slot was claimed
@@ -267,7 +267,7 @@ class RingBuffer final {
         requires std::invocable<Writer, Slot &> && std::is_nothrow_invocable_v<Writer, Slot &>
     bool writeToSlot(Writer &&writer) noexcept;
 
-    /// Reads from the readable slot using a callable
+    /// Reads from the readable slot using a callable, optionally advancing the read position.
     /// @tparam Consume true if the read position should be advanced
     /// @tparam Reader The type of the callable object.
     /// @param reader A callable performing the read
@@ -275,7 +275,17 @@ class RingBuffer final {
     template <bool Consume, typename Reader>
         requires std::invocable<Reader, std::span<const unsigned char>> &&
                  std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
-    bool readFromSlot(Reader &&reader) const noexcept;
+    bool readFromSlot(Reader &&reader) noexcept;
+
+    /// Reads from the readable slot using a callable without advancing the read position.
+    /// @tparam Consume true if the read position should be advanced
+    /// @tparam Reader The type of the callable object.
+    /// @param reader A callable performing the read
+    /// @return true if a data was read
+    template <typename Reader>
+        requires std::invocable<Reader, std::span<const unsigned char>> &&
+                 std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
+    bool peekFromSlot(Reader &&reader) const noexcept;
 };
 
 // MARK: - Implementation -
@@ -553,7 +563,7 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
         return false;
     }
 
-    return readFromSlot<false>([&](std::span<const unsigned char> data) noexcept -> bool {
+    return peekFromSlot<false>([&](std::span<const unsigned char> data) noexcept -> bool {
         if (data.size() < totalSize) {
             return false;
         }
@@ -583,8 +593,8 @@ inline bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
     while (true) {
         auto &slot = slots_[writePos & slotCountMask_];
         std::atomic_ref<SizeType> generation_atomic(slot.generation_);
-        const auto seq = generation_atomic.load(std::memory_order_acquire);
-        const auto udiff = seq - writePos;
+        const auto generation = generation_atomic.load(std::memory_order_acquire);
+        const auto udiff = generation - writePos;
         const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
 
         if (diff == 0) {
@@ -610,34 +620,43 @@ template <std::size_t N>
 template <bool Consume, typename Reader>
     requires std::invocable<Reader, std::span<const unsigned char>> &&
              std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
-inline bool RingBuffer<N>::readFromSlot(Reader &&reader) const noexcept {
+inline bool RingBuffer<N>::readFromSlot(Reader &&reader) noexcept {
     if (slotCount_ == 0) [[unlikely]] {
         return false;
     }
 
     const auto readPos = readPosition_.load(std::memory_order_relaxed);
-    auto &slot = const_cast<Slot &>(slots_[readPos & slotCountMask_]);
+    auto &slot = slots_[readPos & slotCountMask_];
 
     std::atomic_ref<SizeType> generation_atomic(slot.generation_);
-    const auto seq = generation_atomic.load(std::memory_order_acquire);
-    const auto udiff = seq - (readPos + 1);
+    const auto generation = generation_atomic.load(std::memory_order_acquire);
+    const auto udiff = generation - (readPos + 1);
     const auto diff = static_cast<std::make_signed_t<SizeType>>(udiff);
 
     if (diff != 0) {
         return false;
     }
 
-    if (const auto data = std::span<const unsigned char>{slot.data_, slot.dataSize_};
-        !std::invoke(std::forward<Reader>(reader), data)) {
+    const auto data = std::span<const unsigned char>{slot.data_, slot.dataSize_};
+    if (!std::invoke(std::forward<Reader>(reader), data)) {
         return false;
     }
 
     if constexpr (Consume) {
         generation_atomic.store(readPos + slotCount_, std::memory_order_release);
-        const_cast<std::atomic<SizeType> &>(readPosition_).store(readPos + 1, std::memory_order_relaxed);
+        readPosition_.store(readPos + 1, std::memory_order_relaxed);
     }
 
     return true;
+}
+
+template <std::size_t N>
+    requires ValidPowerOfTwo<N>
+template <typename Reader>
+    requires std::invocable<Reader, std::span<const unsigned char>> &&
+             std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
+inline bool RingBuffer<N>::peekFromSlot(Reader &&reader) const noexcept {
+    return const_cast<RingBuffer *>(this)->readFromSlot<false>(reader);
 }
 
 } /* namespace mpsc */
