@@ -535,7 +535,7 @@ inline bool RingBuffer<N>::peek(void *RB_NONNULL ptr, SizeType capacity, SizeTyp
         return false;
     }
 
-    return readFromSlot<false>([&](std::span<const unsigned char> data) noexcept -> bool {
+    return peekFromSlot([&](std::span<const unsigned char> data) noexcept -> bool {
         if (data.size() > capacity) {
             written = 0;
             return false;
@@ -563,7 +563,7 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
         return false;
     }
 
-    return peekFromSlot<false>([&](std::span<const unsigned char> data) noexcept -> bool {
+    return peekFromSlot([&](std::span<const unsigned char> data) noexcept -> bool {
         if (data.size() < totalSize) {
             return false;
         }
