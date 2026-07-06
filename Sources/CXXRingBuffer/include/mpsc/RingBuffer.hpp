@@ -279,7 +279,7 @@ namespace detail {
 
 template <ValueLike... Args>
     requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, const Args &> && ...)
-void deserialize(std::span<const unsigned char> data, Args &...args) noexcept {
+inline void deserialize(std::span<const unsigned char> data, Args &...args) noexcept {
     std::size_t cursor = 0;
     const auto readArg = [&cursor, data](auto &arg) noexcept {
         constexpr auto size = sizeof(arg);
@@ -289,7 +289,7 @@ void deserialize(std::span<const unsigned char> data, Args &...args) noexcept {
     (readArg(args), ...);
 }
 
-}
+} /* namespace detail */
 
 // MARK: Construction and Destruction
 
