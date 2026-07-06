@@ -249,7 +249,8 @@ class RingBuffer final {
     /// @param writer A callable performing the write.
     /// @return true if a writable slot was claimed.
     template <typename Writer>
-        requires std::invocable<Writer, Slot &> && std::is_nothrow_invocable_v<Writer, Slot &>
+        requires std::invocable<Writer, std::span<unsigned char>> &&
+                 std::is_nothrow_invocable_v<Writer, std::span<unsigned char>>
     bool writeToSlot(Writer &&writer) noexcept;
 
     /// Reads from the readable slot using a callable, optionally advancing the read position.
@@ -419,9 +420,9 @@ inline bool RingBuffer<N>::write(std::span<const unsigned char> data) noexcept {
         return false;
     }
 
-    return writeToSlot([data](Slot &slot) noexcept {
-        std::memcpy(slot.data_, data.data(), data.size());
-        slot.dataSize_ = data.size();
+    return writeToSlot([data](std::span<unsigned char> buffer) noexcept {
+        std::memcpy(buffer.data(), data.data(), data.size());
+        return data.size();
     });
 }
 
@@ -435,16 +436,16 @@ inline bool RingBuffer<N>::writeValues(const Args &...args) noexcept {
         return false;
     }
 
-    return writeToSlot([&](Slot &slot) noexcept {
+    return writeToSlot([&](std::span<unsigned char> buffer) noexcept {
         std::size_t cursor = 0;
         const auto writeArg = [&](auto &arg) noexcept {
             constexpr auto size = sizeof(arg);
-            std::memcpy(slot.data_ + cursor, std::addressof(arg), size);
+            std::memcpy(buffer.data() + cursor, std::addressof(arg), size);
             cursor += size;
         };
         (writeArg(args), ...);
 
-        slot.dataSize_ = totalSize;
+        return totalSize;
     });
 }
 
@@ -542,8 +543,8 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
 template <typename Writer>
-    requires std::invocable<Writer, typename RingBuffer<N>::Slot &> &&
-             std::is_nothrow_invocable_v<Writer, typename RingBuffer<N>::Slot &>
+    requires std::invocable<Writer, std::span<unsigned char>> &&
+             std::is_nothrow_invocable_v<Writer, std::span<unsigned char>>
 inline bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
     auto writePos = writePosition_.load(std::memory_order_relaxed);
 
@@ -558,7 +559,11 @@ inline bool RingBuffer<N>::writeToSlot(Writer &&writer) noexcept {
             // Attempt to claim the slot
             if (writePosition_.compare_exchange_weak(writePos, writePos + 1, std::memory_order_relaxed,
                                                      std::memory_order_relaxed)) {
-                std::invoke(std::forward<Writer>(writer), slot);
+
+                std::span<unsigned char> buf{slot.data_, N};
+                const auto bytesWritten = std::invoke(std::forward<Writer>(writer), buf);
+                slot.dataSize_ = bytesWritten;
+
                 generation_atomic.store(writePos + 1, std::memory_order_release);
                 return true;
             }
