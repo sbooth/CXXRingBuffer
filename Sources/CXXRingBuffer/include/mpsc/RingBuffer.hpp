@@ -181,7 +181,8 @@ class RingBuffer final {
     /// @note This method is only safe to call from the consumer.
     /// @param buffer A span to receive the data.
     /// @param written On return, the number of bytes read.
-    /// @return true if data was successfully read, false if the ring buffer is empty or the buffer capacity is insufficient.
+    /// @return true if data was successfully read, false if the ring buffer is empty or the buffer capacity is
+    /// insufficient.
     bool read(std::span<unsigned char> buffer, SizeType &written) noexcept [[clang::nonblocking]];
 
     /// Reads values from the first occupied slot and advances the read position.
