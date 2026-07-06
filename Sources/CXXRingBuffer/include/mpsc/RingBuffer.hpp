@@ -160,14 +160,6 @@ class RingBuffer final {
 
     /// Writes data to the next available slot and advances the write position.
     /// @note This method is only safe to call from a producer.
-    /// @param ptr An address containing the data to copy.
-    /// @param size The number of bytes to copy.
-    /// @return true if the data was successfully written, false if the ring buffer is full or the slot capacity is
-    /// insufficient.
-    bool write(const void *RB_NONNULL ptr, SizeType size) noexcept [[clang::nonblocking]];
-
-    /// Writes data to the next available slot and advances the write position.
-    /// @note This method is only safe to call from a producer.
     /// @param data A span containing the data to copy.
     /// @return true if the data was successfully written, false if the ring buffer is full or the slot capacity is
     /// insufficient.
@@ -187,17 +179,9 @@ class RingBuffer final {
 
     /// Reads data from the first occupied slot and advances the read position.
     /// @note This method is only safe to call from the consumer.
-    /// @param ptr An address to receive the data.
-    /// @param capacity The maximum number of bytes to copy.
-    /// @param written On return, the number of bytes read.
-    /// @return true if data was successfully read, false if the ring buffer is empty.
-    bool read(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) noexcept [[clang::nonblocking]];
-
-    /// Reads data from the first occupied slot and advances the read position.
-    /// @note This method is only safe to call from the consumer.
     /// @param buffer A span to receive the data.
     /// @param written On return, the number of bytes read.
-    /// @return true if data was successfully read, false if the ring buffer is empty.
+    /// @return true if data was successfully read, false if the ring buffer is empty or the buffer capacity is insufficient.
     bool read(std::span<unsigned char> buffer, SizeType &written) noexcept [[clang::nonblocking]];
 
     /// Reads values from the first occupied slot and advances the read position.
@@ -211,15 +195,6 @@ class RingBuffer final {
     bool readValues(Args &...args) noexcept [[clang::nonblocking]];
 
     // MARK: Peeking
-
-    /// Reads data from the first occupied slot without advancing the read position.
-    /// @note This method is only safe to call from the consumer.
-    /// @param ptr An address to receive the data.
-    /// @param capacity The maximum number of bytes to copy.
-    /// @param written On return, the number of bytes read.
-    /// @return true if data was successfully read, false if the ring buffer is empty.
-    [[nodiscard]] bool peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) const noexcept
-            [[clang::nonblocking]];
 
     /// Reads data from the first occupied slot without advancing the read position.
     /// @note This method is only safe to call from the consumer.
@@ -438,21 +413,15 @@ inline bool RingBuffer<N>::isEmpty() const noexcept {
 
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::write(const void *RB_NONNULL ptr, SizeType size) noexcept {
-    if (ptr == nullptr || size == 0 || size > N || slotCount_ == 0) [[unlikely]] {
+inline bool RingBuffer<N>::write(std::span<const unsigned char> data) noexcept {
+    if (data.empty() || data.size() > N || slotCount_ == 0) [[unlikely]] {
         return false;
     }
 
-    return writeToSlot([ptr, size](Slot &slot) noexcept {
-        std::memcpy(slot.data_, ptr, size);
-        slot.dataSize_ = size;
+    return writeToSlot([data](Slot &slot) noexcept {
+        std::memcpy(slot.data_, data.data(), data.size());
+        slot.dataSize_ = data.size();
     });
-}
-
-template <std::size_t N>
-    requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::write(std::span<const unsigned char> data) noexcept {
-    return write(data.data(), data.size());
 }
 
 template <std::size_t N>
@@ -482,24 +451,17 @@ inline bool RingBuffer<N>::writeValues(const Args &...args) noexcept {
 
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::read(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) noexcept {
-    if (ptr == nullptr || capacity == 0 || slotCount_ == 0) [[unlikely]] {
+inline bool RingBuffer<N>::read(std::span<unsigned char> buffer, SizeType &written) noexcept {
+    if (buffer.empty() || buffer.size() < N || slotCount_ == 0) [[unlikely]] {
         written = 0;
         return false;
     }
 
     return readFromSlot<true>([&](std::span<const unsigned char> data) noexcept -> bool {
-        const auto count = std::min(data.size(), capacity);
-        std::memcpy(ptr, data.data(), count);
-        written = count;
+        std::memcpy(buffer.data(), data.data(), data.size());
+        written = data.size();
         return true;
     });
-}
-
-template <std::size_t N>
-    requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::read(std::span<unsigned char> buffer, SizeType &written) noexcept {
-    return read(buffer.data(), buffer.size(), written);
 }
 
 template <std::size_t N>
@@ -533,24 +495,18 @@ inline bool RingBuffer<N>::readValues(Args &...args) noexcept {
 
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) const noexcept {
-    if (ptr == nullptr || capacity == 0 || slotCount_ == 0) [[unlikely]] {
+inline bool RingBuffer<N>::peek(std::span<unsigned char> buffer, SizeType &written) const noexcept {
+    if (buffer.empty() || slotCount_ == 0) [[unlikely]] {
         written = 0;
         return false;
     }
 
     return peekFromSlot([&](std::span<const unsigned char> data) noexcept -> bool {
-        const auto count = std::min(data.size(), capacity);
-        std::memcpy(ptr, data.data(), count);
+        const auto count = std::min(data.size(), buffer.size());
+        std::memcpy(buffer.data(), data.data(), count);
         written = count;
         return true;
     });
-}
-
-template <std::size_t N>
-    requires ValidPowerOfTwo<N>
-inline bool RingBuffer<N>::peek(std::span<unsigned char> buffer, SizeType &written) const noexcept {
-    return peek(buffer.data(), buffer.size(), written);
 }
 
 template <std::size_t N>

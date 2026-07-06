@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <numeric>
 #include <random>
+#include <span>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -37,9 +38,9 @@ TEST_F(RingBufferTest, Empty) {
     EXPECT_EQ(rb.emptySlots(), 0);
     EXPECT_EQ(rb.occupiedSlots(), 0);
 
-    uint8_t d[1024];
+    std::array<unsigned char, 1024> a;
     std::size_t sz;
-    EXPECT_EQ(rb.read(d, 1024, sz), false);
+    EXPECT_EQ(rb.read(a, sz), false);
     EXPECT_EQ(sz, 0);
-    EXPECT_EQ(rb.write(d, 1024), false);
+    EXPECT_EQ(rb.write(a), false);
 }
