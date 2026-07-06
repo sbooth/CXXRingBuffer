@@ -583,10 +583,6 @@ template <bool Consume, typename Reader>
     requires std::invocable<Reader, std::span<const unsigned char>> &&
              std::is_nothrow_invocable_v<Reader, std::span<const unsigned char>>
 inline bool RingBuffer<N>::readFromSlot(Reader &&reader) noexcept {
-    if (slotCount_ == 0) [[unlikely]] {
-        return false;
-    }
-
     const auto readPos = readPosition_.load(std::memory_order_relaxed);
     auto &slot = slots_[readPos & slotCountMask_];
 
