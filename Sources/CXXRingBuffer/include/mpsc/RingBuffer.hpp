@@ -275,6 +275,22 @@ class RingBuffer final {
 
 // MARK: - Implementation -
 
+namespace detail {
+
+template <ValueLike... Args>
+    requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, const Args &> && ...)
+void deserialize(std::span<const unsigned char> data, Args &...args) noexcept {
+    std::size_t cursor = 0;
+    const auto readArg = [&cursor, data](auto &arg) noexcept {
+        constexpr auto size = sizeof(arg);
+        std::memcpy(std::addressof(arg), data.data() + cursor, size);
+        cursor += size;
+    };
+    (readArg(args), ...);
+}
+
+}
+
 // MARK: Construction and Destruction
 
 template <std::size_t N>
@@ -480,15 +496,7 @@ inline bool RingBuffer<N>::readValues(Args &...args) noexcept {
         if (data.size() < totalSize) {
             return false;
         }
-
-        std::size_t cursor = 0;
-        const auto readArg = [&](auto &arg) noexcept {
-            constexpr auto size = sizeof(arg);
-            std::memcpy(std::addressof(arg), data.data() + cursor, size);
-            cursor += size;
-        };
-        (readArg(args), ...);
-
+        detail::deserialize(data, args...);
         return true;
     });
 }
@@ -525,15 +533,7 @@ inline bool RingBuffer<N>::peekValues(Args &...args) const noexcept {
         if (data.size() < totalSize) {
             return false;
         }
-
-        std::size_t cursor = 0;
-        const auto readArg = [&](auto &arg) noexcept {
-            constexpr auto size = sizeof(arg);
-            std::memcpy(std::addressof(arg), data.data() + cursor, size);
-            cursor += size;
-        };
-        (readArg(args), ...);
-
+        detail::deserialize(data, args...);
         return true;
     });
 }
