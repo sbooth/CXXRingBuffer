@@ -52,6 +52,10 @@ concept ValueLike = ByteCopyable<T> && !std::ranges::range<std::remove_cvref_t<T
 ///
 /// This class is thread safe when used with multiple producers and a single consumer.
 ///
+/// The ring buffer contains a fixed number of slots, each with a fixed byte capacity.
+/// The amount of data that can be written or read in one operation is limited by the size of a single slot.
+/// Each write occupies a single slot regardless of size, and similarly reads occur from a single slot only.
+///
 /// This ring buffer performs raw byte copies; it does not provide serialization.
 template <std::size_t N>
     requires ValidPowerOfTwo<N>
@@ -154,77 +158,82 @@ class RingBuffer final {
 
     // MARK: Writing
 
-    /// Writes data and advances the write position.
+    /// Writes data to the next available slot and advances the write position.
     /// @note This method is only safe to call from a producer.
     /// @param ptr An address containing the data to copy.
     /// @param size The number of bytes to copy.
-    /// @return true if the data was successfully written.
+    /// @return true if the data was successfully written, false if the ring buffer is full or the slot capacity is
+    /// insufficient.
     bool write(const void *RB_NONNULL ptr, SizeType size) noexcept [[clang::nonblocking]];
 
-    /// Writes data and advances the write position.
+    /// Writes data to the next available slot and advances the write position.
     /// @note This method is only safe to call from a producer.
     /// @param data A span containing the data to copy.
-    /// @return true if the data was successfully written.
+    /// @return true if the data was successfully written, false if the ring buffer is full or the slot capacity is
+    /// insufficient.
     bool write(std::span<const unsigned char> data) noexcept [[clang::nonblocking]];
 
-    /// Writes values and advances the write position.
+    /// Writes values to the next available slot and advances the write position.
     /// @note This method is only safe to call from a producer.
     /// @tparam Args The types to write.
     /// @param args The values to write.
-    /// @return true if the values were successfully written.
+    /// @return true if the values were successfully written, false if the ring buffer is full or the slot capacity is
+    /// insufficient.
     template <ValueLike... Args>
         requires(sizeof...(Args) > 0)
     bool writeValues(const Args &...args) noexcept [[clang::nonblocking]];
 
     // MARK: Reading
 
-    /// Reads data and advances the read position.
+    /// Reads data from the first occupied slot and advances the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param ptr An address to receive the data.
     /// @param capacity The maximum number of bytes to copy.
     /// @param written On return, the number of bytes read.
-    /// @return true if data was successfully read.
+    /// @return true if data was successfully read, false if the ring buffer is empty.
     bool read(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) noexcept [[clang::nonblocking]];
 
-    /// Reads data and advances the read position.
+    /// Reads data from the first occupied slot and advances the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param buffer A span to receive the data.
     /// @param written On return, the number of bytes read.
-    /// @return true if data was successfully read.
+    /// @return true if data was successfully read, false if the ring buffer is empty.
     bool read(std::span<unsigned char> buffer, SizeType &written) noexcept [[clang::nonblocking]];
 
-    /// Reads values and advances the read position.
+    /// Reads values from the first occupied slot and advances the read position.
     /// @note This method is only safe to call from the consumer.
     /// @tparam Args The types to read.
     /// @param args The destination values.
-    /// @return true if the values were successfully read.
+    /// @return true if the values were successfully read, false if the ring buffer is empty or the slot contains fewer
+    /// bytes than requested.
     template <ValueLike... Args>
         requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, const Args &> && ...)
     bool readValues(Args &...args) noexcept [[clang::nonblocking]];
 
     // MARK: Peeking
 
-    /// Reads data without advancing the read position.
+    /// Reads data from the first occupied slot without advancing the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param ptr An address to receive the data.
     /// @param capacity The maximum number of bytes to copy.
     /// @param written On return, the number of bytes read.
-    /// @return true if data was successfully read.
+    /// @return true if data was successfully read, false if the ring buffer is empty.
     [[nodiscard]] bool peek(void *RB_NONNULL ptr, SizeType capacity, SizeType &written) const noexcept
             [[clang::nonblocking]];
 
-    /// Reads data without advancing the read position.
+    /// Reads data from the first occupied slot without advancing the read position.
     /// @note This method is only safe to call from the consumer.
     /// @param buffer A span to receive the data.
     /// @param written On return, the number of bytes read.
-    /// @return true if data was successfully read.
+    /// @return true if data was successfully read, false if the ring buffer is empty.
     [[nodiscard]] bool peek(std::span<unsigned char> buffer, SizeType &written) const noexcept [[clang::nonblocking]];
 
-    /// Reads values without advancing the read position.
+    /// Reads values from the first occupied slot without advancing the read position.
     /// @note This method is only safe to call from the consumer.
     /// @tparam Args The types to read.
     /// @param args The destination values.
-    /// @return true if the values were successfully read.
+    /// @return true if the values were successfully read, false if the ring buffer is empty or the slot contains
+    /// insufficient data.
     template <ValueLike... Args>
         requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, const Args &> && ...)
     [[nodiscard]] bool peekValues(Args &...args) const noexcept [[clang::nonblocking]];
@@ -480,13 +489,9 @@ inline bool RingBuffer<N>::read(void *RB_NONNULL ptr, SizeType capacity, SizeTyp
     }
 
     return readFromSlot<true>([&](std::span<const unsigned char> data) noexcept -> bool {
-        if (data.size() > capacity) {
-            written = 0;
-            return false;
-        }
-
-        std::memcpy(ptr, data.data(), data.size());
-        written = data.size();
+        const auto count = std::min(data.size(), capacity);
+        std::memcpy(ptr, data.data(), count);
+        written = count;
         return true;
     });
 }
@@ -535,13 +540,9 @@ inline bool RingBuffer<N>::peek(void *RB_NONNULL ptr, SizeType capacity, SizeTyp
     }
 
     return peekFromSlot([&](std::span<const unsigned char> data) noexcept -> bool {
-        if (data.size() > capacity) {
-            written = 0;
-            return false;
-        }
-
-        std::memcpy(ptr, data.data(), data.size());
-        written = data.size();
+        const auto count = std::min(data.size(), capacity);
+        std::memcpy(ptr, data.data(), count);
+        written = count;
         return true;
     });
 }
