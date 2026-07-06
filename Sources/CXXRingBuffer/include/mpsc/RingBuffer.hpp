@@ -278,6 +278,18 @@ class RingBuffer final {
 namespace detail {
 
 template <ValueLike... Args>
+    requires(sizeof...(Args) > 0)
+inline void serialize(std::span<unsigned char> buffer, const Args &...args) noexcept {
+    std::size_t cursor = 0;
+    const auto writeArg = [&cursor, buffer](const auto &arg) noexcept {
+        constexpr auto size = sizeof(arg);
+        std::memcpy(buffer.data() + cursor, std::addressof(arg), size);
+        cursor += size;
+    };
+    (writeArg(args), ...);
+}
+
+template <ValueLike... Args>
     requires(sizeof...(Args) > 0) && (std::assignable_from<Args &, const Args &> && ...)
 inline void deserialize(std::span<const unsigned char> data, Args &...args) noexcept {
     std::size_t cursor = 0;
@@ -453,14 +465,7 @@ inline bool RingBuffer<N>::writeValues(const Args &...args) noexcept {
     }
 
     return writeToSlot([&](std::span<unsigned char> buffer) noexcept {
-        std::size_t cursor = 0;
-        const auto writeArg = [&](auto &arg) noexcept {
-            constexpr auto size = sizeof(arg);
-            std::memcpy(buffer.data() + cursor, std::addressof(arg), size);
-            cursor += size;
-        };
-        (writeArg(args), ...);
-
+        detail::serialize(buffer, args...);
         return totalSize;
     });
 }
