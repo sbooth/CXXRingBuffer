@@ -377,13 +377,11 @@ inline RingBuffer::operator bool() const noexcept { return buffer_ != nullptr; }
 inline auto RingBuffer::capacity() const noexcept -> SizeType { return capacity_; }
 
 inline auto RingBuffer::writePosition() const noexcept -> SizeType {
-    const auto writePos = writePosition_.load(std::memory_order_relaxed);
-    return writePos & capacityMask_;
+    return writePosition_.load(std::memory_order_relaxed);
 }
 
 inline auto RingBuffer::readPosition() const noexcept -> SizeType {
-    const auto readPos = readPosition_.load(std::memory_order_relaxed);
-    return readPos & capacityMask_;
+    return readPosition_.load(std::memory_order_relaxed);
 }
 
 // MARK: Buffer Usage
