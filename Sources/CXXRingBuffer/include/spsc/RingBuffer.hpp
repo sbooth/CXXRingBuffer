@@ -125,6 +125,16 @@ class RingBuffer final {
     /// @return The ring buffer capacity in bytes.
     [[nodiscard]] SizeType capacity() const noexcept [[clang::nonblocking]];
 
+    /// Returns the current write position in the ring buffer.
+    /// @note The result of this method is only accurate when called from the producer.
+    /// @return The current write position in bytes.
+    [[nodiscard]] SizeType writePosition() const noexcept [[clang::nonblocking]];
+
+    /// Returns the current read position in the ring buffer.
+    /// @note The result of this method is only accurate when called from the consumer.
+    /// @return The current read position in bytes.
+    [[nodiscard]] SizeType readPosition() const noexcept [[clang::nonblocking]];
+
     // MARK: Buffer Usage
 
     /// Returns the amount of free space in the ring buffer.
@@ -365,6 +375,14 @@ inline RingBuffer::operator bool() const noexcept { return buffer_ != nullptr; }
 // MARK: Buffer Information
 
 inline auto RingBuffer::capacity() const noexcept -> SizeType { return capacity_; }
+
+inline auto RingBuffer::writePosition() const noexcept -> SizeType {
+    return writePosition_.load(std::memory_order_relaxed);
+}
+
+inline auto RingBuffer::readPosition() const noexcept -> SizeType {
+    return readPosition_.load(std::memory_order_relaxed);
+}
 
 // MARK: Buffer Usage
 
